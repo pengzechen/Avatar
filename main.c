@@ -66,7 +66,7 @@ void copy_app2(void)
 {
     size_t size = (size_t)(__app2_bin_end - __app2_bin_start);
     unsigned long *from = (unsigned long *)__app2_bin_start;
-    unsigned long *to = (unsigned long *)0x82000000;
+    unsigned long *to = (unsigned long *)0x90000000;
     printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n"
            , from, to, size, from[0], from[1]);
     memcpy(to, from, size);
@@ -113,16 +113,16 @@ void main_entry()
     {
         copy_app();
         copy_app2();
-        copy_app3();
-        copy_app4();
-        copy_app5();
+        // copy_app3();
+        // copy_app4();
+        // copy_app5();
         schedule_init();
 
         create_task((void*)0x80000000, (void*)(0x80001000));
-        create_task((void*)0x82000000, (void*)(0x82001000));
-        create_task((void*)0x83000000, (void*)(0x83001000));
-        create_task((void*)0x84000000, (void*)(0x84001000));
-        create_task((void*)0x85000000, (void*)(0x85001000));
+        create_task((void*)0x90000000, (void*)(0x90001000));
+        // create_task((void*)0x83000000, (void*)(0x83001000));
+        // create_task((void*)0x84000000, (void*)(0x84001000));
+        // create_task((void*)0x85000000, (void*)(0x85001000));
         
         print_current_task_list();
     }

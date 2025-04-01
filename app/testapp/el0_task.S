@@ -9,10 +9,13 @@ _start:
     bl loop
 
 loop:
-    mov x8, #0
-    mov x0, #'A'
-    mov x1, #'B'
+
+    mov x8, #1
     svc #0
+    
+    mov x8, #0
+    svc #0
+    
     b loop  // 无限循环执行
 
 stack_test:

@@ -162,9 +162,10 @@ void hyper_main()
     apply_ept(avr_entry);
     *(uint64_t *)0x50000000 = 0x1234;
 
+    schedule_init(); // 设置当前 task 为 task0（test_guest）
     craete_vm_task(test_guest);
     craete_vm_task((void *)GUEST_KERNEL_START);
-    schedule_init(); // 设置当前 task 为 task0（test_guest）
+    
     schedule_init_local();
     print_current_task_list();
 
