@@ -115,6 +115,7 @@ exception_vector_base:
 .global el0_tesk_entry
 el0_tesk_entry:
 
+    // sp 为el1的栈
     ldp     x10, x11, [sp, 32 * 8]
     ldp     x30, x9,  [sp, 30 * 8]
     msr     sp_el0, x9
@@ -137,3 +138,4 @@ el0_tesk_entry:
     ldp     x2, x3,   [sp, 2 * 8]
     ldp     x0, x1,   [sp, 0 * 8]
     add     sp, sp, 34 * 8
+    eret

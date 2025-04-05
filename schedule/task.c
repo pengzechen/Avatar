@@ -103,7 +103,7 @@ void print_current_task_list()
 
 void _schedule(uint64_t *sp)
 {
-    if (task_count == 0)
+    if (task_count == SMP_NUM)
         return;
 
     // 找到下一个就绪的任务
@@ -112,15 +112,15 @@ void _schedule(uint64_t *sp)
     struct thread_info *info = current_thread_info();
     tcb_t *curr = (tcb_t *)info->current_thread;
 
-    uint32_t next_task_id;
+    uint32_t next_task_id = -1;
     spin_lock(&lock);
-    next_task_id = (curr->id + 1) % task_count;
-    for (int i = 2;; i++)
+    for (int i = 1; i < task_count; i++)
     {
+        next_task_id = (curr->id + i) % task_count;
         // 跳过非就绪状态的任务
         if (task_list[next_task_id].state == RUNNING)
         {
-            next_task_id = (curr->id + i) % task_count;
+            continue;
         }
         else
         {
@@ -131,10 +131,15 @@ void _schedule(uint64_t *sp)
         }
     }
     spin_unlock(&lock);
+    if (next_task_id == -1)
+    {   
+        printf("no task to schedule, current task %d\n", curr->id);
+        return;
+    }
 
     tcb_t *next_task = &task_list[next_task_id];
     tcb_t *prev_task = curr;
-    // printf("core %d switch prev_task %d to next_task %d\n", current_thread_info()->cpu_info, prev_task->id, next_task->id);
+    printf("core %d switch prev_task %d to next_task %d\n", current_thread_info()->cpu, prev_task->id, next_task->id);
 
     if (sp == NULL)
         switch_context(prev_task, next_task);

@@ -52,7 +52,7 @@ extern void __app1_bin_end();
 extern void __app2_bin_start();
 extern void __app2_bin_end();
 
-void copy_app(void)
+void copy_app1(void)
 {
     size_t size = (size_t)(__app1_bin_end - __app1_bin_start);
     unsigned long *from = (unsigned long *)__app1_bin_start;
@@ -62,6 +62,7 @@ void copy_app(void)
     memcpy(to, from, size);
     printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
 }
+
 void copy_app2(void)
 {
     size_t size = (size_t)(__app2_bin_end - __app2_bin_start);
@@ -72,37 +73,10 @@ void copy_app2(void)
     memcpy(to, from, size);
     printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
 }
-void copy_app3(void)
-{
-    size_t size = (size_t)(__app2_bin_end - __app2_bin_start);
-    unsigned long *from = (unsigned long *)__app2_bin_start;
-    unsigned long *to = (unsigned long *)0x83000000;
-    printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n"
-           , from, to, size, from[0], from[1]);
-    memcpy(to, from, size);
-    printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
-}
-void copy_app4(void)
-{
-    size_t size = (size_t)(__app2_bin_end - __app2_bin_start);
-    unsigned long *from = (unsigned long *)__app2_bin_start;
-    unsigned long *to = (unsigned long *)0x84000000;
-    printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n"
-           , from, to, size, from[0], from[1]);
-    memcpy(to, from, size);
-    printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
-}
-void copy_app5(void)
-{
-    size_t size = (size_t)(__app2_bin_end - __app2_bin_start);
-    unsigned long *from = (unsigned long *)__app2_bin_start;
-    unsigned long *to = (unsigned long *)0x85000000;
-    printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n"
-           , from, to, size, from[0], from[1]);
-    memcpy(to, from, size);
-    printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
-}
 
+
+static uint8_t app_el1_stack[4096];
+static uint8_t app_el2_stack[4096];
 
 
 void main_entry()
@@ -111,19 +85,12 @@ void main_entry()
     
     if (get_current_cpu_id() == 0)
     {
-        copy_app();
+        copy_app1();
         copy_app2();
-        // copy_app3();
-        // copy_app4();
-        // copy_app5();
         schedule_init();
 
-        create_task((void*)0x80000000, (void*)(0x80001000));
-        create_task((void*)0x90000000, (void*)(0x90001000));
-        // create_task((void*)0x83000000, (void*)(0x83001000));
-        // create_task((void*)0x84000000, (void*)(0x84001000));
-        // create_task((void*)0x85000000, (void*)(0x85001000));
-        
+        create_task((void*)0x80000000, (void*)(0x80004000));   
+        create_task((void*)0x90000000, (void*)(0x90004000));
         print_current_task_list();
     }
     spin_lock(&lock);
