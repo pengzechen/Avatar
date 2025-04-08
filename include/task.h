@@ -6,7 +6,7 @@
 #include "hyper/vcpu.h"
 #include "list.h"
 
-/*
+
 #pragma pack(1)
 typedef struct _contex_t {
     uint64_t x19;
@@ -25,7 +25,7 @@ typedef struct _contex_t {
     uint64_t sp_el1;
 } contex_t ;
 #pragma pack()
-*/
+
 
 typedef struct _cpu_t
 {
@@ -40,9 +40,10 @@ extern cpu_t vcpu[];
 #pragma pack(1)
 typedef struct
 {   
+    contex_t         ctx;
     cpu_t            *cpu_info;
     uint64_t         *sp;
-    // struct _contex_t ctx;
+    
     enum {
         RUNNING = 0,
         WAITING = 1,
@@ -68,7 +69,12 @@ void schedule();
 void timer_tick_schedule(uint64_t *);
 void print_current_task_list();
 
-tcb_t *create_task(void (*task_func)(), void *);
+// @param: task_func: el0 任务真正的入口, sp: el0 任务的内核栈
+tcb_t *create_task(
+    void (*task_func)(),  // el0 任务真正的入口
+    uint64_t               // el0 任务的内核栈
+    );
+
 tcb_t *craete_vm_task(void (*task_func)());
 void schedule_init();
 void schedule_init_local();

@@ -62,8 +62,8 @@ void init_page_table()
     
     pt0[0] = (uint64_t)pt1 + 0b11;
 
-    pt1[0] = (0x00000000ULL | PTE_DEVICE_MEMORY ); // 0x0000_0000 0x4000_0000
-    pt1[1] = (0x40000000ULL | PTE_NORMAL_MEMORY ); // 0x4000_0000 0x8000_0000
+    pt1[0] = (0x00000000ULL | PTE_DEVICE_MEMORY | UXN); // 0x0000_0000 0x4000_0000
+    pt1[1] = (0x40000000ULL | PTE_NORMAL_MEMORY | UXN); // 0x4000_0000 0x8000_0000 
     pt1[2] = (0x80000000ULL | PTE_NORMAL_MEMORY | AP_EL0 | PXN); // 0x8000_0000 0xc000_0000
     pt1[3] = (0xc0000000ULL | PTE_NORMAL_MEMORY | AP_EL0 | PXN); // 0xc000_0000 0x1000_0000_0000
 
@@ -71,8 +71,6 @@ void init_page_table()
 
     high_pt1[0] = (0x00000000ULL | PTE_DEVICE_MEMORY ); // 0x0000_0000 0x4000_0000
     high_pt1[1] = (0x40000000ULL | PTE_NORMAL_MEMORY ); // 0x4000_0000 0x8000_0000
-    high_pt1[2] = (0x80000000ULL | PTE_NORMAL_MEMORY ); // 0x8000_0000 0xc000_0000
-    high_pt1[3] = (0xc0000000ULL | PTE_NORMAL_MEMORY ); // 0xc000_0000 0x1000_0000_0000
 }
 
 extern void init_mmu(uint64_t, uint64_t);

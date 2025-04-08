@@ -74,23 +74,27 @@ void copy_app2(void)
     printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
 }
 
+static uint8_t  app_el1_stack[4096] __attribute__((aligned(16384)));
+static uint8_t  app_el2_stack[4096] __attribute__((aligned(4096)));
 
-static uint8_t app_el1_stack[4096];
-static uint8_t app_el2_stack[4096];
 
 
 void main_entry()
 {
     printf("main entry: get_current_cpu_id: %d\n", get_current_cpu_id());
-    
+    tcb_t * task1 = NULL;
+    tcb_t * task2 = NULL;
+    memset(app_el1_stack, 0, sizeof(app_el1_stack));
+    memset(app_el2_stack, 0, sizeof(app_el2_stack));
     if (get_current_cpu_id() == 0)
     {
         copy_app1();
         copy_app2();
         schedule_init();
+        
+        task1 = create_task((void*)0x80000000, ((uint64_t)app_el1_stack + 4096));
+        task2 = create_task((void*)0x90000000, ((uint64_t)app_el2_stack + 4096));
 
-        create_task((void*)0x80000000, (void*)(0x80004000));   
-        create_task((void*)0x90000000, (void*)(0x90004000));
         print_current_task_list();
     }
     spin_lock(&lock);
@@ -103,8 +107,20 @@ void main_entry()
     schedule_init_local();
     enable_interrupts();
     
-    while (1)
-        ;
+    uint64_t __sp = (uint64_t)app_el1_stack + 4096 - sizeof(trap_frame_t);
+    void * _sp = (void *)__sp;
+    extern void el0_tesk_entry();
+    asm volatile("mov sp, %0" :: "r"(_sp));
+    el0_tesk_entry();
+    
+    // int x;
+    // while (1)
+    // {
+    //     for(int i = 0; i < 100000000; i++);
+    //     x++;
+    //     int y = get_current_cpu_id();
+    //     printf("cpu %d running %d\n", y, x);
+    // }
 }
 
 void kernel_main(void)

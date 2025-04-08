@@ -17,6 +17,8 @@
         "smp.h": "c",
         "cstdio": "c",
         "syscall_num.h": "c",
-        "syscall.h": "c"
+        "syscall.h": "c",
+        "timer.h": "c",
+        "aj_types.h": "c"
     }
 }

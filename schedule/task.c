@@ -21,7 +21,7 @@ static void switch_context_el(tcb_t *old, tcb_t *new, uint64_t *sp);
 extern void switch_context(tcb_t *, tcb_t *);
 extern void get_all_sysregs(cpu_sysregs_t *);
 
-tcb_t * create_task(void (*task_func)(), void *stack_top)
+tcb_t * create_task(void (*task_func)(), uint64_t stack_top)
 {
     if (task_count >= MAX_TASKS)
         return (tcb_t *)0;
@@ -31,9 +31,15 @@ tcb_t * create_task(void (*task_func)(), void *stack_top)
     task->state = 1;
     task->cpu_info = &g_cpu_dec[task_count];
 
+    
     task->cpu_info->ctx.elr = (uint64_t)task_func; // elr_el1
-    task->cpu_info->ctx.spsr = SPSR_EL1_USER;     // spsr_el1
-    task->cpu_info->ctx.usp = (uint64_t)stack_top;
+    task->cpu_info->ctx.spsr = SPSR_EL1_USER;      // spsr_el1
+    task->cpu_info->ctx.usp = (uint64_t)(task_func + 0x40000);
+
+    memcpy((void*)( stack_top - sizeof(trap_frame_t) ), &task->cpu_info->ctx, sizeof(trap_frame_t));
+    extern void el0_tesk_entry();
+    task->ctx.x30 = (uint64_t)el0_tesk_entry;
+    task->ctx.sp_el1 = stack_top - sizeof(trap_frame_t);
 
     task->counter = SYS_TASK_TICK;
     task_count++;
@@ -165,7 +171,7 @@ void timer_tick_schedule(uint64_t *sp)
 
     curr->counter = SYS_TASK_TICK;
     // disable_interrupts();
-    _schedule(sp);
+    _schedule(NULL);
     // enable_interrupts();
 }
 
