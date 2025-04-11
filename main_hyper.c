@@ -163,10 +163,10 @@ void hyper_main()
     *(uint64_t *)0x50000000 = 0x1234;
 
     schedule_init(); // 设置当前 task 为 task0（test_guest）
-    craete_vm_task(test_guest);
-    craete_vm_task((void *)GUEST_KERNEL_START);
+    tcb_t * task1 = craete_vm_task(test_guest);
+    tcb_t * task2 = craete_vm_task((void *)GUEST_KERNEL_START);
     
-    schedule_init_local();
+    schedule_init_local(task1);
     print_current_task_list();
 
     guest_start();

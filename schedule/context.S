@@ -30,6 +30,8 @@ switch_context:
     ldp     x27, x28, [x1, #16*4]
     ldp     x29, x30, [x1, #16*5]
 
+    msr daifclr, #0x3
+
     ret                    // 返回，执行下一个任务
 
 /*

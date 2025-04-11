@@ -37,6 +37,13 @@ typedef struct _cpu_t
 
 extern cpu_t vcpu[];
 
+typedef enum _task_state_t {
+    TASK_STATE_CREATE = 1,
+    TASK_STATE_READY,
+    TASK_STATE_RUNNING,
+    TASK_STATE_WAITING,
+} task_state_t;
+
 #pragma pack(1)
 typedef struct
 {   
@@ -44,10 +51,7 @@ typedef struct
     cpu_t            *cpu_info;
     uint64_t         *sp;
     
-    enum {
-        RUNNING = 0,
-        WAITING = 1,
-    } state; 
+    task_state_t state; 
     uint32_t counter;
     uint32_t priority;
     uint32_t id;         // 任务ID
@@ -56,16 +60,9 @@ typedef struct
 } tcb_t;
 #pragma pack()
 
-
-
-#define TASK_RUNNING 0
-#define TASK_ZOMBIE  1
-
 #define wfi()       __asm__ volatile("wfi" : : : "memory")
 
 
-
-void schedule();
 void timer_tick_schedule(uint64_t *);
 void print_current_task_list();
 
@@ -77,7 +74,7 @@ tcb_t *create_task(
 
 tcb_t *craete_vm_task(void (*task_func)());
 void schedule_init();
-void schedule_init_local();
+void schedule_init_local(tcb_t *task);
 
 
 #endif // __TASK_H__

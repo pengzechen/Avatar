@@ -94,7 +94,7 @@ void main_entry()
         
         task1 = create_task((void*)0x80000000, ((uint64_t)app_el1_stack + 4096));
         task2 = create_task((void*)0x90000000, ((uint64_t)app_el2_stack + 4096));
-
+        
         print_current_task_list();
     }
     spin_lock(&lock);
@@ -103,14 +103,13 @@ void main_entry()
 
     while(inited_cpu_num != SMP_NUM)
         wfi();
-
-    schedule_init_local();
-    enable_interrupts();
     
+    schedule_init_local(task1);  // 任务管理器任务当前在跑第一个任务
     uint64_t __sp = (uint64_t)app_el1_stack + 4096 - sizeof(trap_frame_t);
     void * _sp = (void *)__sp;
     extern void el0_tesk_entry();
     asm volatile("mov sp, %0" :: "r"(_sp));
+    extern void el0_tesk_entry();
     el0_tesk_entry();
     
     // int x;
