@@ -14,11 +14,13 @@ uint32_t task_count = 0;
 
 static spinlock_t lock;
 static spinlock_t print_lock;
-static void switch_context_el(tcb_t *old, tcb_t *new, uint64_t *sp);
 extern void switch_context(tcb_t *, tcb_t *);
 extern void switch_context_el2(tcb_t *, tcb_t *);
-extern void get_all_sysregs(cpu_sysregs_t *);
-extern uint64_t get_el();
+
+
+static task_manager_t task_manager;
+static tcb_t * task_next_run (void);
+
 /*
  *  分配一个 tcb 块，设置id，状态为 CREATE
  */
@@ -33,6 +35,11 @@ tcb_t *alloc_tcb()
     task->ctx.tpidr_elx = (uint64_t)task;
     task->state = TASK_STATE_CREATE;
     task_count++;
+    
+    list_node_init(&task->all_node);
+    list_node_init(&task->run_node);
+    list_node_init(&task->wait_node);
+    list_insert_last(&task_manager.task_list, &task->all_node);
     return task;
 }
 
@@ -108,7 +115,7 @@ void print_current_task_list()
     printf("\n");
 }
 
-void _schedule(uint64_t *sp)
+void _schedule()
 {
     if (task_count == SMP_NUM)
         return;
@@ -119,32 +126,38 @@ void _schedule(uint64_t *sp)
     else
         curr = (tcb_t *)(void *)read_tpidr_el0();
 
-    uint32_t next_task_id = -1;
-    spin_lock(&lock);
-    for (int i = 1; i < task_count; i++)
-    {
-        next_task_id = (curr->id + i) % task_count;
-        // 跳过非就绪状态的任务
-        if (g_task_dec[next_task_id].state == TASK_STATE_RUNNING)
-        {
-            continue;
-        }
-        else
-        {
-            g_task_dec[curr->id].state = TASK_STATE_WAITING;
-            g_task_dec[next_task_id].state = TASK_STATE_RUNNING;
-            break;
-        }
-    }
-    spin_unlock(&lock);
-    if (next_task_id == -1)
-    {
-        printf("no task to schedule, current task %d\n", curr->id);
+    // uint32_t next_task_id = -1;
+    // spin_lock(&lock);
+    // for (int i = 1; i < task_count; i++)
+    // {
+    //     next_task_id = (curr->id + i) % task_count;
+    //     // 跳过非就绪状态的任务
+    //     if (g_task_dec[next_task_id].state == TASK_STATE_RUNNING)
+    //     {
+    //         continue;
+    //     }
+    //     else
+    //     {
+    //         g_task_dec[curr->id].state = TASK_STATE_WAITING;
+    //         g_task_dec[next_task_id].state = TASK_STATE_RUNNING;
+    //         break;
+    //     }
+    // }
+    // spin_unlock(&lock);
+    // if (next_task_id == -1)
+    // {
+    //     printf("no task to schedule, current task %d\n", curr->id);
+    //     return;
+    // }
+
+    tcb_t *next_task = task_next_run();
+    // tcb_t *next_task = &g_task_dec[next_task_id];
+    tcb_t *prev_task = curr;
+    if (next_task == curr) {
+        printf("next task is current task %d\n", curr->id);
         return;
     }
-
-    tcb_t *next_task = &g_task_dec[next_task_id];
-    tcb_t *prev_task = curr;
+    
     printf("core %d switch prev_task %d to next_task %d\n", get_current_cpu_id(), prev_task->id, next_task->id);
 
     if (get_el() == 1)
@@ -168,23 +181,22 @@ void timer_tick_schedule(uint64_t *sp)
 
     curr->counter = SYS_TASK_TICK;
 
-    _schedule(sp);
+    _schedule();
 }
 
 //  vm 相关
-extern void restore_sysregs(cpu_sysregs_t *);
-extern void save_sysregs(cpu_sysregs_t *);
-
 // 这时候的 curr 已经是下一个任务了
 void vm_in()
 {
     tcb_t *curr = (tcb_t *)read_tpidr_el2();
+    extern void restore_sysregs(cpu_sysregs_t *);
     restore_sysregs(curr->cpu_info->sys_reg);
 }
 
 void vm_out()
 {
     tcb_t *curr = (tcb_t *)read_tpidr_el2();
+    extern void save_sysregs(cpu_sysregs_t *);
     save_sysregs(curr->cpu_info->sys_reg);
 }
 
@@ -196,7 +208,7 @@ void save_cpu_ctx(trap_frame_t *sp)
     } else {
         curr = (tcb_t *)(void *)read_tpidr_el0();
     }
-    
+
     memcpy(&curr->cpu_info->ctx, sp, sizeof(trap_frame_t));
     curr->cpu_info->pctx = sp;
 }
@@ -205,4 +217,102 @@ void save_cpu_ctx(trap_frame_t *sp)
 void switch_context_el(tcb_t *old, tcb_t *new, uint64_t *sp)
 {
     memcpy(sp, &new->cpu_info->ctx, sizeof(trap_frame_t)); // 恢复下一个任务的cpu ctx
+}
+
+
+// ================= 任务管理 =================
+
+static uint8_t idle_task_stack[4096] __attribute__((aligned(4096)));
+
+void idle_task_el1() {
+    while (1)
+    {
+        // asm volatile("wfi");
+        // __asm__ __volatile__("msr daifclr, #2" : : : "memory");
+        ;
+    }
+}
+
+
+void el1_idle_init() 
+{
+    tcb_t *idel = &task_manager.idle_task;
+    idel->id = -2;
+    idel->cpu_info = &task_manager.idle_cpu;
+    idel->cpu_info->ctx.elr = (uint64_t)idle_task_el1; // elr_el1
+    idel->cpu_info->ctx.spsr = SPSR_EL1_KERNEL;      // spsr_el1
+    idel->cpu_info->ctx.usp = 0;
+    
+    
+    uint64_t stack_top = (uint64_t)idle_task_stack + sizeof(idle_task_stack);
+    memcpy((void *)(stack_top - sizeof(trap_frame_t)), &idel->cpu_info->ctx, sizeof(trap_frame_t));
+    extern void el0_tesk_entry();
+    idel->ctx.x30 = (uint64_t)el0_tesk_entry;
+    idel->ctx.sp_elx = stack_top - sizeof(trap_frame_t);
+    idel->ctx.tpidr_elx = (uint64_t)idel;
+}
+
+
+
+void task_manager_init(void) {
+    // 各队列初始化
+    list_init(&task_manager.ready_list);
+    list_init(&task_manager.task_list);
+    list_init(&task_manager.sleep_list);
+
+    el1_idle_init(); // 初始化空闲任务
+}
+
+/**
+ * @brief 将任务插入就绪队列
+ */
+void task_set_ready(tcb_t *task) {
+    if (task != &task_manager.idle_task) {
+        list_insert_last(&task_manager.ready_list, &task->run_node);
+        task->state = TASK_STATE_READY;
+    }
+}
+
+/**
+ * @brief 将任务从就绪队列移除
+ */
+void task_set_block (tcb_t *task) {
+    if (task != &task_manager.idle_task) {
+        list_delete(&task_manager.ready_list, &task->run_node);
+    }
+}
+/**
+ * @brief 获取下一将要运行的任务
+ */
+static tcb_t * task_next_run (void) {
+    // 如果没有任务，则运行空闲任务
+    if (list_count(&task_manager.ready_list) == 0) {
+        return &task_manager.idle_task;
+    }
+    
+    // 普通任务
+    list_node_t * task_node = list_first(&task_manager.ready_list);
+    return list_node_parent(task_node, tcb_t, run_node);
+}
+
+/**
+ * @brief 将任务加入延时队列
+ */
+void task_set_sleep(tcb_t *task, uint32_t ticks) {
+    if (ticks <= 0) {
+        return;
+    }
+
+    task->sleep_ticks = ticks;
+    task->state = TASK_STATE_WAITING;
+    list_insert_last(&task_manager.sleep_list, &task->run_node);
+}
+
+/**
+ * @brief 将任务从延时队列移除
+ * 
+ * @param task 
+ */
+void task_set_wakeup (tcb_t *task) {
+    list_delete(&task_manager.sleep_list, &task->run_node);
 }

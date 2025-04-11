@@ -53,10 +53,15 @@ typedef struct
     
     task_state_t state; 
     uint32_t counter;
+    uint32_t sleep_ticks;
     uint32_t priority;
     uint32_t id;         // 任务ID
     
     list_node_t process; // 属于哪个进程
+
+    list_node_t run_node;		// 运行相关结点
+	list_node_t wait_node;		// 等待队列
+	list_node_t all_node;		// 所有队列结点
 } tcb_t;
 #pragma pack()
 
@@ -72,9 +77,27 @@ tcb_t *create_task(
     uint64_t               // el0 任务的内核栈
     );
 
-tcb_t *craete_vm_task(void (*task_func)(), uint64_t stack_top);
+tcb_t *craete_vm_task(
+    void (*task_func)(), 
+    uint64_t stack_top
+    );
+
 void schedule_init();
+void task_manager_init(void);
 void schedule_init_local(tcb_t *task, void * new_sp);
+
+
+typedef struct _task_manager_t {
+
+	list_t ready_list;			// 就绪队列
+	list_t task_list;			// 所有已创建任务的队列
+	list_t sleep_list;          // 延时队列
+	
+    tcb_t idle_task;			// 空闲任务
+    cpu_t idle_cpu;
+
+}task_manager_t;
+
 
 
 #endif // __TASK_H__

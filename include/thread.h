@@ -64,5 +64,6 @@ static inline void write_tpidr_el2(uint64_t val) {
     asm volatile("msr tpidr_el2, %0" :: "r"(val));
 }
 
+extern uint64_t get_el();
 
 #endif // __THREAD_H__

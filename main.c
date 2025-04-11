@@ -91,6 +91,7 @@ void main_entry()
         copy_app1();
         copy_app2();
         schedule_init();
+        task_manager_init();
         
         task1 = create_task((void*)0x80000000, ((uint64_t)app_el1_stack + 4096));
         task2 = create_task((void*)0x90000000, ((uint64_t)app_el2_stack + 4096));

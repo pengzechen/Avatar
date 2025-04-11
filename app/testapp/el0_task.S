@@ -5,7 +5,7 @@
 _start:
 
     bl stack_test
-    // b .
+    b .
     bl loop
 
 loop:
