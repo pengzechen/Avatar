@@ -48,10 +48,10 @@ static inline list_node_t* list_last (list_t* list) {
 
 
 #define offset_in_parent(parent_type, node_name) \
-    (   (uint32_t)&(  ((parent_type*)0)->node_name  )     )
+    (   (uint64_t)&(  ((parent_type*)0)->node_name  )     )
 
 #define parent_addr(node, parent_type, node_name) \
-    (   (uint32_t)node - offset_in_parent(parent_type, node_name)     )
+    (   (uint64_t)node - offset_in_parent(parent_type, node_name)     )
 
 #define list_node_parent(node, parent_type, node_name) \
     (   (parent_type*)(node ? parent_addr(node, parent_type, node_name) :0)     )

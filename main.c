@@ -97,6 +97,8 @@ void main_entry()
         task2 = create_task((void*)0x90000000, ((uint64_t)app_el2_stack + 4096));
         
         print_current_task_list();
+        task_set_ready(task2);
+        task_set_ready(task1);
     }
     spin_lock(&lock);
     inited_cpu_num ++;

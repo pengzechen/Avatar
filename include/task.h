@@ -85,6 +85,7 @@ tcb_t *craete_vm_task(
 void schedule_init();
 void task_manager_init(void);
 void schedule_init_local(tcb_t *task, void * new_sp);
+void task_set_ready(tcb_t *task) ;
 
 
 typedef struct _task_manager_t {

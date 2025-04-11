@@ -168,9 +168,13 @@ void hyper_main()
     *(uint64_t *)0x50000000 = 0x1234;
 
     schedule_init(); // 设置当前 task 为 task0（test_guest）
+    task_manager_init();
     
     tcb_t * task1 = craete_vm_task(test_guest, (uint64_t)guest1_el2_stack + 8192);
     tcb_t * task2 = craete_vm_task((void *)GUEST_KERNEL_START, (uint64_t)guest2_el2_stack + 8192);
+    task_set_ready(task2);
+    task_set_ready(task1);
+    
     print_current_task_list();
 
     uint64_t __sp = (uint64_t)guest1_el2_stack + 8192 - sizeof(trap_frame_t);
