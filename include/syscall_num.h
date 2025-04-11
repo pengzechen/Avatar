@@ -8,6 +8,7 @@
 
 #define SYS_putc              0
 #define SYS_getc              1
+#define SYS_sleep             2
 #define SYS_debug             255
 
 

@@ -22,6 +22,8 @@ static task_manager_t task_manager;
 static tcb_t * task_next_run (void);
 void task_set_block (tcb_t *task);
 void task_set_ready (tcb_t *task);
+
+void task_set_wakeup(tcb_t *task);
 /*
  *  分配一个 tcb 块，设置id，状态为 CREATE
  */
@@ -36,7 +38,7 @@ tcb_t *alloc_tcb()
     task->ctx.tpidr_elx = (uint64_t)task;
     task->state = TASK_STATE_CREATE;
     task_count++;
-    
+
     list_node_init(&task->all_node);
     list_node_init(&task->run_node);
     list_node_init(&task->wait_node);
@@ -130,21 +132,23 @@ void schedule()
     tcb_t *next_task = task_next_run();
     tcb_t *prev_task = curr;
     if (next_task == curr) {
-        printf("[warning]: next task is current task 0x%x, id: %d\n    ready list:\n", curr, curr->id);
-        list_node_t * curr = list_first(&task_manager.ready_list);
+        // printf("[warning]: next task is current task 0x%x, id: %d\n    ready list:\n", curr, curr->id);
+        // list_node_t * curr = list_first(&task_manager.ready_list);
         while (curr) {
             list_node_t * next = list_node_next(curr);
             tcb_t * task = list_node_parent(curr, tcb_t, run_node);
-            printf("    task :%d\n", task->id);
+            // printf("    task :%d\n", task->id);
             curr = next;
         }
-        return;
+        next_task = &task_manager.idle_task;
+        //return;
     }
-    
+
     task_set_block(next_task);
     task_set_ready(next_task);
-    
-    printf("core %d switch prev_task %d to next_task %d\n", get_current_cpu_id(), prev_task->id, next_task->id);
+
+    // printf("core %d switch prev_task %d to next_task %d\n", 
+    //     get_current_cpu_id(), prev_task->id, next_task->id);
 
     if (get_el() == 1)
         switch_context(prev_task, next_task);
@@ -156,18 +160,29 @@ void timer_tick_schedule(uint64_t *sp)
 {
     tcb_t *curr = NULL;
     if (get_el() == 2)
-        curr = (tcb_t *)(void *)read_tpidr_el2();
+        curr_task = (tcb_t *)(void *)read_tpidr_el2();
     else
-        curr = (tcb_t *)(void *)read_tpidr_el0();
+        curr_task = (tcb_t *)(void *)read_tpidr_el0();
 
-    --curr->counter;
+    // 睡眠处理
+    list_node_t * curr = list_first(&task_manager.sleep_list);
+    while (curr) {
+        list_node_t * next = list_node_next(curr);
 
-    if (curr->counter > 0)
-        return;
+        tcb_t * task = list_node_parent(curr, tcb_t, run_node);
+        if (--task->sleep_ticks == 0) {
+            // printf("task %d sleep time arrive\n", task->id);
+            task_set_wakeup(task);
+            task_set_ready(task);
+        }
+        curr = next;
+    }
 
-    curr->counter = SYS_TASK_TICK;
-
-    schedule();
+    if (--curr_task->counter == 0) {
+        curr_task->counter = SYS_TASK_TICK;
+        schedule();
+    }
+    
 }
 
 //  vm 相关
@@ -213,14 +228,14 @@ static uint8_t idle_task_stack[4096] __attribute__((aligned(4096)));
 void idle_task_el1() {
     while (1)
     {
-        asm volatile("wfi");
+        wfi();
         // __asm__ __volatile__("msr daifclr, #2" : : : "memory");
         // for (int i = 0; i < 100000000; i++);
         // printf("current el: %d, idle task\n", get_el());
     }
 }
 
-void el1_idle_init() 
+void el1_idle_init()
 {
     tcb_t *idel = &task_manager.idle_task;
     idel->id = -2;
@@ -230,7 +245,7 @@ void el1_idle_init()
     idel->cpu_info->ctx.spsr = SPSR_EL1_KERNEL;        // spsr_el1
     idel->cpu_info->ctx.usp = 0;
     
-    
+
     uint64_t stack_top = (uint64_t)idle_task_stack + sizeof(idle_task_stack);
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &idel->cpu_info->ctx, sizeof(trap_frame_t));
     extern void el0_tesk_entry();
@@ -249,36 +264,44 @@ void task_manager_init(void) {
     el1_idle_init(); // 初始化空闲任务
 }
 
-//将任务插入就绪队列 (后插)
-void task_set_ready(tcb_t *task) {
-    if (task != &task_manager.idle_task) {
+// 将任务插入就绪队列 (后插)
+void task_set_ready(tcb_t *task)
+{
+    if (task != &task_manager.idle_task)
+    {
         list_insert_last(&task_manager.ready_list, &task->run_node);
         task->state = TASK_STATE_READY;
     }
 }
 
-//将任务从就绪队列移除
-void task_set_block (tcb_t *task) {
-    if (task != &task_manager.idle_task) {
+// 将任务从就绪队列移除
+void task_set_block(tcb_t *task)
+{
+    if (task != &task_manager.idle_task)
+    {
         list_delete(&task_manager.ready_list, &task->run_node);
     }
 }
 
-//获取下一将要运行的任务 (第一个节点)
-static tcb_t * task_next_run (void) {
+// 获取下一将要运行的任务 (第一个节点)
+static tcb_t *task_next_run(void)
+{
     // 如果没有任务，则运行空闲任务
-    if (list_count(&task_manager.ready_list) == 0) {
+    if (list_count(&task_manager.ready_list) == 0)
+    {
         return &task_manager.idle_task;
     }
-    
+
     // 普通任务
-    list_node_t * task_node = list_first(&task_manager.ready_list);
+    list_node_t *task_node = list_first(&task_manager.ready_list);
     return list_node_parent(task_node, tcb_t, run_node);
 }
 
-//将任务加入延时队列
-void task_set_sleep(tcb_t *task, uint32_t ticks) {
-    if (ticks <= 0) {
+// 将任务加入延时队列
+void task_set_sleep(tcb_t *task, uint64_t ticks)
+{
+    if (ticks <= 0)
+    {
         return;
     }
 
@@ -287,7 +310,24 @@ void task_set_sleep(tcb_t *task, uint32_t ticks) {
     list_insert_last(&task_manager.sleep_list, &task->run_node);
 }
 
-//将任务从延时队列移除
-void task_set_wakeup (tcb_t *task) {
+// 将任务从延时队列移除
+void task_set_wakeup(tcb_t *task)
+{
     list_delete(&task_manager.sleep_list, &task->run_node);
+}
+
+void sys_sleep_tick (uint64_t ms) {
+    // 至少延时1个tick
+    if (ms < SYS_TASK_TICK) {
+        ms = SYS_TASK_TICK;
+    }
+
+    // 从就绪队列移除，加入睡眠队列
+    tcb_t * curr = (tcb_t *)(void *)read_tpidr_el0();
+    task_set_block(curr);
+    task_set_sleep(curr, ms);
+    // printf("sleep %d ms, tick: %d\n", ms, curr->sleep_ticks);
+    
+    // 进行一次调度
+    schedule();
 }

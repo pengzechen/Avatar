@@ -1,6 +1,7 @@
 
 .global putc
 .global getc
+.global sleep
 
 putc:
     mov x8, #0
@@ -9,5 +10,10 @@ putc:
 
 getc:
     mov x8, #1
+    svc #0
+    ret
+
+sleep:
+    mov x8, #2
     svc #0
     ret

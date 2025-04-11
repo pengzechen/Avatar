@@ -67,6 +67,17 @@ typedef struct
 
 #define wfi()       __asm__ volatile("wfi" : : : "memory")
 
+typedef struct _task_manager_t {
+
+	list_t ready_list;			// 就绪队列
+	list_t task_list;			// 所有已创建任务的队列
+	list_t sleep_list;          // 延时队列
+	
+    tcb_t idle_task;			// 空闲任务
+    cpu_t idle_cpu;
+
+}task_manager_t;
+
 
 void timer_tick_schedule(uint64_t *);
 void print_current_task_list();
@@ -88,16 +99,10 @@ void schedule_init_local(tcb_t *task, void * new_sp);
 void task_set_ready(tcb_t *task) ;
 
 
-typedef struct _task_manager_t {
+// 系统调用
+void sys_sleep_tick(uint64_t ms);
 
-	list_t ready_list;			// 就绪队列
-	list_t task_list;			// 所有已创建任务的队列
-	list_t sleep_list;          // 延时队列
-	
-    tcb_t idle_task;			// 空闲任务
-    cpu_t idle_cpu;
 
-}task_manager_t;
 
 
 
