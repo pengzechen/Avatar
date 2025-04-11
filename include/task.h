@@ -21,8 +21,8 @@ typedef struct _contex_t {
     uint64_t x28;
     uint64_t x29;       // Stack Frame Pointer
     uint64_t x30;       // Link register (the address to return)
-    uint64_t tpidr_el0; // "Thread ID" Register
-    uint64_t sp_el1;
+    uint64_t tpidr_elx; // "Thread ID" Register
+    uint64_t sp_elx;
 } contex_t ;
 #pragma pack()
 

@@ -62,7 +62,7 @@ switch_context_el2:
     stp     x25, x26, [x0, #16*3]
     stp     x27, x28, [x0, #16*4]
     stp     x29, x30, [x0, #16*5]
-    mrs     x19, tpidr_el0
+    mrs     x19, tpidr_el2
     mov     x20, sp
     stp     x19, x20, [x0, #16*6]
 
@@ -70,7 +70,7 @@ switch_context_el2:
     # 因为它是第二个参数 所以 *new 在x1
     # 装载新的context 到寄存器上
     ldp     x23, x24, [x1, #16*6]
-    msr     tpidr_el0, x23
+    msr     tpidr_el2, x23
     mov     sp, x24
     ldp     x19, x20, [x1, #16*0]
     ldp     x21, x22, [x1, #16*1]

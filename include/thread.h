@@ -54,5 +54,15 @@ static inline void write_tpidr_el0(uint64_t val) {
     asm volatile("msr tpidr_el0, %0" :: "r"(val));
 }
 
+static inline uint64_t read_tpidr_el2(void) {
+    uint64_t val;
+    asm volatile("mrs %0, tpidr_el2" : "=r"(val));
+    return val;
+}
+
+static inline void write_tpidr_el2(uint64_t val) {
+    asm volatile("msr tpidr_el2, %0" :: "r"(val));
+}
+
 
 #endif // __THREAD_H__
