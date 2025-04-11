@@ -16,8 +16,10 @@ static uint64_t test_num = 0;
 void handle_timer_interrupt(uint64_t *sp)
 {
     // 设置定时值
-    write_cntp_tval_el0(100000);
-    // if (test_num++ % 1 == 0) {
+    write_cntp_tval_el0(62500);
+    if (test_num++ % 10000 == 0) {
+        printf("timer: 10s\n");
+    }
     // printf("core: %d, handle irq exception\n", get_current_cpu_id());
     // printf("get daif: %x\n", get_daif());
     timer_tick_schedule(sp);
@@ -35,7 +37,7 @@ void timer_init_second()
     printf("timer frq: %d\n", frq);
 
     // 设置定时值
-    write_cntp_tval_el0(100000);
+    write_cntp_tval_el0(62500);
     // 启用定时器
     write_cntp_ctl_el0(0b1);
 
@@ -57,7 +59,7 @@ void timer_init()
     printf("timer frq: %d\n", frq);
 
     // 设置定时值
-    write_cntp_tval_el0(100000);
+    write_cntp_tval_el0(62500);
     // 启用定时器
     write_cntp_ctl_el0(0b1);
 

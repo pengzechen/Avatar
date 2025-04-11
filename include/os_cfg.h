@@ -49,7 +49,7 @@
 /* 任务定义区 */
 #define MAX_TASKS       64
 
-#define SYS_TASK_TICK   20
+#define SYS_TASK_TICK   10
 
 // 测试
 #define MMIO_ARREA      0x50000000

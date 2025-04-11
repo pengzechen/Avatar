@@ -133,12 +133,12 @@ void schedule()
     tcb_t *prev_task = curr;
     if (next_task == curr) {
         // printf("[warning]: next task is current task 0x%x, id: %d\n    ready list:\n", curr, curr->id);
-        // list_node_t * curr = list_first(&task_manager.ready_list);
-        while (curr) {
-            list_node_t * next = list_node_next(curr);
-            tcb_t * task = list_node_parent(curr, tcb_t, run_node);
+        list_node_t * iter = list_first(&task_manager.ready_list);
+        while (iter) {
+            list_node_t * next = list_node_next(iter);
+            tcb_t * task = list_node_parent(iter, tcb_t, run_node);
             // printf("    task :%d\n", task->id);
-            curr = next;
+            iter = next;
         }
         next_task = &task_manager.idle_task;
         //return;
@@ -158,7 +158,7 @@ void schedule()
 
 void timer_tick_schedule(uint64_t *sp)
 {
-    tcb_t *curr = NULL;
+    tcb_t *curr_task = NULL;
     if (get_el() == 2)
         curr_task = (tcb_t *)(void *)read_tpidr_el2();
     else
