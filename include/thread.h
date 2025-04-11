@@ -32,6 +32,11 @@ static inline struct thread_info * current_thread_info(void)
 	return thread_info_sp(current_stack_pointer);
 }
 
+static inline struct thread_info * set_thread_info(void * new_sp)
+{
+	return thread_info_sp((unsigned long)new_sp);
+}
+
 static inline unsigned int get_current_cpu_id(void)
 {
     unsigned long mpidr;

@@ -11,6 +11,7 @@
 #include "mem/aj_string.h"
 #include "hyper/vm.h"
 #include "os_cfg.h"
+#include "thread.h"
 
 static inline uint64_t read_sctlr_el2()
 {
@@ -104,7 +105,7 @@ void copy_fs(void)
 }
 
 extern void test_guest();
-extern void guest_start();
+
 
 extern size_t cacheline_bytes;
 
@@ -129,6 +130,10 @@ void mmio_map_gicc()
         apply_ept(avr_entry);
     }
 }
+
+static uint8_t  guest1_el2_stack[8192] __attribute__((aligned(16384)));
+static uint8_t  guest2_el2_stack[8192] __attribute__((aligned(8192)));
+
 
 void hyper_main()
 {
@@ -163,12 +168,17 @@ void hyper_main()
     *(uint64_t *)0x50000000 = 0x1234;
 
     schedule_init(); // 设置当前 task 为 task0（test_guest）
-    tcb_t * task1 = craete_vm_task(test_guest);
-    tcb_t * task2 = craete_vm_task((void *)GUEST_KERNEL_START);
     
-    schedule_init_local(task1);
+    tcb_t * task1 = craete_vm_task(test_guest, (uint64_t)guest1_el2_stack + 8192);
+    tcb_t * task2 = craete_vm_task((void *)GUEST_KERNEL_START, (uint64_t)guest2_el2_stack + 8192);
     print_current_task_list();
 
-    guest_start();
+    uint64_t __sp = (uint64_t)guest1_el2_stack + 8192 - sizeof(trap_frame_t);
+    void * _sp = (void *)__sp;
+    schedule_init_local(task1, _sp);  // 任务管理器任务当前在跑第一个任务
+    
+    asm volatile("mov sp, %0" :: "r"(_sp));
+    extern void guest_entry();
+    guest_entry();
 
 }

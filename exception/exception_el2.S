@@ -153,6 +153,6 @@ guest_entry:
     ldp     x4, x5,   [sp, 4 * 8]
     ldp     x2, x3,   [sp, 2 * 8]
     ldp     x0, x1,   [sp, 2 * 0]
-    add     sp, sp,   34 * 8
+    // add     sp, sp,   34 * 8
 
     eret

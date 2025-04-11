@@ -16,6 +16,7 @@ static spinlock_t lock;
 static spinlock_t print_lock;
 static void switch_context_el(tcb_t *old, tcb_t *new, uint64_t *sp);
 extern void switch_context(tcb_t *, tcb_t *);
+extern void switch_context_el2(tcb_t *, tcb_t *);
 extern void get_all_sysregs(cpu_sysregs_t *);
 extern uint64_t get_el();
 /*
@@ -27,6 +28,7 @@ tcb_t *alloc_tcb()
         return (tcb_t *)0;
     tcb_t *task = &g_task_dec[task_count];
     task->cpu_info = &g_cpu_dec[task_count];
+    task->cpu_info->sys_reg = &cpu_sysregs[task_count];
     task->id = task_count;
     task->ctx.tpidr_el0 = (uint64_t)task;
     task->state = TASK_STATE_CREATE;
@@ -51,20 +53,20 @@ tcb_t *create_task(void (*task_func)(), uint64_t stack_top)
     return task;
 }
 
-tcb_t *craete_vm_task(void (*task_func)())
+tcb_t *craete_vm_task(void (*task_func)(), uint64_t stack_top)
 {
     tcb_t *task = alloc_tcb();
     task->counter = SYS_TASK_TICK;
 
     task->cpu_info->ctx.elr = (uint64_t)task_func; // elr_el2
-    task->cpu_info->ctx.spsr = SPSR_EL2_VALUE_IRQ; // spsr_el2
+    task->cpu_info->ctx.spsr = SPSR_VALUE; // spsr_el2
     task->cpu_info->ctx.r[0] = (0x70000000);
-
-    // static cpu_sysregs_t initial_sysregs;
-    // get_all_sysregs(&initial_sysregs);
-    // memcpy(&task->cpu_info->sys_reg, &initial_sysregs, sizeof(cpu_sysregs_t));
-    task->cpu_info->sys_reg = &cpu_sysregs[task_count];
     task->cpu_info->sys_reg->spsr_el1 = 0x30C50830;
+
+    memcpy((void *)(stack_top - sizeof(trap_frame_t)), &task->cpu_info->ctx, sizeof(trap_frame_t));
+    extern void guest_entry();
+    task->ctx.x30 = (uint64_t)guest_entry;
+    task->ctx.sp_el1 = stack_top - sizeof(trap_frame_t);   // el2 的栈
 
     return task;
 }
@@ -79,16 +81,17 @@ void schedule_init()
     }
 }
 
-void schedule_init_local(tcb_t *task)
+void schedule_init_local(tcb_t *task, void *new_sp)
 {
     spin_lock(&print_lock);
     if (get_el() == 2)
     {
         task->state = TASK_STATE_RUNNING;
-        current_thread_info()->current_thread = task;
+        set_thread_info(new_sp)->current_thread = task;
     }
     else
     {
+        task->state = TASK_STATE_RUNNING;
         write_tpidr_el0((uint64_t)task);
     }
     printf("core %d current task %d\n", get_current_cpu_id(), task->id);
@@ -151,7 +154,9 @@ void _schedule(uint64_t *sp)
     if (get_el() == 1)
         switch_context(prev_task, next_task);
     else
-        switch_context_el(prev_task, next_task, sp);
+        switch_context_el2(prev_task, next_task);
+
+        // switch_context_el(prev_task, next_task, sp);
 }
 
 void timer_tick_schedule(uint64_t *sp)

@@ -72,9 +72,9 @@ tcb_t *create_task(
     uint64_t               // el0 任务的内核栈
     );
 
-tcb_t *craete_vm_task(void (*task_func)());
+tcb_t *craete_vm_task(void (*task_func)(), uint64_t stack_top);
 void schedule_init();
-void schedule_init_local(tcb_t *task);
+void schedule_init_local(tcb_t *task, void * new_sp);
 
 
 #endif // __TASK_H__
