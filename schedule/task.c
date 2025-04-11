@@ -119,7 +119,7 @@ void print_current_task_list()
     printf("\n");
 }
 
-void _schedule()
+void schedule()
 {
     tcb_t *curr = NULL;
     if (get_el() == 2)
@@ -167,7 +167,7 @@ void timer_tick_schedule(uint64_t *sp)
 
     curr->counter = SYS_TASK_TICK;
 
-    _schedule();
+    schedule();
 }
 
 //  vm 相关

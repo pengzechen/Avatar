@@ -18,9 +18,10 @@ void handle_sync_exception(uint64_t *stack_pointer)
     int ec = ((el1_esr >> 26) & 0b111111);
 
     save_cpu_ctx(el1_ctx);   // 保存 发生异常的那个任务的 处理器状态
-    enable_interrupts();
+    
     if (ec == 0x15)
     { // svc
+        // enable_interrupts();
         // printf("This is svc call handler\n");
         // printf("svc number: %x\n", el1_ctx->r[8]);
         uint64_t (*func)(void*) = (uint64_t (*)(void*)) syscall_table[el1_ctx->r[8]];
@@ -28,6 +29,7 @@ void handle_sync_exception(uint64_t *stack_pointer)
         uint64_t ret = func((void*)el1_ctx);
         // 返回值放在 x0
         el1_ctx->r[0] = ret;
+        // disable_interrupts();
         return;
     }
 
