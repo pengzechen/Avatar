@@ -171,6 +171,4 @@ void hyper_main()
 
     guest_start();
 
-    while (1)
-        ;
 }
