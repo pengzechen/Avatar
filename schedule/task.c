@@ -180,9 +180,9 @@ void timer_tick_schedule(uint64_t *sp)
 
     if (--curr_task->counter == 0) {
         curr_task->counter = SYS_TASK_TICK;
-        schedule();
     }
     
+    schedule();
 }
 
 //  vm 相关
@@ -325,7 +325,7 @@ void sys_sleep_tick (uint64_t ms) {
     // 从就绪队列移除，加入睡眠队列
     tcb_t * curr = (tcb_t *)(void *)read_tpidr_el0();
     task_set_block(curr);
-    task_set_sleep(curr, ms);
+    task_set_sleep(curr, ms / 10);
     // printf("sleep %d ms, tick: %d\n", ms, curr->sleep_ticks);
     
     // 进行一次调度

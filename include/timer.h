@@ -19,11 +19,6 @@ static inline void write_cntfrq_el0(uint64_t val) {
     asm volatile("msr cntfrq_el0, %0" : : "r"(val));
 }
 
-// CNTP_TVAL_EL0 （定时值寄存器）
-static inline void write_cntp_tval_el0(uint64_t val) {
-    asm volatile("msr cntp_tval_el0, %0" : : "r"(val));
-}
-
 // CNTP_CTL_EL0  （控制寄存器）
 /*
 CNTP_CTL_EL0  （控制寄存器）
@@ -39,6 +34,18 @@ ISTATUS (bit 2): 中断状态 (只读)
 */
 static inline void write_cntp_ctl_el0(uint64_t val) {
     asm volatile("msr cntp_ctl_el0, %0" : : "r"(val));
+}
+
+
+
+// CNTP_TVAL_EL0 （定时值寄存器）
+static inline void write_cntp_tval_el0(uint64_t val) {
+    asm volatile("msr cntp_tval_el0, %0" : : "r"(val));
+}
+
+// 	CNTP_CVAL_EL0 比较值寄存器
+static inline void write_cntp_cval_el0(uint64_t val) {
+    asm volatile("msr cntp_cval_el0, %0" : : "r"(val));
 }
 
 // CNTPCT_EL0    （计数值寄存器）
