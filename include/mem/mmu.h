@@ -43,44 +43,44 @@
 // Attribute fields in stage 1 VMSAv8-64 Block and Page descriptors:
 
 // Whether the descriptor is valid.
-#define VALID (1 << 0)
+#define VALID (1ULL << 0)
 
 // The descriptor gives the address of the next level of translation table or 4KB page. (not a 2M, 1G block)
-#define NON_BLOCK (1 << 1)
+#define NON_BLOCK (1ULL << 1)
 
 // Memory attributes index field.
 #define ATTR_INDX (0b111 << 2)
 
 // Non-secure bit. For memory accesses from Secure state, specifies whether the output
 // address is in Secure or Non-secure memory.
-#define NS (1 << 5)
+#define NS (1ULL << 5)
 
 // Access permission: accessable at EL0.
-#define AP_EL0 (1 << 6)
+#define AP_EL0 (1ULL << 6)
 
 // Access permission: read-only.
-#define AP_RO (1 << 7)
+#define AP_RO (1ULL << 7)
 
 // Shareability: Inner Shareable (otherwise Outer Shareable).
-#define INNER (1 << 8)
+#define INNER (1ULL << 8)
 
 // Shareability: Inner or Outer Shareable (otherwise Non-shareable).
-#define SHAREABLE (1 << 9)
+#define SHAREABLE (1ULL << 9)
 
 // The Access flag.
-#define AF (1 << 10)
+#define AF (1ULL << 10)
 
 // The not global bit.
-#define NG (1 << 11)
+#define NG (1ULL << 11)
 
 // Indicates that 16 adjacent translation table entries point to contiguous memory regions.
-#define CONTIGUOUS (1 << 52)
+#define CONTIGUOUS (1ULL << 52)
 
 // The Privileged execute-never field. 1 就是禁止，0是允许
-#define PXN (1 << 53)
+#define PXN (1ULL << 53)
 
 // The Execute-never or Unprivileged execute-never field. 1 就是禁止，0是允许
-#define UXN (1 << 54)
+#define UXN (1ULL << 54)
 
 // Next-level attributes in stage 1 VMSAv8-64 Table descriptors:
 

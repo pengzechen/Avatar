@@ -3,6 +3,7 @@
 #define BITMAP_H
 
 #include <aj_types.h>
+#include <os_cfg.h>
 
 typedef struct {
     uint8_t *bits;
@@ -16,5 +17,7 @@ uint8_t bitmap_test(const bitmap_t *bitmap, size_t index);
 uint64_t bitmap_find_first_free(const bitmap_t *bitmap);
 uint64_t bitmap_find_contiguous_free(const bitmap_t *bitmap, size_t count);
 void bitmap_create_from_memory(bitmap_t *bitmap, uint64_t phys_start, size_t phys_size) ;
+
+extern uint8_t bitmap_buffer[OS_CFG_BITMAP_SIZE / 8] __attribute__((section(".data.bitmap_buffer")));
 
 #endif // BITMAP_H

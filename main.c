@@ -10,7 +10,7 @@
 #include "spinlock.h"
 #include "uart_pl011.h"
 #include "mem/aj_string.h"
-
+#include "mem/mem.h"
 
 
 void test_mem()
@@ -88,6 +88,7 @@ void main_entry()
     memset(app_el2_stack, 0, sizeof(app_el2_stack));
     if (get_current_cpu_id() == 0)
     {
+        alloctor_init();
         copy_app1();
         copy_app2();
         schedule_init();
@@ -131,7 +132,6 @@ void kernel_main(void)
     io_early_init();
     gic_init();
 
-    *(int*)(void*)0x8000404 = 0x1;
     timer_init();
     print_info("core 0 starting is done.\n\n");
     spinlock_init(&lock);

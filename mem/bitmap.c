@@ -4,8 +4,8 @@
 #include <os_cfg.h>
 
 //  0x20000  128Kb
-static uint8_t  bitmap_buffer[OS_CFG_BITMAP_SIZE / 8] __attribute__((section(".data.bitmap_buffer")));
-static bitmap_t  bitmap = {bitmap_buffer, OS_CFG_BITMAP_SIZE};
+uint8_t  bitmap_buffer[OS_CFG_BITMAP_SIZE / 8] __attribute__((section(".data.bitmap_buffer")));
+
 
 void bitmap_init(bitmap_t *bitmap, uint8_t *buffer, size_t size) {
     bitmap->bits = buffer;
