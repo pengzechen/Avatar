@@ -21,11 +21,11 @@ int main()
         // putc('M');
         // putc('\r');
         // putc('\n');
-        // sleep(100);
-        mutex_test_print();
+        sleep(40);
+        
     }
 
-    
+    mutex_test_print();
     sleep(10000000);
 
     return 0;

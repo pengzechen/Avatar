@@ -3,6 +3,7 @@
 #include "syscall_num.h"
 #include "task/task.h"
 #include "task/mutex.h"
+#include "mem/mem.h"
 
 uint64_t _debug(void* args)
 {

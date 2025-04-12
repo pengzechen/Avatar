@@ -18,8 +18,8 @@ void mutex_lock (mutex_t * mutex);
 void mutex_unlock (mutex_t * mutex);
 
 
-uint64_t mutex_test_add();
-uint64_t mutex_test_minus();
-void mutex_test_print();
+// uint64_t mutex_test_add();
+// uint64_t mutex_test_minus();
+// void mutex_test_print();
  
 #endif //MUTEX_H

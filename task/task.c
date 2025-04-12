@@ -140,8 +140,11 @@ void schedule()
             // printf("    task :%d\n", task->id);
             iter = next;
         }
-        next_task = &task_manager.idle_task;
-        // return;
+        if (curr == &task_manager.idle_task) {
+            return;
+        } else {            // bug,
+            next_task = &task_manager.idle_task;
+        }
     }
 
     task_set_block(next_task);

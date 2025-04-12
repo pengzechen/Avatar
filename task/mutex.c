@@ -4,6 +4,7 @@
 #include "task/task.h"
 #include "io.h"
 #include "thread.h"
+#include "gic.h"
 
 // 初始化互斥锁
 void mutex_init (mutex_t * mutex) {
@@ -19,6 +20,7 @@ void mutex_init (mutex_t * mutex) {
 // 定义一个函数，用于锁定互斥锁
 void mutex_lock (mutex_t * mutex) {
 
+    disable_interrupts();
     // 获取当前线程控制块
     tcb_t * curr = (tcb_t*)(void*)read_tpidr_el0();
     // 如果互斥锁没有被锁定
@@ -39,16 +41,19 @@ void mutex_lock (mutex_t * mutex) {
         task_set_block(curr);
         // 将当前线程控制块插入互斥锁的等待列表中
         list_insert_last(&mutex->wait_list, &curr->wait_node);
+
+        printf("mutex lock by other task, current(task %d) yield!\n", curr->id);
         // 调度其他线程
         schedule();
     }
-
+    enable_interrupts();
 }
 
 
 // 解锁互斥锁
 void mutex_unlock (mutex_t * mutex) {
 
+    disable_interrupts();
     // 获取当前线程控制块
     tcb_t * curr = (tcb_t*)(void*)read_tpidr_el0();
     // 如果当前线程是互斥锁的拥有者
@@ -72,11 +77,13 @@ void mutex_unlock (mutex_t * mutex) {
                 // 将互斥锁的拥有者置为该线程
                 mutex->owner = task;
 
+                printf("mutex unlock, task %d\n", task->id);
                 // 调度
                 schedule();
             }
         }
     }
+    enable_interrupts();
 }
 
 
