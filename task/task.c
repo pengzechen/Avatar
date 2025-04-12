@@ -1,4 +1,4 @@
-#include <task.h>
+#include <task/task.h>
 #include <io.h>
 #include <gic.h>
 #include <hyper/vcpu.h>
@@ -141,7 +141,7 @@ void schedule()
             iter = next;
         }
         next_task = &task_manager.idle_task;
-        //return;
+        // return;
     }
 
     task_set_block(next_task);

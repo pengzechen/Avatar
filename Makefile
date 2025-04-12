@@ -110,9 +110,10 @@ $(BUILD_DIR)/timer.o: timer/timer.c
 #  task
 $(BUILD_DIR)/task.o: task/task.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) task/task.c $(INCLUDE) -o $(BUILD_DIR)/task.o
-
 $(BUILD_DIR)/context.s.o: task/context.S
 	$(TOOL_PREFIX)gcc $(CFLAGS) task/context.S $(INCLUDE) -o $(BUILD_DIR)/context.s.o
+$(BUILD_DIR)/mutex.o: task/mutex.c
+	$(TOOL_PREFIX)gcc $(CFLAGS) task/mutex.c $(INCLUDE) -o $(BUILD_DIR)/mutex.o
 
 #  spinlock 
 $(BUILD_DIR)/spinlock.s.o: spinlock/spinlock.S
@@ -151,7 +152,8 @@ $(BUILD_DIR)/io.o $(BUILD_DIR)/uart_pl011.o $(BUILD_DIR)/uart_pl011_early.o $(BU
 $(BUILD_DIR)/page.o $(BUILD_DIR)/ept.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o $(BUILD_DIR)/exception_el3.s.o \
 $(BUILD_DIR)/exception_el3.o $(BUILD_DIR)/exception_el2.o $(BUILD_DIR)/exception_el2.s.o $(BUILD_DIR)/gic.o  \
 $(BUILD_DIR)/syscall.o $(BUILD_DIR)/timer.o $(BUILD_DIR)/task.o $(BUILD_DIR)/context.s.o $(BUILD_DIR)/spinlock.s.o \
-$(BUILD_DIR)/vcpu.o $(BUILD_DIR)/hyper_ctx.s.o $(BUILD_DIR)/vgic.o $(BUILD_DIR)/vm.o $(BUILD_DIR)/list.o $(BUILD_DIR)/mem.o
+$(BUILD_DIR)/vcpu.o $(BUILD_DIR)/hyper_ctx.s.o $(BUILD_DIR)/vgic.o $(BUILD_DIR)/vm.o $(BUILD_DIR)/list.o $(BUILD_DIR)/mem.o \
+$(BUILD_DIR)/mutex.o
 	$(TOOL_PREFIX)ld -T $(LD) -o $(BUILD_DIR)/kernel.elf \
 	$(BUILD_DIR)/boot.s.o 			\
 	$(BUILD_DIR)/guest.s.o          \
@@ -180,6 +182,7 @@ $(BUILD_DIR)/vcpu.o $(BUILD_DIR)/hyper_ctx.s.o $(BUILD_DIR)/vgic.o $(BUILD_DIR)/
 	$(BUILD_DIR)/timer.o  			\
 	$(BUILD_DIR)/task.o 			\
 	$(BUILD_DIR)/context.s.o 		\
+	$(BUILD_DIR)/mutex.o            \
 	$(BUILD_DIR)/spinlock.s.o       \
 	$(BUILD_DIR)/vcpu.o             \
 	$(BUILD_DIR)/vgic.o             \
@@ -201,11 +204,11 @@ $(APP_BUILD_DIR):
 $(APP_BUILD_DIR)/syscall.s.o: app/syscall.S
 	$(TOOL_PREFIX)gcc $(CFLAGS) app/syscall.S $(INCLUDE) -o $(APP_BUILD_DIR)/syscall.s.o
 
-$(APP_BUILD_DIR)/el0_task.s.o: $(APP_SOURCE_DIR)/el0_task.S $(APP_LD)
-	$(TOOL_PREFIX)gcc $(CFLAGS) $(APP_SOURCE_DIR)/el0_task.S $(INCLUDE) -o $(APP_BUILD_DIR)/el0_task.s.o
+$(APP_BUILD_DIR)/main.o: $(APP_SOURCE_DIR)/main.c $(APP_LD)
+	$(TOOL_PREFIX)gcc $(CFLAGS) $(APP_SOURCE_DIR)/main.c $(INCLUDE) -o $(APP_BUILD_DIR)/main.o
 
-$(APP_BUILD_DIR)/app.elf: $(APP_BUILD_DIR)/el0_task.s.o $(APP_BUILD_DIR)/syscall.s.o
-	$(TOOL_PREFIX)ld -T $(APP_LD) -o $(APP_BUILD_DIR)/app.elf $(APP_BUILD_DIR)/el0_task.s.o $(APP_BUILD_DIR)/syscall.s.o
+$(APP_BUILD_DIR)/app.elf: $(APP_BUILD_DIR)/main.o $(APP_BUILD_DIR)/syscall.s.o
+	$(TOOL_PREFIX)ld -T $(APP_LD) -o $(APP_BUILD_DIR)/app.elf $(APP_BUILD_DIR)/main.o $(APP_BUILD_DIR)/syscall.s.o
 
 $(APP_BUILD_DIR)/app.bin: $(APP_BUILD_DIR)/app.elf
 	$(TOOL_PREFIX)objcopy -O binary $(APP_BUILD_DIR)/app.elf $(APP_BUILD_DIR)/app.bin

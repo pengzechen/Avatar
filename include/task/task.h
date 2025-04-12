@@ -97,7 +97,8 @@ void schedule_init();
 void task_manager_init(void);
 void schedule_init_local(tcb_t *task, void * new_sp);
 void task_set_ready(tcb_t *task) ;
-
+void task_set_block (tcb_t *task);
+void schedule();
 
 // 系统调用
 void sys_sleep_tick(uint64_t ms);

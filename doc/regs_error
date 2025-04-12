@@ -1,204 +1,901 @@
-x0             0x1                 1
-x1             0x2                 2
-x2             0x0                 0
-x3             0x0                 0
-x4             0x0                 0
-x5             0x0                 0
-x6             0x0                 0
-x7             0x0                 0
-x8             0x0                 0
-x9             0x0                 0
-x10            0x0                 0
-x11            0x0                 0
-x12            0x0                 0
-x13            0x0                 0
-x14            0x0                 0
-x15            0x0                 0
-x16            0x0                 0
-x17            0x0                 0
-x18            0x0                 0
-x19            0x0                 0
-x20            0x0                 0
-x21            0x0                 0
-x22            0x0                 0
-x23            0x0                 0
-x24            0x0                 0
-x25            0x0                 0
-x26            0x0                 0
-x27            0x0                 0
-x28            0x0                 0
---Type <RET> for more, q to quit, c to continue without paging--c
-x29            0x0                 0
-x30            0x80000004          2147483652
-sp             0xffff000042643fe0  0xffff000042643fe0
-pc             0xffff000040081400  0xffff000040081400 <exception_vector_base+1024>
-cpsr           0x3c5               965
-fpsr           0x0                 0
-fpcr           0x0                 0
-ID_MMFR5       0x0                 0
-RES_0_C0_C3_7  0x0                 0
-MAIR_EL3       0x0                 0
-ID_AA64PFR1_EL1 0x0                0
-ID_AA64PFR2_EL1_RESERVED 0x0       0
-ID_AA64PFR3_EL1_RESERVED 0x0       0
-SCTLR          0xc51865            12916837
-ID_AA64ZFR0_EL1 0x0                0
-CNTKCTL        0x0                 0
-DACR32_EL2     0x0                 0
-ID_AA64SMFR0_EL1 0x0               0
-CPACR          0x0                 0
-ID_AA64PFR6_EL1_RESERVED 0x0       0
-FPEXC32_EL2    0x0                 0
-ID_AA64PFR7_EL1_RESERVED 0x0       0
-ACTLR_EL1      0x0                 0
-ID_AA64DFR0_EL1 0x10305106         271601926
-ID_AA64DFR1_EL1 0x0                0
-ID_AA64DFR2_EL1_RESERVED 0x0       0
-ID_AA64DFR3_EL1_RESERVED 0x0       0
-ID_AA64AFR0_EL1 0x0                0
-ID_AA64AFR1_EL1 0x0                0
-ID_AA64AFR2_EL1_RESERVED 0x0       0
-CNTFRQ_EL0     0x3b9aca0           62500000
-OSDTRRX_EL1    0x0                 0
-ID_AA64AFR3_EL1_RESERVED 0x0       0
-SPSR_EL1       0x0                 0
-ID_AA64ISAR0_EL1 0x11120           69920
-DBGBVR0_EL1    0x0                 0
-ID_AA64ISAR1_EL1 0x0               0
-ELR_EL1        0x80000010          2147483664
-PMEVTYPER0_EL0 0x0                 0
-DBGBCR0_EL1    0x0                 0
-ID_AA64ISAR2_EL1 0x0               0
-PMEVTYPER1_EL0 0x0                 0
-DBGWVR0_EL1    0x0                 0
-ID_AA64ISAR3_EL1_RESERVED 0x0      0
-VBAR           0xffff000040081000  -281473902440448
-DBGWCR0_EL1    0x0                 0
-ID_AA64ISAR4_EL1_RESERVED 0x0      0
-RVBAR_EL1      0x0                 0
-PMEVTYPER2_EL0 0x0                 0
-PMEVTYPER3_EL0 0x0                 0
-RMR_EL1        0x1                 1
-ID_AA64ISAR5_EL1_RESERVED 0x0      0
-PMEVTYPER4_EL0 0x0                 0
-ID_AA64ISAR6_EL1_RESERVED 0x0      0
-PMEVTYPER5_EL0 0x0                 0
-ID_AA64ISAR7_EL1_RESERVED 0x0      0
-ID_AA64MMFR0_EL1 0x1124            4388
-SP_EL0         0x42655ff0          1113939952
-DBGBVR1_EL1    0x0                 0
-ID_AA64MMFR1_EL1 0x0               0
-DBGBCR1_EL1    0x0                 0
-ID_AA64MMFR2_EL1 0x0               0
-PMINTENSET_EL1 0x0                 0
-DBGWVR1_EL1    0x0                 0
-ID_AA64MMFR3_EL1 0x0               0
-DBGWCR1_EL1    0x0                 0
-ID_AA64MMFR4_EL1_RESERVED 0x0      0
-PMCNTENSET_EL0 0x0                 0
-ACTLR_EL2      0x0                 0
-PMCR_EL0       0x41023000          1090662400
-ID_AA64MMFR5_EL1_RESERVED 0x0      0
-PMCNTENCLR_EL0 0x0                 0
-ID_AA64MMFR6_EL1_RESERVED 0x0      0
-PMOVSCLR_EL0   0x0                 0
-MDSCR_EL1      0x0                 0
-ID_AA64MMFR7_EL1_RESERVED 0x0      0
-PMSELR_EL0     0x0                 0
-DBGBVR2_EL1    0x0                 0
-PMCEID0_EL0    0x20001             131073
-DBGBCR2_EL1    0x0                 0
-PMCEID1_EL0    0x0                 0
-CNTP_CTL_EL0   0x1                 1
-DBGWVR2_EL1    0x0                 0
-PMCCNTR_EL0    0x0                 0
-CNTP_CVAL_EL0  0x849c12            8690706
-DBGWCR2_EL1    0x0                 0
-L2ACTLR        0x0                 0
-TTBR0_EL1      0x4265d000          1113968640
-OSDTRTX_EL1    0x0                 0
-MDCCSR_EL0     0x0                 0
-CNTV_CTL_EL0   0x0                 0
-TCR_EL1        0x80100010          2148532240
-DBGBVR3_EL1    0x0                 0
-DBGBCR3_EL1    0x0                 0
-TTBR1_EL1      0x4265f000          1113976832
-DBGWVR3_EL1    0x0                 0
-PMUSERENR_EL0  0x0                 0
-DBGWCR3_EL1    0x0                 0
-ACTLR_EL3      0x0                 0
-CNTV_CVAL_EL0  0x0                 0
-PMOVSSET_EL0   0x0                 0
-MDRAR_EL1      0x0                 0
-SP_EL1         0xffff000042643fe0  -281473862844448
-PMCCFILTR_EL0  0x0                 0
-DBGBVR4_EL1    0x0                 0
-DBGBCR4_EL1    0x0                 0
-DBGCLAIMSET_EL1 0xff               255
-CPUACTLR_EL1   0x0                 0
-CPUECTLR_EL1   0x0                 0
-CONTEXTIDR_EL1 0x0                 0
-CNTPS_CTL_EL1  0x0                 0
-CPUMERRSR_EL1  0x0                 0
-CNTPS_CVAL_EL1 0x0                 0
-L2MERRSR_EL1   0x0                 0
-DBGBVR5_EL1    0x0                 0
-MAIR_EL1       0x44ff00            4521728
-DBGBCR5_EL1    0x0                 0
-TPIDR_EL1      0x0                 0
-DBGCLAIMCLR_EL1 0x0                0
-AFSR0_EL1      0x0                 0
-OSLSR_EL1      0xa                 10
-AFSR1_EL1      0x0                 0
-PAR_EL1        0x0                 0
-CBAR_EL1       0x8000000           134217728
-OSECCR_EL1     0x0                 0
-SPSR_IRQ       0x0                 0
-MDCR_EL3       0x0                 0
-SPSR_ABT       0x0                 0
-FPCR           0x0                 0
-SPSR_UND       0x0                 0
-FPSR           0x0                 0
-SPSR_FIQ       0x0                 0
-CLIDR          0xa200023           169869347
-ID_PFR0        0x131               305
-ESR_EL1        0x9200004d          2449473613
-ID_DFR0        0x3000006           50331654
-DBGDTR_EL0     0x0                 0
-AMAIR0         0x0                 0
-ID_AFR0        0x0                 0
-ID_MMFR0       0x10201105          270536965
-CSSELR         0x0                 0
-ID_MMFR1       0x40000000          1073741824
-AIDR           0x0                 0
-TPIDR_EL0      0x0                 0
-ID_MMFR2       0x1260000           19267584
-TPIDRRO_EL0    0x0                 0
-ID_MMFR3       0x2102211           34611729
-OSDLR_EL1      0x0                 0
-IFSR32_EL2     0x0                 0
-ID_ISAR0       0x2101110           34607376
-REVIDR_EL1     0x0                 0
-ID_ISAR1       0x13112111          319889681
-PMEVCNTR0_EL0  0x0                 0
-ID_ISAR2       0x21232042          555950146
-PMEVCNTR1_EL0  0x0                 0
-ID_ISAR3       0x1112131           17899825
-CTR_EL0        0x8444c004          2219098116
-PMEVCNTR2_EL0  0x0                 0
-ID_ISAR4       0x11142             69954
-PMEVCNTR3_EL0  0x0                 0
-ID_ISAR5       0x11121             69921
-PMEVCNTR4_EL0  0x0                 0
-ID_MMFR4       0x0                 0
-PMEVCNTR5_EL0  0x0                 0
-ID_ISAR6       0x0                 0
-MVFR0_EL1      0x10110222          269550114
-L2CTLR_EL1     0x0                 0
-L2ECTLR_EL1    0x0                 0
-MVFR1_EL1      0x12111111          303108369
-FAR_EL1        0x42655ff0          1113939952
-RES_0_C0_C3_3  0x0                 0
-MVFR2_EL1      0x43                67
-ID_PFR2        0x0                 0
-ID_DFR1        0x0                 0
+mutex_test_num = 100, current task: 0
+mutex_test_num = 101, current task: 0
+mutex_test_num = 102, current task: 1
+mutex_test_num = 103, current task: 1
+mutex_test_num = 104, current task: 1
+mutex_test_num = 105, current task: 1
+mutex_test_num = 106, current task: 0
+mutex_test_num = 107, current task: 0
+mutex_test_num = 108, current task: 0
+mutex_test_num = 109, current task: 0
+mutex_test_num = 111, current task: 1
+mutex_test_num = 112, current task: 1
+mutex_test_num = 113, current task: 1
+mutex_test_num = 114, current task: 1
+mutex_test_num = 114, current task: 0
+mutex_test_num = 115, current task: 0
+mutex_test_num = 116, current task: 0
+mutex_test_num = 117, current task: 0
+mutex_test_num = 119, current task: 1
+mutex_test_num = 120, current task: 1
+mutex_test_num = 121, current task: 1
+mutex_test_num = 122, current task: 1
+mutex_test_num = 123, current task: 0
+mutex_test_num = 124, current task: 0
+mutex_test_num = 125, current task: 0
+mutex_test_num = 126, current task: 0
+mutex_test_num = 126, current task: 1
+mutex_test_num = 127, current task: 1
+mutex_test_num = 128, current task: 1
+mutex_test_num = 129, current task: 1
+mutex_test_num = 131, current task: 0
+mutex_test_num = 132, current task: 0
+mutex_test_num = 133, current task: 0
+mutex_test_num = 134, current task: 0
+mutex_test_num = 134, current task: 1
+mutex_test_num = 135, current task: 1
+mutex_test_num = 136, current task: 1
+mutex_test_num = 137, current task: 1
+mutex_test_num = 138, current task: 0
+mutex_test_num = 139, current task: 0
+mutex_test_num = 140, current task: 0
+mutex_test_num = 141, current task: 0
+mutex_test_num = 142, current task: 1
+mutex_test_num = 143, current task: 0
+mutex_test_num = 144, current task: 0
+mutex_test_num = 145, current task: 0
+mutex_test_num = 146, current task: 1
+mutex_test_num = 147, current task: 1
+mutex_test_num = 148, current task: 0
+mutex_test_num = 149, current task: 0
+mutex_test_num = 150, current task: 0
+mutex_test_num = 152, current task: 1
+mutex_test_num = 153, current task: 1
+mutex_test_num = 154, current task: 1
+mutex_test_num = 154, current task: 0
+mutex_test_num = 155, current task: 0
+mutex_test_num = 156, current task: 0
+mutex_test_num = 158, current task: 1
+mutex_test_num = 159, current task: 1
+mutex_test_num = 160, current task: 1
+mutex_test_num = 161, current task: 1
+mutex_test_num = 161, current task: 0
+mutex_test_num = 162, current task: 1
+mutex_test_num = 163, current task: 1
+mutex_test_num = 164, current task: 1
+mutex_test_num = 166, current task: 0
+mutex_test_num = 167, current task: 0
+mutex_test_num = 168, current task: 0
+mutex_test_num = 169, current task: 0
+mutex_test_num = 169, current task: 1
+mutex_test_num = 170, current task: 1
+mutex_test_num = 171, current task: 1
+mutex_test_num = 173, current task: 0
+mutex_test_num = 174, current task: 0
+mutex_test_num = 175, current task: 0
+mutex_test_num = 176, current task: 0
+mutex_test_num = 177, current task: 1
+mutex_test_num = 177, current task: 0
+mutex_test_num = 178, current task: 0
+mutex_test_num = 179, current task: 0
+mutex_test_num = 181, current task: 1
+mutex_test_num = 182, current task: 1
+mutex_test_num = 183, current task: 1
+mutex_test_num = 184, current task: 0
+mutex_test_num = 184, current task: 1
+mutex_test_num = 185, current task: 1
+mutex_test_num = 186, current task: 1
+mutex_test_num = 187, current task: 0
+mutex_test_num = 188, current task: 0
+mutex_test_num = 189, current task: 0
+mutex_test_num = 190, current task: 1
+mutex_test_num = 191, current task: 0
+mutex_test_num = 192, current task: 0
+mutex_test_num = 193, current task: 0
+mutex_test_num = 194, current task: 0
+mutex_test_num = 196, current task: 1
+mutex_test_num = 197, current task: 1
+mutex_test_num = 198, current task: 1
+mutex_test_num = 199, current task: 1
+mutex_test_num = 200, current task: 0
+mutex_test_num = 201, current task: 0
+mutex_test_num = 202, current task: 0
+mutex_test_num = 203, current task: 0
+mutex_test_num = 203, current task: 1
+mutex_test_num = 204, current task: 1
+mutex_test_num = 205, current task: 1
+mutex_test_num = 206, current task: 1
+mutex_test_num = 207, current task: 0
+mutex_test_num = 208, current task: 0
+mutex_test_num = 209, current task: 0
+mutex_test_num = 210, current task: 0
+mutex_test_num = 212, current task: 1
+mutex_test_num = 212, current task: 0
+mutex_test_num = 213, current task: 0
+mutex_test_num = 214, current task: 0
+mutex_test_num = 215, current task: 0
+mutex_test_num = 217, current task: 1
+mutex_test_num = 218, current task: 1
+mutex_test_num = 219, current task: 1
+mutex_test_num = 220, current task: 1
+mutex_test_num = 220, current task: 0
+mutex_test_num = 221, current task: 0
+mutex_test_num = 222, current task: 0
+mutex_test_num = 223, current task: 0
+mutex_test_num = 225, current task: 1
+mutex_test_num = 226, current task: 1
+mutex_test_num = 227, current task: 1
+mutex_test_num = 228, current task: 1
+mutex_test_num = 228, current task: 0
+mutex_test_num = 229, current task: 0
+mutex_test_num = 230, current task: 0
+mutex_test_num = 231, current task: 0
+mutex_test_num = 232, current task: 1
+mutex_test_num = 233, current task: 1
+mutex_test_num = 234, current task: 1
+mutex_test_num = 235, current task: 1
+mutex_test_num = 236, current task: 0
+mutex_test_num = 237, current task: 0
+mutex_test_num = 238, current task: 0
+mutex_test_num = 239, current task: 0
+mutex_test_num = 240, current task: 0
+mutex_test_num = 241, current task: 1
+mutex_test_num = 243, current task: 0
+mutex_test_num = 244, current task: 0
+mutex_test_num = 245, current task: 0
+mutex_test_num = 246, current task: 0
+mutex_test_num = 246, current task: 1
+mutex_test_num = 247, current task: 1
+mutex_test_num = 248, current task: 1
+mutex_test_num = 249, current task: 1
+mutex_test_num = 250, current task: 0
+mutex_test_num = 251, current task: 1
+mutex_test_num = 252, current task: 1
+mutex_test_num = 253, current task: 0
+mutex_test_num = 254, current task: 0
+mutex_test_num = 255, current task: 1
+mutex_test_num = 256, current task: 1
+mutex_test_num = 257, current task: 0
+mutex_test_num = 258, current task: 1
+mutex_test_num = 259, current task: 1
+mutex_test_num = 260, current task: 0
+mutex_test_num = 261, current task: 0
+mutex_test_num = 262, current task: 0
+mutex_test_num = 263, current task: 0
+mutex_test_num = 265, current task: 1
+mutex_test_num = 266, current task: 1
+mutex_test_num = 267, current task: 1
+mutex_test_num = 268, current task: 1
+mutex_test_num = 269, current task: 0
+mutex_test_num = 270, current task: 1
+mutex_test_num = 271, current task: 1
+mutex_test_num = 272, current task: 1
+mutex_test_num = 273, current task: 1
+mutex_test_num = 274, current task: 0
+mutex_test_num = 275, current task: 0
+mutex_test_num = 276, current task: 0
+mutex_test_num = 277, current task: 0
+mutex_test_num = 277, current task: 1
+mutex_test_num = 278, current task: 1
+mutex_test_num = 279, current task: 1
+mutex_test_num = 280, current task: 0
+mutex_test_num = 281, current task: 0
+mutex_test_num = 282, current task: 0
+mutex_test_num = 283, current task: 0
+mutex_test_num = 284, current task: 1
+mutex_test_num = 285, current task: 1
+mutex_test_num = 287, current task: 0
+mutex_test_num = 288, current task: 0
+mutex_test_num = 289, current task: 0
+mutex_test_num = 290, current task: 0
+mutex_test_num = 290, current task: 1
+mutex_test_num = 291, current task: 1
+mutex_test_num = 292, current task: 1
+mutex_test_num = 293, current task: 1
+mutex_test_num = 295, current task: 0
+mutex_test_num = 296, current task: 0
+mutex_test_num = 297, current task: 0
+mutex_test_num = 298, current task: 0
+mutex_test_num = 298, current task: 1
+mutex_test_num = 299, current task: 1
+mutex_test_num = 300, current task: 1
+mutex_test_num = 301, current task: 1
+mutex_test_num = 303, current task: 0
+mutex_test_num = 304, current task: 0
+mutex_test_num = 305, current task: 0
+mutex_test_num = 306, current task: 0
+mutex_test_num = 306, current task: 1
+mutex_test_num = 307, current task: 1
+mutex_test_num = 308, current task: 1
+mutex_test_num = 309, current task: 0
+mutex_test_num = 310, current task: 0
+mutex_test_num = 311, current task: 0
+mutex_test_num = 312, current task: 0
+mutex_test_num = 314, current task: 1
+mutex_test_num = 314, current task: 0
+mutex_test_num = 315, current task: 0
+mutex_test_num = 316, current task: 0
+mutex_test_num = 317, current task: 0
+mutex_test_num = 319, current task: 1
+mutex_test_num = 320, current task: 1
+mutex_test_num = 321, current task: 1
+mutex_test_num = 322, current task: 1
+mutex_test_num = 323, current task: 0
+mutex_test_num = 323, current task: 1
+mutex_test_num = 324, current task: 1
+mutex_test_num = 325, current task: 1
+mutex_test_num = 326, current task: 1
+mutex_test_num = 328, current task: 0
+mutex_test_num = 329, current task: 0
+mutex_test_num = 330, current task: 0
+mutex_test_num = 331, current task: 0
+mutex_test_num = 332, current task: 1
+mutex_test_num = 333, current task: 0
+mutex_test_num = 334, current task: 0
+mutex_test_num = 335, current task: 0
+mutex_test_num = 336, current task: 0
+mutex_test_num = 337, current task: 1
+mutex_test_num = 338, current task: 1
+mutex_test_num = 339, current task: 1
+mutex_test_num = 340, current task: 1
+mutex_test_num = 341, current task: 1
+mutex_test_num = 341, current task: 0
+mutex_test_num = 342, current task: 0
+mutex_test_num = 343, current task: 0
+mutex_test_num = 345, current task: 1
+mutex_test_num = 346, current task: 1
+mutex_test_num = 347, current task: 1
+mutex_test_num = 348, current task: 1
+mutex_test_num = 348, current task: 0
+mutex_test_num = 349, current task: 0
+mutex_test_num = 350, current task: 0
+mutex_test_num = 351, current task: 0
+mutex_test_num = 352, current task: 0
+mutex_test_num = 353, current task: 1
+mutex_test_num = 354, current task: 1
+mutex_test_num = 356, current task: 0
+mutex_test_num = 357, current task: 0
+mutex_test_num = 357, current task: 1
+mutex_test_num = 358, current task: 1
+mutex_test_num = 359, current task: 0
+mutex_test_num = 360, current task: 0
+mutex_test_num = 361, current task: 0
+mutex_test_num = 362, current task: 1
+mutex_test_num = 363, current task: 1
+mutex_test_num = 364, current task: 1
+mutex_test_num = 365, current task: 1
+mutex_test_num = 367, current task: 0
+mutex_test_num = 367, current task: 1
+mutex_test_num = 368, current task: 1
+mutex_test_num = 369, current task: 1
+mutex_test_num = 370, current task: 1
+mutex_test_num = 371, current task: 0
+mutex_test_num = 372, current task: 0
+mutex_test_num = 373, current task: 0
+mutex_test_num = 374, current task: 0
+mutex_test_num = 376, current task: 1
+mutex_test_num = 376, current task: 0
+mutex_test_num = 377, current task: 0
+mutex_test_num = 378, current task: 0
+mutex_test_num = 380, current task: 1
+mutex_test_num = 381, current task: 1
+mutex_test_num = 382, current task: 1
+mutex_test_num = 383, current task: 1
+mutex_test_num = 383, current task: 0
+mutex_test_num = 384, current task: 1
+mutex_test_num = 385, current task: 1
+mutex_test_num = 386, current task: 1
+mutex_test_num = 387, current task: 1
+mutex_test_num = 389, current task: 0
+mutex_test_num = 390, current task: 0
+mutex_test_num = 391, current task: 0
+mutex_test_num = 392, current task: 0
+mutex_test_num = 393, current task: 1
+mutex_test_num = 394, current task: 1
+mutex_test_num = 395, current task: 1
+mutex_test_num = 396, current task: 1
+mutex_test_num = 397, current task: 1
+mutex_test_num = 397, current task: 0
+mutex_test_num = 398, current task: 0
+mutex_test_num = 399, current task: 0
+mutex_test_num = 400, current task: 0
+mutex_test_num = 402, current task: 1
+mutex_test_num = 403, current task: 1
+mutex_test_num = 404, current task: 1
+mutex_test_num = 405, current task: 1
+mutex_test_num = 406, current task: 0
+mutex_test_num = 406, current task: 1
+mutex_test_num = 407, current task: 1
+mutex_test_num = 408, current task: 1
+mutex_test_num = 410, current task: 0
+mutex_test_num = 411, current task: 0
+mutex_test_num = 412, current task: 0
+mutex_test_num = 413, current task: 0
+mutex_test_num = 414, current task: 1
+mutex_test_num = 414, current task: 0
+mutex_test_num = 415, current task: 0
+mutex_test_num = 416, current task: 0
+mutex_test_num = 417, current task: 0
+mutex_test_num = 419, current task: 1
+mutex_test_num = 420, current task: 1
+mutex_test_num = 421, current task: 1
+mutex_test_num = 422, current task: 1
+mutex_test_num = 423, current task: 0
+mutex_test_num = 424, current task: 1
+mutex_test_num = 425, current task: 1
+mutex_test_num = 426, current task: 1
+mutex_test_num = 427, current task: 1
+mutex_test_num = 428, current task: 0
+mutex_test_num = 429, current task: 0
+mutex_test_num = 430, current task: 0
+mutex_test_num = 431, current task: 0
+mutex_test_num = 431, current task: 1
+mutex_test_num = 432, current task: 0
+mutex_test_num = 433, current task: 0
+mutex_test_num = 434, current task: 0
+mutex_test_num = 435, current task: 0
+mutex_test_num = 436, current task: 1
+mutex_test_num = 437, current task: 1
+mutex_test_num = 438, current task: 1
+mutex_test_num = 439, current task: 1
+mutex_test_num = 440, current task: 0
+mutex_test_num = 441, current task: 0
+mutex_test_num = 442, current task: 0
+mutex_test_num = 443, current task: 0
+mutex_test_num = 444, current task: 0
+mutex_test_num = 445, current task: 1
+mutex_test_num = 446, current task: 1
+mutex_test_num = 447, current task: 1
+mutex_test_num = 448, current task: 1
+mutex_test_num = 450, current task: 0
+mutex_test_num = 451, current task: 0
+mutex_test_num = 452, current task: 0
+mutex_test_num = 453, current task: 0
+mutex_test_num = 454, current task: 0
+mutex_test_num = 454, current task: 1
+mutex_test_num = 455, current task: 1
+mutex_test_num = 456, current task: 1
+mutex_test_num = 457, current task: 0
+mutex_test_num = 458, current task: 0
+mutex_test_num = 459, current task: 0
+mutex_test_num = 460, current task: 0
+mutex_test_num = 462, current task: 1
+mutex_test_num = 462, current task: 0
+mutex_test_num = 463, current task: 0
+mutex_test_num = 464, current task: 0
+mutex_test_num = 465, current task: 0
+mutex_test_num = 467, current task: 1
+mutex_test_num = 468, current task: 1
+mutex_test_num = 469, current task: 1
+mutex_test_num = 470, current task: 1
+mutex_test_num = 471, current task: 0
+mutex_test_num = 471, current task: 1
+mutex_test_num = 472, current task: 1
+mutex_test_num = 474, current task: 0
+mutex_test_num = 475, current task: 0
+mutex_test_num = 476, current task: 0
+mutex_test_num = 476, current task: 1
+mutex_test_num = 477, current task: 1
+mutex_test_num = 478, current task: 1
+mutex_test_num = 479, current task: 1
+mutex_test_num = 480, current task: 0
+mutex_test_num = 481, current task: 0
+mutex_test_num = 482, current task: 0
+mutex_test_num = 483, current task: 0
+mutex_test_num = 484, current task: 1
+mutex_test_num = 485, current task: 0
+mutex_test_num = 486, current task: 0
+mutex_test_num = 487, current task: 0
+mutex_test_num = 488, current task: 0
+mutex_test_num = 489, current task: 1
+mutex_test_num = 490, current task: 1
+mutex_test_num = 491, current task: 1
+mutex_test_num = 492, current task: 1
+mutex_test_num = 493, current task: 0
+mutex_test_num = 494, current task: 0
+mutex_test_num = 495, current task: 0
+mutex_test_num = 496, current task: 0
+mutex_test_num = 497, current task: 1
+mutex_test_num = 498, current task: 0
+mutex_test_num = 499, current task: 0
+mutex_test_num = 500, current task: 0
+mutex_test_num = 501, current task: 0
+mutex_test_num = 502, current task: 1
+mutex_test_num = 503, current task: 1
+mutex_test_num = 504, current task: 1
+mutex_test_num = 505, current task: 1
+mutex_test_num = 506, current task: 0
+mutex_test_num = 507, current task: 0
+mutex_test_num = 508, current task: 0
+mutex_test_num = 509, current task: 0
+mutex_test_num = 510, current task: 1
+mutex_test_num = 511, current task: 1
+mutex_test_num = 512, current task: 1
+mutex_test_num = 513, current task: 1
+mutex_test_num = 515, current task: 0
+mutex_test_num = 515, current task: 1
+mutex_test_num = 516, current task: 1
+mutex_test_num = 517, current task: 1
+mutex_test_num = 518, current task: 0
+mutex_test_num = 519, current task: 0
+mutex_test_num = 520, current task: 0
+mutex_test_num = 521, current task: 0
+mutex_test_num = 522, current task: 1
+mutex_test_num = 523, current task: 1
+mutex_test_num = 524, current task: 1
+mutex_test_num = 525, current task: 1
+mutex_test_num = 526, current task: 1
+mutex_test_num = 527, current task: 0
+mutex_test_num = 528, current task: 0
+mutex_test_num = 529, current task: 0
+mutex_test_num = 531, current task: 1
+mutex_test_num = 532, current task: 1
+mutex_test_num = 533, current task: 1
+mutex_test_num = 534, current task: 1
+mutex_test_num = 535, current task: 0
+mutex_test_num = 536, current task: 0
+mutex_test_num = 536, current task: 1
+mutex_test_num = 537, current task: 1
+mutex_test_num = 538, current task: 1
+mutex_test_num = 539, current task: 1
+mutex_test_num = 541, current task: 0
+mutex_test_num = 542, current task: 0
+mutex_test_num = 543, current task: 0
+mutex_test_num = 544, current task: 0
+mutex_test_num = 544, current task: 1
+mutex_test_num = 545, current task: 1
+mutex_test_num = 546, current task: 1
+mutex_test_num = 547, current task: 0
+mutex_test_num = 548, current task: 0
+mutex_test_num = 549, current task: 0
+mutex_test_num = 550, current task: 0
+mutex_test_num = 552, current task: 1
+mutex_test_num = 552, current task: 0
+mutex_test_num = 553, current task: 0
+mutex_test_num = 554, current task: 0
+mutex_test_num = 555, current task: 0
+mutex_test_num = 557, current task: 1
+mutex_test_num = 558, current task: 1
+mutex_test_num = 559, current task: 1
+mutex_test_num = 560, current task: 1
+mutex_test_num = 560, current task: 0
+mutex_test_num = 561, current task: 1
+mutex_test_num = 562, current task: 1
+mutex_test_num = 563, current task: 1
+mutex_test_num = 564, current task: 1
+mutex_test_num = 565, current task: 0
+mutex_test_num = 566, current task: 0
+mutex_test_num = 567, current task: 0
+mutex_test_num = 568, current task: 0
+mutex_test_num = 569, current task: 1
+mutex_test_num = 570, current task: 1
+mutex_test_num = 571, current task: 1
+mutex_test_num = 572, current task: 1
+mutex_test_num = 573, current task: 1
+mutex_test_num = 574, current task: 0
+mutex_test_num = 575, current task: 0
+mutex_test_num = 576, current task: 0
+mutex_test_num = 578, current task: 1
+mutex_test_num = 579, current task: 1
+mutex_test_num = 580, current task: 1
+mutex_test_num = 581, current task: 1
+mutex_test_num = 582, current task: 0
+mutex_test_num = 582, current task: 1
+mutex_test_num = 583, current task: 1
+mutex_test_num = 584, current task: 1
+mutex_test_num = 585, current task: 1
+mutex_test_num = 586, current task: 0
+mutex_test_num = 587, current task: 0
+mutex_test_num = 588, current task: 0
+mutex_test_num = 589, current task: 0
+mutex_test_num = 590, current task: 1
+mutex_test_num = 591, current task: 0
+mutex_test_num = 592, current task: 0
+mutex_test_num = 593, current task: 0
+mutex_test_num = 595, current task: 1
+mutex_test_num = 596, current task: 1
+mutex_test_num = 597, current task: 1
+mutex_test_num = 598, current task: 1
+mutex_test_num = 598, current task: 0
+mutex_test_num = 600, current task: 1
+mutex_test_num = 601, current task: 1
+mutex_test_num = 602, current task: 1
+mutex_test_num = 603, current task: 1
+mutex_test_num = 604, current task: 0
+mutex_test_num = 605, current task: 0
+mutex_test_num = 606, current task: 0
+mutex_test_num = 607, current task: 0
+mutex_test_num = 607, current task: 1
+mutex_test_num = 608, current task: 0
+mutex_test_num = 609, current task: 0
+mutex_test_num = 610, current task: 0
+mutex_test_num = 611, current task: 1
+mutex_test_num = 612, current task: 1
+mutex_test_num = 613, current task: 1
+mutex_test_num = 614, current task: 1
+mutex_test_num = 615, current task: 0
+mutex_test_num = 616, current task: 0
+mutex_test_num = 617, current task: 0
+mutex_test_num = 618, current task: 0
+mutex_test_num = 619, current task: 1
+mutex_test_num = 620, current task: 1
+mutex_test_num = 621, current task: 1
+mutex_test_num = 622, current task: 0
+mutex_test_num = 623, current task: 0
+mutex_test_num = 624, current task: 0
+mutex_test_num = 625, current task: 0
+mutex_test_num = 626, current task: 1
+mutex_test_num = 627, current task: 1
+mutex_test_num = 628, current task: 0
+mutex_test_num = 629, current task: 0
+mutex_test_num = 630, current task: 0
+mutex_test_num = 631, current task: 0
+mutex_test_num = 633, current task: 1
+mutex_test_num = 634, current task: 1
+mutex_test_num = 635, current task: 1
+mutex_test_num = 636, current task: 1
+mutex_test_num = 636, current task: 0
+mutex_test_num = 637, current task: 0
+mutex_test_num = 638, current task: 1
+mutex_test_num = 639, current task: 1
+mutex_test_num = 640, current task: 1
+mutex_test_num = 641, current task: 1
+mutex_test_num = 643, current task: 0
+mutex_test_num = 644, current task: 0
+mutex_test_num = 645, current task: 0
+mutex_test_num = 645, current task: 1
+mutex_test_num = 646, current task: 1
+mutex_test_num = 647, current task: 1
+mutex_test_num = 648, current task: 1
+mutex_test_num = 649, current task: 0
+mutex_test_num = 650, current task: 0
+mutex_test_num = 651, current task: 0
+mutex_test_num = 652, current task: 0
+mutex_test_num = 653, current task: 1
+mutex_test_num = 654, current task: 1
+mutex_test_num = 655, current task: 0
+mutex_test_num = 656, current task: 0
+mutex_test_num = 657, current task: 0
+mutex_test_num = 659, current task: 1
+mutex_test_num = 660, current task: 1
+mutex_test_num = 661, current task: 1
+mutex_test_num = 662, current task: 1
+mutex_test_num = 662, current task: 0
+mutex_test_num = 663, current task: 0
+mutex_test_num = 664, current task: 0
+mutex_test_num = 665, current task: 0
+mutex_test_num = 667, current task: 1
+mutex_test_num = 668, current task: 1
+mutex_test_num = 669, current task: 1
+mutex_test_num = 670, current task: 1
+mutex_test_num = 671, current task: 1
+mutex_test_num = 672, current task: 0
+mutex_test_num = 673, current task: 0
+mutex_test_num = 674, current task: 0
+mutex_test_num = 675, current task: 0
+mutex_test_num = 676, current task: 0
+mutex_test_num = 677, current task: 0
+mutex_test_num = 677, current task: 1
+mutex_test_num = 678, current task: 1
+mutex_test_num = 679, current task: 1
+mutex_test_num = 680, current task: 1
+mutex_test_num = 681, current task: 1
+mutex_test_num = 683, current task: 0
+mutex_test_num = 684, current task: 0
+mutex_test_num = 685, current task: 0
+mutex_test_num = 686, current task: 0
+mutex_test_num = 687, current task: 1
+mutex_test_num = 688, current task: 1
+mutex_test_num = 689, current task: 1
+mutex_test_num = 690, current task: 1
+mutex_test_num = 691, current task: 1
+mutex_test_num = 691, current task: 0
+mutex_test_num = 692, current task: 0
+mutex_test_num = 693, current task: 0
+mutex_test_num = 694, current task: 0
+mutex_test_num = 696, current task: 1
+mutex_test_num = 697, current task: 1
+mutex_test_num = 698, current task: 1
+mutex_test_num = 699, current task: 1
+mutex_test_num = 700, current task: 0
+mutex_test_num = 700, current task: 1
+mutex_test_num = 701, current task: 1
+mutex_test_num = 702, current task: 1
+mutex_test_num = 703, current task: 1
+mutex_test_num = 704, current task: 0
+mutex_test_num = 705, current task: 0
+mutex_test_num = 706, current task: 0
+mutex_test_num = 707, current task: 0
+mutex_test_num = 708, current task: 1
+mutex_test_num = 709, current task: 1
+mutex_test_num = 710, current task: 1
+mutex_test_num = 711, current task: 1
+mutex_test_num = 713, current task: 0
+mutex_test_num = 714, current task: 0
+mutex_test_num = 714, current task: 1
+mutex_test_num = 715, current task: 1
+mutex_test_num = 716, current task: 0
+mutex_test_num = 717, current task: 0
+mutex_test_num = 718, current task: 0
+mutex_test_num = 719, current task: 0
+mutex_test_num = 721, current task: 1
+mutex_test_num = 722, current task: 1
+mutex_test_num = 723, current task: 1
+mutex_test_num = 724, current task: 1
+mutex_test_num = 725, current task: 0
+mutex_test_num = 725, current task: 1
+mutex_test_num = 726, current task: 1
+mutex_test_num = 727, current task: 1
+mutex_test_num = 728, current task: 1
+mutex_test_num = 730, current task: 0
+mutex_test_num = 731, current task: 0
+mutex_test_num = 732, current task: 0
+mutex_test_num = 733, current task: 0
+mutex_test_num = 733, current task: 1
+mutex_test_num = 734, current task: 0
+mutex_test_num = 735, current task: 0
+mutex_test_num = 736, current task: 0
+mutex_test_num = 738, current task: 1
+mutex_test_num = 739, current task: 1
+mutex_test_num = 740, current task: 1
+mutex_test_num = 741, current task: 1
+mutex_test_num = 742, current task: 1
+mutex_test_num = 742, current task: 0
+mutex_test_num = 743, current task: 0
+mutex_test_num = 744, current task: 0
+mutex_test_num = 745, current task: 0
+mutex_test_num = 747, current task: 1
+mutex_test_num = 748, current task: 1
+mutex_test_num = 749, current task: 1
+mutex_test_num = 750, current task: 1
+mutex_test_num = 750, current task: 0
+mutex_test_num = 751, current task: 1
+mutex_test_num = 752, current task: 1
+mutex_test_num = 753, current task: 1
+mutex_test_num = 754, current task: 1
+mutex_test_num = 756, current task: 0
+mutex_test_num = 757, current task: 0
+mutex_test_num = 758, current task: 0
+mutex_test_num = 759, current task: 0
+mutex_test_num = 760, current task: 1
+mutex_test_num = 761, current task: 1
+mutex_test_num = 762, current task: 1
+mutex_test_num = 763, current task: 1
+mutex_test_num = 764, current task: 1
+mutex_test_num = 764, current task: 0
+mutex_test_num = 765, current task: 0
+mutex_test_num = 766, current task: 0
+mutex_test_num = 767, current task: 0
+mutex_test_num = 769, current task: 1
+mutex_test_num = 770, current task: 1
+mutex_test_num = 771, current task: 1
+mutex_test_num = 772, current task: 1
+mutex_test_num = 772, current task: 0
+mutex_test_num = 773, current task: 0
+mutex_test_num = 774, current task: 0
+mutex_test_num = 775, current task: 0
+mutex_test_num = 777, current task: 1
+mutex_test_num = 778, current task: 1
+mutex_test_num = 779, current task: 1
+mutex_test_num = 780, current task: 1
+mutex_test_num = 780, current task: 0
+mutex_test_num = 781, current task: 1
+mutex_test_num = 782, current task: 1
+mutex_test_num = 783, current task: 1
+mutex_test_num = 785, current task: 0
+mutex_test_num = 786, current task: 0
+mutex_test_num = 787, current task: 0
+mutex_test_num = 788, current task: 0
+mutex_test_num = 789, current task: 0
+mutex_test_num = 789, current task: 1
+mutex_test_num = 790, current task: 1
+mutex_test_num = 791, current task: 1
+mutex_test_num = 792, current task: 1
+mutex_test_num = 793, current task: 0
+mutex_test_num = 794, current task: 0
+mutex_test_num = 795, current task: 0
+mutex_test_num = 796, current task: 0
+mutex_test_num = 797, current task: 1
+mutex_test_num = 798, current task: 0
+mutex_test_num = 799, current task: 0
+mutex_test_num = 800, current task: 0
+mutex_test_num = 801, current task: 0
+mutex_test_num = 803, current task: 1
+mutex_test_num = 804, current task: 1
+mutex_test_num = 805, current task: 1
+mutex_test_num = 806, current task: 1
+mutex_test_num = 807, current task: 1
+mutex_test_num = 808, current task: 0
+mutex_test_num = 809, current task: 0
+mutex_test_num = 810, current task: 0
+mutex_test_num = 811, current task: 1
+mutex_test_num = 812, current task: 1
+mutex_test_num = 813, current task: 1
+mutex_test_num = 814, current task: 1
+mutex_test_num = 815, current task: 0
+mutex_test_num = 816, current task: 0
+mutex_test_num = 817, current task: 0
+mutex_test_num = 818, current task: 0
+mutex_test_num = 818, current task: 1
+mutex_test_num = 819, current task: 0
+mutex_test_num = 820, current task: 0
+mutex_test_num = 821, current task: 0
+mutex_test_num = 822, current task: 0
+mutex_test_num = 823, current task: 1
+mutex_test_num = 824, current task: 1
+mutex_test_num = 825, current task: 1
+mutex_test_num = 826, current task: 1
+mutex_test_num = 828, current task: 0
+mutex_test_num = 828, current task: 1
+mutex_test_num = 829, current task: 1
+mutex_test_num = 831, current task: 0
+mutex_test_num = 832, current task: 0
+mutex_test_num = 833, current task: 0
+mutex_test_num = 834, current task: 0
+mutex_test_num = 834, current task: 1
+mutex_test_num = 835, current task: 1
+mutex_test_num = 836, current task: 1
+mutex_test_num = 837, current task: 1
+mutex_test_num = 839, current task: 0
+mutex_test_num = 840, current task: 0
+mutex_test_num = 841, current task: 0
+mutex_test_num = 842, current task: 0
+mutex_test_num = 843, current task: 1
+mutex_test_num = 843, current task: 0
+mutex_test_num = 844, current task: 0
+mutex_test_num = 845, current task: 0
+mutex_test_num = 847, current task: 1
+mutex_test_num = 848, current task: 1
+mutex_test_num = 849, current task: 1
+mutex_test_num = 850, current task: 1
+mutex_test_num = 850, current task: 0
+mutex_test_num = 851, current task: 0
+mutex_test_num = 852, current task: 0
+mutex_test_num = 853, current task: 0
+mutex_test_num = 854, current task: 0
+mutex_test_num = 855, current task: 1
+mutex_test_num = 856, current task: 1
+mutex_test_num = 857, current task: 1
+mutex_test_num = 858, current task: 1
+mutex_test_num = 859, current task: 0
+mutex_test_num = 860, current task: 0
+mutex_test_num = 861, current task: 0
+mutex_test_num = 862, current task: 0
+mutex_test_num = 863, current task: 1
+mutex_test_num = 864, current task: 1
+mutex_test_num = 865, current task: 1
+mutex_test_num = 866, current task: 1
+mutex_test_num = 868, current task: 0
+mutex_test_num = 869, current task: 0
+mutex_test_num = 870, current task: 0
+mutex_test_num = 871, current task: 0
+mutex_test_num = 872, current task: 1
+mutex_test_num = 873, current task: 1
+mutex_test_num = 873, current task: 0
+mutex_test_num = 874, current task: 0
+mutex_test_num = 875, current task: 0
+mutex_test_num = 877, current task: 1
+mutex_test_num = 878, current task: 1
+mutex_test_num = 879, current task: 1
+mutex_test_num = 880, current task: 1
+mutex_test_num = 880, current task: 0
+mutex_test_num = 881, current task: 1
+mutex_test_num = 882, current task: 1
+mutex_test_num = 883, current task: 1
+mutex_test_num = 884, current task: 1
+mutex_test_num = 885, current task: 0
+mutex_test_num = 886, current task: 0
+mutex_test_num = 887, current task: 0
+mutex_test_num = 888, current task: 0
+mutex_test_num = 889, current task: 1
+mutex_test_num = 890, current task: 1
+mutex_test_num = 891, current task: 1
+mutex_test_num = 892, current task: 1
+mutex_test_num = 893, current task: 1
+mutex_test_num = 895, current task: 0
+mutex_test_num = 895, current task: 1
+mutex_test_num = 896, current task: 1
+mutex_test_num = 897, current task: 1
+mutex_test_num = 898, current task: 1
+mutex_test_num = 900, current task: 0
+mutex_test_num = 901, current task: 0
+mutex_test_num = 902, current task: 0
+mutex_test_num = 903, current task: 0
+mutex_test_num = 903, current task: 1
+mutex_test_num = 904, current task: 1
+mutex_test_num = 905, current task: 1
+mutex_test_num = 906, current task: 0
+mutex_test_num = 907, current task: 0
+mutex_test_num = 908, current task: 0
+mutex_test_num = 909, current task: 0
+mutex_test_num = 910, current task: 1
+mutex_test_num = 911, current task: 0
+mutex_test_num = 912, current task: 0
+mutex_test_num = 913, current task: 0
+mutex_test_num = 914, current task: 0
+mutex_test_num = 916, current task: 1
+mutex_test_num = 917, current task: 1
+mutex_test_num = 918, current task: 1
+mutex_test_num = 919, current task: 1
+mutex_test_num = 920, current task: 0
+mutex_test_num = 920, current task: 1
+mutex_test_num = 921, current task: 1
+mutex_test_num = 922, current task: 1
+mutex_test_num = 924, current task: 0
+mutex_test_num = 925, current task: 0
+mutex_test_num = 926, current task: 0
+mutex_test_num = 927, current task: 0
+mutex_test_num = 928, current task: 1
+mutex_test_num = 929, current task: 1
+mutex_test_num = 929, current task: 0
+mutex_test_num = 930, current task: 0
+mutex_test_num = 931, current task: 0
+mutex_test_num = 932, current task: 0
+mutex_test_num = 934, current task: 1
+mutex_test_num = 935, current task: 1
+mutex_test_num = 936, current task: 1
+mutex_test_num = 937, current task: 1
+mutex_test_num = 938, current task: 0
+mutex_test_num = 939, current task: 0
+mutex_test_num = 940, current task: 0
+mutex_test_num = 941, current task: 0
+mutex_test_num = 942, current task: 1
+mutex_test_num = 943, current task: 1
+mutex_test_num = 944, current task: 1
+mutex_test_num = 945, current task: 1
+mutex_test_num = 946, current task: 0
+mutex_test_num = 947, current task: 0
+mutex_test_num = 948, current task: 0
+mutex_test_num = 949, current task: 0
+mutex_test_num = 949, current task: 1
+mutex_test_num = 950, current task: 0
+mutex_test_num = 951, current task: 0
+mutex_test_num = 952, current task: 0
+mutex_test_num = 953, current task: 1
+mutex_test_num = 954, current task: 1
+mutex_test_num = 955, current task: 1
+mutex_test_num = 956, current task: 1
+mutex_test_num = 958, current task: 0
+mutex_test_num = 959, current task: 1
+mutex_test_num = 960, current task: 1
+mutex_test_num = 961, current task: 1
+mutex_test_num = 962, current task: 1
+mutex_test_num = 962, current task: 0
+mutex_test_num = 963, current task: 0
+mutex_test_num = 964, current task: 0
+mutex_test_num = 965, current task: 0
+mutex_test_num = 967, current task: 1
+mutex_test_num = 968, current task: 1
+mutex_test_num = 969, current task: 1
+mutex_test_num = 970, current task: 1
+mutex_test_num = 971, current task: 1
+mutex_test_num = 971, current task: 0
+mutex_test_num = 972, current task: 0
+mutex_test_num = 973, current task: 0
+mutex_test_num = 974, current task: 0
+mutex_test_num = 976, current task: 1
+mutex_test_num = 977, current task: 1
+mutex_test_num = 978, current task: 1
+mutex_test_num = 979, current task: 1
+mutex_test_num = 980, current task: 0
+mutex_test_num = 980, current task: 1
+mutex_test_num = 981, current task: 1
+mutex_test_num = 982, current task: 1
+mutex_test_num = 984, current task: 0
+mutex_test_num = 985, current task: 0
+mutex_test_num = 986, current task: 0
+mutex_test_num = 987, current task: 0
+mutex_test_num = 987, current task: 1
+mutex_test_num = 988, current task: 0
+mutex_test_num = 989, current task: 0
+mutex_test_num = 990, current task: 0
+mutex_test_num = 992, current task: 1
+mutex_test_num = 993, current task: 1
+mutex_test_num = 994, current task: 1
+mutex_test_num = 995, current task: 1
+mutex_test_num = 996, current task: 0
+mutex_test_num = 996, current task: 1
+mutex_test_num = 997, current task: 1
+mutex_test_num = 998, current task: 1
+mutex_test_num = 999, current task: 1
+mutex_test_num = 1001, current task: 0

@@ -20,6 +20,8 @@
         "syscall.h": "c",
         "timer.h": "c",
         "aj_types.h": "c",
-        "vcpu.h": "c"
+        "vcpu.h": "c",
+        "mutex.h": "c",
+        "mem.h": "c"
     }
 }

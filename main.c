@@ -6,7 +6,7 @@
 #include "gic.h"
 #include "timer.h"
 #include "thread.h"
-#include "task.h"
+#include "task/task.h"
 #include "spinlock.h"
 #include "uart_pl011.h"
 #include "mem/aj_string.h"
@@ -98,8 +98,8 @@ void main_entry()
         task2 = create_task((void*)0x90000000, ((uint64_t)app_el2_stack + 4096));
         
         print_current_task_list();
-        task_set_ready(task2);
         task_set_ready(task1);
+        task_set_ready(task2);
     }
     spin_lock(&lock);
     inited_cpu_num ++;

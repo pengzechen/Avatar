@@ -5,7 +5,7 @@
 #include <io.h>
 #include <exception.h>
 #include <thread.h>
-#include <task.h>
+#include <task/task.h>
 #include <hyper/vgic.h>
 
 static uint64_t test_num = 0;

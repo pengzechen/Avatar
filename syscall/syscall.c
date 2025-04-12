@@ -1,7 +1,8 @@
 
 #include "io.h"
 #include "syscall_num.h"
-#include "task.h"
+#include "task/task.h"
+#include "task/mutex.h"
 
 uint64_t _debug(void* args)
 {
@@ -30,5 +31,8 @@ const void *syscall_table[NR_SYSCALL] = {
 	[SYS_getc] = _getc,
 	[SYS_sleep] = _sleep_tick,
 	
+	[SYS_mutex_test_print] = mutex_test_print,
+	[SYS_mutex_add] = mutex_test_add,
+	[SYS_mutex_minus] = mutex_test_minus,
     [SYS_debug] = _debug,
 };

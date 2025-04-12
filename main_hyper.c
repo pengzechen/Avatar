@@ -7,7 +7,7 @@
 #include "sys/vtcr.h"
 #include "mem/ept.h"
 #include "mem/page.h"
-#include "task.h"
+#include "task/task.h"
 #include "mem/aj_string.h"
 #include "hyper/vm.h"
 #include "os_cfg.h"
@@ -172,8 +172,9 @@ void hyper_main()
     
     tcb_t * task1 = craete_vm_task(test_guest, (uint64_t)guest1_el2_stack + 8192);
     tcb_t * task2 = craete_vm_task((void *)GUEST_KERNEL_START, (uint64_t)guest2_el2_stack + 8192);
-    task_set_ready(task2);
+    
     task_set_ready(task1);
+    task_set_ready(task2);
     
     print_current_task_list();
 

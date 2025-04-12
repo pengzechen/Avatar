@@ -3,18 +3,9 @@
 
 int main()
 {
-    // while (1)
-    // {
-    //     char c = getc();
-    //     if(c == '\r') {
-    //         putc('\r');
-    //         putc('\n');
-    //     }
-    //     putc(c);
-    // }
     for (int i = 0; i < 1000; i++) {
         
-        uint64_t x = mutex_test_add();
+        uint64_t x = mutex_test_minus();
         // putc('A');
         // putc('B');
         // putc('C');
@@ -30,11 +21,11 @@ int main()
         // putc('M');
         // putc('\r');
         // putc('\n');
-        sleep(100);
+        // sleep(100);
         mutex_test_print();
     }
 
-
+    
     sleep(10000000);
 
     return 0;
