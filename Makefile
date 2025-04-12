@@ -107,12 +107,12 @@ $(BUILD_DIR)/mem.o: mem/mem.c
 $(BUILD_DIR)/timer.o: timer/timer.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) timer/timer.c $(INCLUDE) -o $(BUILD_DIR)/timer.o
 
-#  schedule
-$(BUILD_DIR)/task.o: schedule/task.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) schedule/task.c $(INCLUDE) -o $(BUILD_DIR)/task.o
+#  task
+$(BUILD_DIR)/task.o: task/task.c
+	$(TOOL_PREFIX)gcc $(CFLAGS) task/task.c $(INCLUDE) -o $(BUILD_DIR)/task.o
 
-$(BUILD_DIR)/context.s.o: schedule/context.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) schedule/context.S $(INCLUDE) -o $(BUILD_DIR)/context.s.o
+$(BUILD_DIR)/context.s.o: task/context.S
+	$(TOOL_PREFIX)gcc $(CFLAGS) task/context.S $(INCLUDE) -o $(BUILD_DIR)/context.s.o
 
 #  spinlock 
 $(BUILD_DIR)/spinlock.s.o: spinlock/spinlock.S
