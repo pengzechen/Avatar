@@ -140,11 +140,7 @@ void schedule()
             // printf("    task :%d\n", task->id);
             iter = next;
         }
-        if (curr == &task_manager.idle_task) {
-            return;
-        } else {            // bug,
-            next_task = &task_manager.idle_task;
-        }
+        return;
     }
 
     task_set_block(next_task);
@@ -236,6 +232,14 @@ void idle_task_el1() {
         // for (int i = 0; i < 100000000; i++);
         // printf("current el: %d, idle task\n", get_el());
     }
+}
+
+tcb_t * get_idle() {
+    return &task_manager.idle_task;
+}
+
+uint64_t get_idle_sp_top() {
+    return (uint64_t)idle_task_stack + sizeof(idle_task_stack);
 }
 
 void el1_idle_init()

@@ -108,9 +108,17 @@ void main_entry()
     while(inited_cpu_num != SMP_NUM)
         wfi();
     
-    uint64_t __sp = (uint64_t)app_el1_stack + 4096 - sizeof(trap_frame_t);
+    // uint64_t __sp = (uint64_t)app_el1_stack + 4096 - sizeof(trap_frame_t);
+    // void * _sp = (void *)__sp;
+    // schedule_init_local(task1, _sp);  // 任务管理器任务当前在跑第一个任务
+    
+    // asm volatile("mov sp, %0" :: "r"(_sp));
+    // extern void el0_tesk_entry();
+    // el0_tesk_entry();
+
+    uint64_t __sp = get_idle_sp_top() - sizeof(trap_frame_t);
     void * _sp = (void *)__sp;
-    schedule_init_local(task1, _sp);  // 任务管理器任务当前在跑第一个任务
+    schedule_init_local(get_idle(), NULL);  // 任务管理器任务当前在跑idle任务
     
     asm volatile("mov sp, %0" :: "r"(_sp));
     extern void el0_tesk_entry();

@@ -75,6 +75,7 @@ typedef struct _task_manager_t {
 	
     tcb_t idle_task;			// 空闲任务
     cpu_t idle_cpu;
+    spinlock_t lock;
 
 }task_manager_t;
 
@@ -99,6 +100,10 @@ void schedule_init_local(tcb_t *task, void * new_sp);
 void task_set_ready(tcb_t *task) ;
 void task_set_block (tcb_t *task);
 void schedule();
+
+tcb_t * get_idle() ;
+
+uint64_t get_idle_sp_top() ;
 
 // 系统调用
 void sys_sleep_tick(uint64_t ms);

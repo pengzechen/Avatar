@@ -178,12 +178,20 @@ void hyper_main()
     
     print_current_task_list();
 
-    uint64_t __sp = (uint64_t)guest1_el2_stack + 8192 - sizeof(trap_frame_t);
+    // uint64_t __sp = (uint64_t)guest1_el2_stack + 8192 - sizeof(trap_frame_t);
+    // void * _sp = (void *)__sp;
+    // schedule_init_local(task1, _sp);  // 任务管理器任务当前在跑第一个任务
+    
+    // asm volatile("mov sp, %0" :: "r"(_sp));
+    // extern void guest_entry();
+    // guest_entry();
+
+    uint64_t __sp = get_idle_sp_top() - sizeof(trap_frame_t);
     void * _sp = (void *)__sp;
-    schedule_init_local(task1, _sp);  // 任务管理器任务当前在跑第一个任务
+    schedule_init_local(get_idle(), NULL);  // 任务管理器任务当前在跑idle任务
     
     asm volatile("mov sp, %0" :: "r"(_sp));
-    extern void guest_entry();
-    guest_entry();
+    extern void el0_tesk_entry();
+    el0_tesk_entry();
 
 }

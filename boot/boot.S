@@ -60,7 +60,9 @@ second_entry:
     dsb     sy      // 确保所有内存访问完成
     isb             // 确保所有指令都执行完成
 
-    bl second_kernel_main
+    adrp x0, second_kernel_main
+    add  x0, x0, :lo12:second_kernel_main
+    blr  x0
 
     b .
 
