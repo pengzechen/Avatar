@@ -95,9 +95,13 @@ primary_entry:
     isb             // 确保所有指令都执行完成
 
     // 调用 C 语言的 main 函数
-    bl kernel_main
+    // bl kernel_main
+    adrp x0, kernel_main
+    add  x0, x0, :lo12:kernel_main
+    blr  x0
 
-	b .
+	
+    b .
 
 
 

@@ -45,6 +45,7 @@
 #define MMIO_AREA_GICD  0x8000000UL
 #define MMIO_AREA_GICC  0x8010000UL
 
+#define KERNEL_VMA 0xffff000000000000
 
 /* 任务定义区 */
 #define MAX_TASKS       64

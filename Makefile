@@ -241,18 +241,18 @@ $(APP2_BUILD_DIR)/app.bin: $(APP2_BUILD_DIR)/app.elf
 app2: $(APP2_BUILD_DIR) $(APP2_BUILD_DIR)/app.bin
 
 
-deasm:
+deasm_get_bin: $(BUILD_DIR)/kernel.elf
 	$(TOOL_PREFIX)objdump -x -d -S $(BUILD_DIR)/kernel.elf > $(BUILD_DIR)/dis.txt
 	$(TOOL_PREFIX)readelf -a $(BUILD_DIR)/kernel.elf > $(BUILD_DIR)/elf.txt
 	$(TOOL_PREFIX)objcopy -O binary $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/kernel.bin
 
-debug: $(BUILD_DIR)/kernel.elf deasm
+debug: deasm_get_bin
 	qemu-system-aarch64 $(QEMU_ARGS) -kernel $(BUILD_DIR)/kernel.bin -s -S
 
 gdb:
 	gdb-multiarch
 
-run: $(BUILD_DIR)/kernel.elf deasm
+run: deasm_get_bin
 	qemu-system-aarch64 $(QEMU_ARGS) -kernel $(BUILD_DIR)/kernel.bin
 
 
