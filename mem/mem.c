@@ -22,6 +22,16 @@ uint64_t mutex_test_num = 0;
 
 uint64_t mutex_test_add() {
     mutex_lock(&g_alloc.mutex);
+    for (int i=0; i<10000; i++) {
+        mutex_test_num ++;
+        // mutex_test_num --;
+        mutex_test_num ++;
+        // mutex_test_num --;
+        mutex_test_num ++;
+        // mutex_test_num --;
+        mutex_test_num ++;
+        // mutex_test_num --;
+    }
     mutex_test_num ++;
     mutex_unlock(&g_alloc.mutex);
     return mutex_test_num;
@@ -29,6 +39,16 @@ uint64_t mutex_test_add() {
 
 uint64_t mutex_test_minus() {
     mutex_lock(&g_alloc.mutex);
+    for (int i=0; i<10000; i++) {
+        // mutex_test_num ++;
+        mutex_test_num --;
+        // mutex_test_num ++;
+        mutex_test_num --;
+        // mutex_test_num ++;
+        mutex_test_num --;
+        // mutex_test_num ++;
+        mutex_test_num --;
+    }
     mutex_test_num --;
     mutex_unlock(&g_alloc.mutex);
     return mutex_test_num;

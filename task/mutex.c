@@ -20,7 +20,7 @@ void mutex_init (mutex_t * mutex) {
 // 定义一个函数，用于锁定互斥锁
 void mutex_lock (mutex_t * mutex) {
 
-    disable_interrupts();
+    // disable_interrupts();
     // 获取当前线程控制块
     tcb_t * curr = (tcb_t*)(void*)read_tpidr_el0();
     // 如果互斥锁没有被锁定
@@ -46,14 +46,14 @@ void mutex_lock (mutex_t * mutex) {
         // 调度其他线程
         schedule();
     }
-    enable_interrupts();
+    // enable_interrupts();
 }
 
 
 // 解锁互斥锁
 void mutex_unlock (mutex_t * mutex) {
 
-    disable_interrupts();
+    // disable_interrupts();
     // 获取当前线程控制块
     tcb_t * curr = (tcb_t*)(void*)read_tpidr_el0();
     // 如果当前线程是互斥锁的拥有者
@@ -83,7 +83,7 @@ void mutex_unlock (mutex_t * mutex) {
             }
         }
     }
-    enable_interrupts();
+    // enable_interrupts();
 }
 
 

@@ -22,6 +22,8 @@ int main()
         // putc('\r');
         // putc('\n');
         sleep(40);
+        // while(1);
+        // ;
         
     }
 

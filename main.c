@@ -94,13 +94,14 @@ void main_entry()
         schedule_init();
         task_manager_init();
         
-        task1 = create_task((void*)0x80000000, ((uint64_t)app_el1_stack + 4096));
-        task2 = create_task((void*)0x90000000, ((uint64_t)app_el2_stack + 4096));
+        task1 = create_task((void*)0x80000000, ((uint64_t)app_el1_stack + 4096), 1);
+        task2 = create_task((void*)0x90000000, ((uint64_t)app_el2_stack + 4096), 2);
         
         print_current_task_list();
         task_set_ready(task1);
         task_set_ready(task2);
     }
+    el1_idle_init();        // idle 任务每个核都有自己的el1栈， 代码公用
     spin_lock(&lock);
     inited_cpu_num ++;
     spin_unlock(&lock);

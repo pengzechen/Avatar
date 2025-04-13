@@ -5,6 +5,7 @@
 #include <gic.h>
 #include <timer.h>
 #include <hyper/vcpu.h>
+#include <thread.h>
 
 extern void *syscall_table[];
 
@@ -40,18 +41,20 @@ void handle_sync_exception(uint64_t *stack_pointer)
     }
 
     /* =============== UnDefined ================== */
-    printf("el1 esr: %x\n", el1_esr);
-    printf("ec: %x\n", ec);
-    printf("This is handle_sync_exception: \n");
-    for (int i = 0; i < 31; i++)
-    {
-        uint64_t value = el1_ctx->r[i];
-        printf("General-purpose register: %d, value: %x\n", i, value);
+    if (get_current_cpu_id() == 0) {
+        printf("el1 esr: %x\n", el1_esr);
+        printf("ec: %x\n", ec);
+        printf("This is handle_sync_exception: \n");
+        for (int i = 0; i < 31; i++)
+        {
+            uint64_t value = el1_ctx->r[i];
+            printf("General-purpose register: %d, value: %x\n", i, value);
+        }
+        uint64_t elr_el1_value = el1_ctx->elr;
+        uint64_t usp_value = el1_ctx->usp;
+        uint64_t spsr_value = el1_ctx->spsr;
+        printf("usp: %x, elr: %x, spsr: %x\n", usp_value, elr_el1_value, spsr_value);
     }
-    uint64_t elr_el1_value = el1_ctx->elr;
-    uint64_t usp_value = el1_ctx->usp;
-    uint64_t spsr_value = el1_ctx->spsr;
-    printf("usp: %x, elr: %x, spsr: %x\n", usp_value, elr_el1_value, spsr_value);
     while (1)
         ;
 }

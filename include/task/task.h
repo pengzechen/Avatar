@@ -5,7 +5,7 @@
 #include "aj_types.h"
 #include "hyper/vcpu.h"
 #include "list.h"
-
+#include "os_cfg.h"
 
 #pragma pack(1)
 typedef struct _contex_t {
@@ -73,8 +73,8 @@ typedef struct _task_manager_t {
 	list_t task_list;			// 所有已创建任务的队列
 	list_t sleep_list;          // 延时队列
 	
-    tcb_t idle_task;			// 空闲任务
-    cpu_t idle_cpu;
+    tcb_t idle_task[SMP_NUM];			// 空闲任务
+    cpu_t idle_cpu[SMP_NUM];
     spinlock_t lock;
 
 }task_manager_t;
@@ -86,12 +86,14 @@ void print_current_task_list();
 // @param: task_func: el0 任务真正的入口, sp: el0 任务的内核栈
 tcb_t *create_task(
     void (*task_func)(),  // el0 任务真正的入口
-    uint64_t               // el0 任务的内核栈
+    uint64_t,               // el0 任务的内核栈
+    uint32_t
     );
 
 tcb_t *craete_vm_task(
     void (*task_func)(), 
-    uint64_t stack_top
+    uint64_t stack_top,
+    uint32_t
     );
 
 void schedule_init();
@@ -102,7 +104,7 @@ void task_set_block (tcb_t *task);
 void schedule();
 
 tcb_t * get_idle() ;
-
+void el1_idle_init(); // 初始化空闲任务
 uint64_t get_idle_sp_top() ;
 
 // 系统调用

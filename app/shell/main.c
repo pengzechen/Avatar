@@ -31,6 +31,8 @@ int main()
         // putc('\r');
         // putc('\n');
         sleep(20);
+        // while(1);
+        // ;
         
     }
 

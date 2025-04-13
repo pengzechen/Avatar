@@ -169,9 +169,10 @@ void hyper_main()
 
     schedule_init(); // 设置当前 task 为 task0（test_guest）
     task_manager_init();
+    el1_idle_init();
     
-    tcb_t * task1 = craete_vm_task(test_guest, (uint64_t)guest1_el2_stack + 8192);
-    tcb_t * task2 = craete_vm_task((void *)GUEST_KERNEL_START, (uint64_t)guest2_el2_stack + 8192);
+    tcb_t * task1 = craete_vm_task(test_guest, (uint64_t)guest1_el2_stack + 8192, (1 << 0));
+    tcb_t * task2 = craete_vm_task((void *)GUEST_KERNEL_START, (uint64_t)guest2_el2_stack + 8192, (1 << 0));
     
     task_set_ready(task1);
     task_set_ready(task2);
@@ -191,7 +192,7 @@ void hyper_main()
     schedule_init_local(get_idle(), NULL);  // 任务管理器任务当前在跑idle任务
     
     asm volatile("mov sp, %0" :: "r"(_sp));
-    extern void el0_tesk_entry();
-    el0_tesk_entry();
+    extern void guest_entry();
+    guest_entry();
 
 }
