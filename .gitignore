@@ -6,3 +6,5 @@
 *.o
 /build/*.txt
 /guest/linux/initrd
+/app/app.S
+/app/info.lds

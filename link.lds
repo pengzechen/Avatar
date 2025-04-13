@@ -34,16 +34,15 @@ SECTIONS
         __guset_fs_end = .;
         . = ALIGN((1 << 10));
 
-        /*  el0 的应用程序   */
-        /* ================ */
-        __app1_bin_start = .;
-        *(.data.app1_bin)
-        __app1_bin_end = .;
+        /* Automatically generated lds file */
+        __shell_bin_start = .;
+        *(.data.shell_bin)
+        __shell_bin_end = .;
         . = ALIGN((1 << 10));
 
-        __app2_bin_start = .;
-        *(.data.app2_bin)
-        __app2_bin_end = .;
+        __testapp_bin_start = .;
+        *(.data.testapp_bin)
+        __testapp_bin_end = .;
         . = ALIGN((1 << 10));
 
         /*  bitmap buffer   */

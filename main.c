@@ -11,7 +11,7 @@
 #include "uart_pl011.h"
 #include "mem/aj_string.h"
 #include "mem/mem.h"
-
+#include "app/app.h"
 
 void test_mem()
 {
@@ -47,15 +47,10 @@ void test_types()
 int inited_cpu_num = 0;
 spinlock_t lock;
 
-extern void __app1_bin_start();
-extern void __app1_bin_end();
-extern void __app2_bin_start();
-extern void __app2_bin_end();
-
-void copy_app1(void)
+void copy_app_shell(void)
 {
-    size_t size = (size_t)(__app1_bin_end - __app1_bin_start);
-    unsigned long *from = (unsigned long *)__app1_bin_start;
+    size_t size = (size_t)(__shell_bin_end - __shell_bin_start);
+    unsigned long *from = (unsigned long *)__shell_bin_start;
     unsigned long *to = (unsigned long *)0x80000000;
     printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n",
            from, to, size, from[0], from[1]);
@@ -63,10 +58,10 @@ void copy_app1(void)
     printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
 }
 
-void copy_app2(void)
+void copy_app_testapp(void)
 {
-    size_t size = (size_t)(__app2_bin_end - __app2_bin_start);
-    unsigned long *from = (unsigned long *)__app2_bin_start;
+    size_t size = (size_t)(__testapp_bin_end - __testapp_bin_start);
+    unsigned long *from = (unsigned long *)__testapp_bin_start;
     unsigned long *to = (unsigned long *)0x90000000;
     printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n"
            , from, to, size, from[0], from[1]);
@@ -89,8 +84,8 @@ void main_entry()
     if (get_current_cpu_id() == 0)
     {
         alloctor_init();
-        copy_app1();
-        copy_app2();
+        copy_app_shell();
+        copy_app_testapp();
         schedule_init();
         task_manager_init();
         

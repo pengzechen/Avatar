@@ -1,11 +1,12 @@
 
+APP_NAME ?=
 
 # TOOL_PREFIX=aarch64-linux-musl-
 TOOL_PREFIX=aarch64-none-elf-
 
 BUILD_DIR=build
 
-INCLUDE = -I ./include 
+INCLUDE = -I $(realpath ./include)
 
 n = -nostdlib -nostdinc -fno-stack-protector
 
@@ -190,73 +191,23 @@ $(BUILD_DIR)/mutex.o
 	$(BUILD_DIR)/hyper_ctx.s.o      \
 	$(BUILD_DIR)/list.o
 
-
-
-
-#  app
-APP_BUILD_DIR = app/testapp/build
-APP_SOURCE_DIR = app/testapp
-APP_LD = app/testapp/app.lds
-
-$(APP_BUILD_DIR):
-	mkdir -p $(APP_BUILD_DIR)
-
-$(APP_BUILD_DIR)/syscall.s.o: app/syscall.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) app/syscall.S $(INCLUDE) -o $(APP_BUILD_DIR)/syscall.s.o
-
-$(APP_BUILD_DIR)/main.o: $(APP_SOURCE_DIR)/main.c $(APP_LD)
-	$(TOOL_PREFIX)gcc $(CFLAGS) $(APP_SOURCE_DIR)/main.c $(INCLUDE) -o $(APP_BUILD_DIR)/main.o
-
-$(APP_BUILD_DIR)/app.elf: $(APP_BUILD_DIR)/main.o $(APP_BUILD_DIR)/syscall.s.o
-	$(TOOL_PREFIX)ld -T $(APP_LD) -o $(APP_BUILD_DIR)/app.elf $(APP_BUILD_DIR)/main.o $(APP_BUILD_DIR)/syscall.s.o
-
-$(APP_BUILD_DIR)/app.bin: $(APP_BUILD_DIR)/app.elf
-	$(TOOL_PREFIX)objcopy -O binary $(APP_BUILD_DIR)/app.elf $(APP_BUILD_DIR)/app.bin
-	$(TOOL_PREFIX)objdump -x -d -S $(APP_BUILD_DIR)/app.elf > $(APP_BUILD_DIR)/dis.txt
-	$(TOOL_PREFIX)readelf -a $(APP_BUILD_DIR)/app.elf > $(APP_BUILD_DIR)/elf.txt
-
-# makefile 命令
-
-app1: $(APP_BUILD_DIR) $(APP_BUILD_DIR)/app.bin
-
-
-
-APP2_BUILD_DIR = app/shell/build
-APP2_SOURCE_DIR = app/shell
-APP2_LD = app/shell/app.lds
-
-$(APP2_BUILD_DIR):
-	mkdir -p $(APP2_BUILD_DIR)
-
-$(APP2_BUILD_DIR)/syscall.s.o: app/syscall.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) app/syscall.S $(INCLUDE) -o $(APP2_BUILD_DIR)/syscall.s.o
-
-$(APP2_BUILD_DIR)/main.o: $(APP2_SOURCE_DIR)/main.c $(APP2_LD)
-	$(TOOL_PREFIX)gcc $(CFLAGS) $(APP2_SOURCE_DIR)/main.c $(INCLUDE) -o $(APP2_BUILD_DIR)/main.o
-
-$(APP2_BUILD_DIR)/app.elf: $(APP2_BUILD_DIR)/main.o $(APP2_BUILD_DIR)/syscall.s.o
-	$(TOOL_PREFIX)ld -T $(APP2_LD) -o $(APP2_BUILD_DIR)/app.elf $(APP2_BUILD_DIR)/main.o $(APP2_BUILD_DIR)/syscall.s.o
-
-$(APP2_BUILD_DIR)/app.bin: $(APP2_BUILD_DIR)/app.elf
-	$(TOOL_PREFIX)objcopy -O binary $(APP2_BUILD_DIR)/app.elf $(APP2_BUILD_DIR)/app.bin
-	$(TOOL_PREFIX)objdump -x -d -S $(APP2_BUILD_DIR)/app.elf > $(APP2_BUILD_DIR)/dis.txt
-	$(TOOL_PREFIX)readelf -a $(APP2_BUILD_DIR)/app.elf > $(APP2_BUILD_DIR)/elf.txt
-
-# makefile 命令
-
-app2: $(APP2_BUILD_DIR) $(APP2_BUILD_DIR)/app.bin
-
-
 deasm_get_bin: $(BUILD_DIR)/kernel.elf
 	$(TOOL_PREFIX)objdump -x -d -S $(BUILD_DIR)/kernel.elf > $(BUILD_DIR)/dis.txt
 	$(TOOL_PREFIX)readelf -a $(BUILD_DIR)/kernel.elf > $(BUILD_DIR)/elf.txt
 	$(TOOL_PREFIX)objcopy -O binary $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/kernel.bin
 
+app:
+	$(MAKE) -C app APP_NAME=$(APP_NAME) CFLAGS="$(CFLAGS)" INCLUDE="$(INCLUDE)"
+
+app_clean:
+	$(MAKE) -C app clean APP_NAME=$(APP_NAME) CFLAGS="$(CFLAGS)" INCLUDE="$(INCLUDE)"
+
+.PHONY: app app_clean
+
+
+
 debug: deasm_get_bin
 	qemu-system-aarch64 $(QEMU_ARGS) -kernel $(BUILD_DIR)/kernel.bin -s -S
-
-gdb:
-	gdb-multiarch
 
 run: deasm_get_bin
 	qemu-system-aarch64 $(QEMU_ARGS) -kernel $(BUILD_DIR)/kernel.bin
