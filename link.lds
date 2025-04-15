@@ -64,4 +64,5 @@ SECTIONS
 
     . = ALIGN((1 << 14));
     ept_L1 = .;
+    __heap_flag = .;
 }

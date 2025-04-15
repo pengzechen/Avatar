@@ -15,15 +15,47 @@ void bitmap_init(bitmap_t *bitmap, uint8_t *buffer, size_t size) {
     }
 }
 
+// 设置指定索引位置的位为 1，前提是该位为 0（未分配）
 void bitmap_set(bitmap_t *bitmap, size_t index) {
-    if (index < bitmap->size) {
-        bitmap->bits[index / 8] |= (1 << (index % 8));
+    assert(index < bitmap->size); // 确保索引不越界
+    // 确保该位是未分配的（即当前值为 0）
+    assert((bitmap->bits[index / 8] & (1 << (index % 8))) == 0);
+
+    // 设置该位为 1
+    bitmap->bits[index / 8] |= (1 << (index % 8));
+}
+
+// 设置指定范围的位为 1，前提是这些位为 0（未分配）
+void bitmap_set_range(bitmap_t *bitmap, size_t start, size_t count) {
+    if (start + count > bitmap->size) {
+        return; // 超出范围，直接返回
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        // 对每个位置执行设置操作
+        bitmap_set(bitmap, start + i);
     }
 }
 
+// 清除指定索引位置的位为 0，前提是该位为 1（已分配）
 void bitmap_clear(bitmap_t *bitmap, size_t index) {
-    if (index < bitmap->size) {
-        bitmap->bits[index / 8] &= ~(1 << (index % 8));
+    assert(index < bitmap->size); // 确保索引不越界
+    // 确保该位是已分配的（即当前值为 1）
+    assert((bitmap->bits[index / 8] & (1 << (index % 8))) != 0);
+
+    // 清除该位为 0
+    bitmap->bits[index / 8] &= ~(1 << (index % 8));
+}
+
+// 清除指定范围的位为 0，前提是这些位为 1（已分配）
+void bitmap_clear_range(bitmap_t *bitmap, size_t start, size_t count) {
+    if (start + count > bitmap->size) {
+        return; // 超出范围，直接返回
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        // 对每个位置执行清除操作
+        bitmap_clear(bitmap, start + i);
     }
 }
 
@@ -56,15 +88,4 @@ uint64_t bitmap_find_contiguous_free(const bitmap_t *bitmap, size_t count) {
         }
     }
     return -1;
-}
-
-void bitmap_create_from_memory(bitmap_t *bitmap, uint64_t phys_start, size_t phys_size) {
-    if (!bitmap || !phys_start || !phys_size) {
-        return; // 防止无效参数
-    }
-
-    uint8_t *buffer = (uint8_t *)phys_start; // 假设已经映射到虚拟地址
-    size_t bit_size = phys_size / PAGE_SIZE; // 计算物理页数量
-
-    bitmap_init(bitmap, buffer, bit_size);
 }

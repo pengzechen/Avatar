@@ -84,6 +84,9 @@ void main_entry()
     if (get_current_cpu_id() == 0)
     {
         alloctor_init();
+        kmem_test();
+
+        while(1);
         copy_app_shell();
         copy_app_testapp();
         schedule_init();

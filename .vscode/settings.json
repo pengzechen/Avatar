@@ -22,6 +22,9 @@
         "aj_types.h": "c",
         "vcpu.h": "c",
         "mutex.h": "c",
-        "mem.h": "c"
+        "mem.h": "c",
+        "charconv": "c",
+        "xlocnum": "c",
+        "mmu.h": "c"
     }
 }

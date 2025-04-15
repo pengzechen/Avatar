@@ -12,6 +12,7 @@
 #include "hyper/vm.h"
 #include "os_cfg.h"
 #include "thread.h"
+#include "mem/mem.h"
 
 static inline uint64_t read_sctlr_el2()
 {
@@ -168,6 +169,7 @@ void hyper_main()
     *(uint64_t *)0x50000000 = 0x1234;
 
     schedule_init(); // 设置当前 task 为 task0（test_guest）
+    alloctor_init();
     task_manager_init();
     el1_idle_init();
     

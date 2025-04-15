@@ -17,8 +17,9 @@
 
 /* 内存定义区 */
 
-#define KERNEL_RAM_START   (0UL)               // 内存从0地址开始
-#define KERNEL_RAM_END     (0x40000000UL * 4)  // 4 GB
+#define KERNEL_RAM_START   (0x40000000UL)
+#define KERNEL_RAM_SIZE    (0xc0000000UL)   // 4GB
+#define KERNEL_RAM_END     (KERNEL_RAM_START + KERNEL_RAM_SIZE)
 
 #define PAGE_SIZE  (4096)
 // bit个数 = 内存大小 / 页大小
@@ -46,6 +47,8 @@
 #define MMIO_AREA_GICC  0x8010000UL
 
 #define KERNEL_VMA 0xffff000000000000
+
+extern uint64_t __heap_flag();
 
 /* 任务定义区 */
 #define MAX_TASKS       64

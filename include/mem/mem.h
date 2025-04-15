@@ -14,6 +14,7 @@ typedef struct _addr_alloc_t {
 } addr_alloc_t;
 
 void alloctor_init() ;
+void kmem_test() ;
 
 
 uint64_t mutex_test_add() ;

@@ -175,4 +175,78 @@ static inline int clean_and_invalidate_dcache_va_range(const void *p, unsigned l
     return 0;
 }
 
+
+
+
+
+typedef union {
+	struct {
+		unsigned long is_valid : 1, is_table : 1, ignored1 : 10,
+			next_table_addr : 36, reserved : 4, ignored2 : 7,
+			PXNTable : 1, // Privileged Execute-never for next level
+			XNTable : 1, // Execute-never for next level
+			APTable : 2, // Access permissions for next level
+			NSTable : 1;
+	} table;
+	struct {
+		unsigned long is_valid : 1, is_table : 1,
+			attr_index : 3, // Memory attributes index
+			NS : 1, // Non-secure
+			AP : 2, // Data access permissions
+			SH : 2, // Shareability
+			AF : 1, // Accesss flag
+			nG : 1, // Not global bit
+			reserved1 : 4, nT : 1, reserved2 : 13, pfn : 18,
+			reserved3 : 2, GP : 1, reserved4 : 1,
+			DBM : 1, // Dirty bit modifier
+			Contiguous : 1,
+			PXN : 1, // Privileged execute-never
+			UXN : 1, // Execute never
+			soft_reserved : 4,
+			PBHA : 4; // Page based hardware attributes
+	} l1_block;
+	struct {
+		unsigned long is_valid : 1, is_table : 1,
+			attr_index : 3, // Memory attributes index
+			NS : 1, // Non-secure
+			AP : 2, // Data access permissions
+			SH : 2, // Shareability
+			AF : 1, // Accesss flag
+			nG : 1, // Not global bit
+			reserved1 : 4, nT : 1, reserved2 : 4, pfn : 27,
+			reserved3 : 2, GP : 1, reserved4 : 1,
+			DBM : 1, // Dirty bit modifier
+			Contiguous : 1,
+			PXN : 1, // Privileged execute-never
+			UXN : 1, // Execute never
+			soft_reserved : 4,
+			PBHA : 4; // Page based hardware attributes
+	} l2_block;
+	struct {
+		unsigned long is_valid : 1, is_table : 1,
+			attr_index : 3, // Memory attributes index
+			NS : 1, // Non-secure
+			AP : 2, // Data access permissions
+			SH : 2, // Shareability
+			AF : 1, // Accesss flag
+			nG : 1, // Not global bit
+			pfn : 36, reserved : 3,
+			DBM : 1, // Dirty bit modifier
+			Contiguous : 1,
+			PXN : 1, // Privileged execute-never
+			UXN : 1, // Execute never
+			soft_reserved : 4,
+			PBHA : 4, // Page based hardware attributes
+			ignored : 1;
+	} l3_page;
+	uint64_t pte;
+} pte_t;
+
+static inline pte_t * read_ttbr0_el1(void) {
+    uint64_t val;
+    asm volatile ("mrs %0, ttbr0_el1" : "=r" (val));
+    return (pte_t *)(val);
+}
+
+
 #endif // __PAGE_H__
