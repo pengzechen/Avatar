@@ -4,6 +4,7 @@
 
 #include "mem/bitmap.h"
 #include "task/mutex.h"
+#include "mem/page.h"
 
 typedef struct _addr_alloc_t {
     mutex_t mutex; // for test
@@ -18,9 +19,13 @@ void kmem_test() ;
 
 
 uint64_t mutex_test_add() ;
-
 uint64_t mutex_test_minus() ;
-
 void mutex_test_print();
+
+void * kalloc_page() ;
+void kfree_page(void *addr) ;
+pte_t * create_uvm (void) ;
+uint64_t memory_alloc_page(pte_t * page_dir, uint64_t vaddr, uint64_t size, int perm);  // 为某个进程空间申请一块内存
+void destroy_uvm_4level(pte_t *page_dir);
 
 #endif // MEM_H

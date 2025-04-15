@@ -35,6 +35,8 @@
 
 static addr_alloc_t g_alloc;
 
+static pte_t kpage_dir;
+
 void mark_kernel_memory_allocated(uint64_t heap_start) {
     uint64_t start = KERNEL_RAM_START;
     uint64_t end = heap_start;
@@ -74,6 +76,9 @@ void alloctor_init()
     printf("heap start: 0x%x\n", heap_start);
     mark_kernel_memory_allocated(heap_start);
 }
+
+
+
 
 static uint64_t addr_alloc_page(addr_alloc_t *alloc, int page_count) {
     uint64_t addr = 0;
@@ -767,6 +772,64 @@ void test_copydata_to_uvm() {
 }
 
 
+uint64_t mock_addr_alloc_page(void *alloc, int count) {
+    // Simulate out-of-memory failure
+    return (count == 1) ? 0 : addr_alloc_page(alloc, count);  // Fail for single-page allocation
+}
+
+bool validate_memory_content(uint64_t src_addr, uint64_t dst_addr, size_t size) {
+    for (size_t i = 0; i < size; i++) {
+        if (*(uint8_t *)(src_addr + i) != *(uint8_t *)(dst_addr + i)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void validate_page_table(pte_t *page_dir, uint64_t vaddr, uint64_t paddr) {
+    uint64_t fetched_paddr = memory_get_paddr(page_dir, vaddr);
+    assert(fetched_paddr == paddr);
+}
+
+void test_memory_copy_uvm_4level() {
+    uint64_t total_nums = get_available_page_count(&g_alloc);
+    printf("test start total nums: %d\n", total_nums);
+
+    // Create source and destination page tables
+    pte_t *src_pgd = create_uvm();
+    pte_t *dst_pgd = create_uvm();
+
+    // 准备内核数据
+    uint64_t src_phys = addr_alloc_page(&g_alloc, 1);
+    memcpy((void *)src_phys, "test data", 9);  // Copy some data into the page
+    
+        // 为进程分配内存
+        memory_alloc_page(src_pgd, 0x1000, PAGE_SIZE, 0);  // Allocate a page
+        // 内核将数据拷贝到指定进程空间下
+        copydata_to_uvm(src_pgd, 0x1000, src_phys, 9);
+
+        int result = memory_copy_uvm_4level(dst_pgd, src_pgd);
+        assert(result == 0);
+
+        // Validate the data in the destination page table
+        uint64_t dst_phys = memory_get_paddr(dst_pgd, 0x1000);
+        assert(validate_memory_content(src_phys, dst_phys, PAGE_SIZE));
+
+        // Clean up
+        memory_free_page(src_pgd, 0x1000);
+        memory_free_page(dst_pgd, 0x1000);
+
+        destroy_uvm_4level(src_pgd);
+        destroy_uvm_4level(dst_pgd);
+    
+    addr_free_page(&g_alloc, src_phys, 1);
+
+    // 保证测试完成时总页数相同
+    uint64_t end_total_nums = get_available_page_count(&g_alloc);
+    printf("test end total nums: %d\n", end_total_nums);
+    assert(total_nums == end_total_nums);
+}
+
 void kmem_test() 
 {
     /*
@@ -790,5 +853,7 @@ void kmem_test()
     // printf("\n\n=========uvm alloc free tests: =========\n\n");
     // test_uvm_alloc_free();
 
-    test_copydata_to_uvm();
+    // test_copydata_to_uvm();
+
+    // test_memory_copy_uvm_4level();
 }

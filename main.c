@@ -47,53 +47,26 @@ void test_types()
 int inited_cpu_num = 0;
 spinlock_t lock;
 
-void copy_app_shell(void)
-{
-    size_t size = (size_t)(__shell_bin_end - __shell_bin_start);
-    unsigned long *from = (unsigned long *)__shell_bin_start;
-    unsigned long *to = (unsigned long *)0x80000000;
-    printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n",
-           from, to, size, from[0], from[1]);
-    memcpy(to, from, size);
-    printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
-}
-
-void copy_app_testapp(void)
-{
-    size_t size = (size_t)(__testapp_bin_end - __testapp_bin_start);
-    unsigned long *from = (unsigned long *)__testapp_bin_start;
-    unsigned long *to = (unsigned long *)0x90000000;
-    printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n"
-           , from, to, size, from[0], from[1]);
-    memcpy(to, from, size);
-    printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
-}
-
-static uint8_t  app_el1_stack[4096] __attribute__((aligned(16384)));
-static uint8_t  app_el2_stack[4096] __attribute__((aligned(4096)));
-
-
+// static uint8_t  app_el1_stack[4096] __attribute__((aligned(16384)));
+// static uint8_t  app_el2_stack[4096] __attribute__((aligned(4096)));
 
 void main_entry()
 {
     printf("main entry: get_current_cpu_id: %d\n", get_current_cpu_id());
-    tcb_t * task1 = NULL;
-    tcb_t * task2 = NULL;
-    memset(app_el1_stack, 0, sizeof(app_el1_stack));
-    memset(app_el2_stack, 0, sizeof(app_el2_stack));
     if (get_current_cpu_id() == 0)
     {
         alloctor_init();
         kmem_test();
-
-        while(1);
-        copy_app_shell();
-        copy_app_testapp();
         schedule_init();
         task_manager_init();
+
+        // copy_app_shell();
+        // copy_app_testapp();
+        // memset(app_el1_stack, 0, sizeof(app_el1_stack));
+        // memset(app_el2_stack, 0, sizeof(app_el2_stack));
         
-        task1 = create_task((void*)0x80000000, ((uint64_t)app_el1_stack + 4096), 1);
-        task2 = create_task((void*)0x90000000, ((uint64_t)app_el2_stack + 4096), 2);
+        tcb_t * task1 = create_task((void*)0x80000000, ((uint64_t)app_el1_stack + 4096), 1);
+        tcb_t * task2 = create_task((void*)0x90000000, ((uint64_t)app_el2_stack + 4096), 2);
         
         print_current_task_list();
         task_set_ready(task1);
