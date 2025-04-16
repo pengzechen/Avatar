@@ -248,5 +248,7 @@ static inline pte_t * read_ttbr0_el1(void) {
     return (pte_t *)(val);
 }
 
+uint64_t get_kpgdir() ;
+
 
 #endif // __PAGE_H__

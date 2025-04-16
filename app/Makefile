@@ -24,7 +24,7 @@ app.S: $(foreach dir,$(APP_SUBDIRS),$(dir)/build/app.bin)
 	@echo "/* auto created */" > app.S
 	@$(foreach dir,$(APP_SUBDIRS), \
 		echo '.section .data.$(dir)_bin' >> app.S; \
-		echo '    .incbin "../app/$(dir)/build/app.bin"' >> app.S; \
+		echo '    .incbin "../app/$(dir)/build/app.elf"' >> app.S; \
 		echo '' >> app.S;)
 
 # 生成 lds 文件

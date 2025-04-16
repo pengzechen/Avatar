@@ -4,7 +4,7 @@
 
 #include "aj_types.h"
 #include "os_cfg.h"
-#include "task.h"
+#include "task/task.h"
 #include "list.h"
 
 #define PRO_MAX_NAME_LEN        64
@@ -14,9 +14,9 @@ typedef struct _process_t {
     char process_name[PRO_MAX_NAME_LEN]; // 进程名
     list_t threads;        // 任务列表
 
-    void* pg_base;      // 进程页表基地址
     void* el1_stack;    // el1 的栈
     
+    void* pg_base;      // 进程页表基地址
     void* heap_start;
     void* heap_end;
 
@@ -30,6 +30,8 @@ typedef struct _process_manager_t {
 
 } process_manager_t;
 
-process_t *create_process(char *name);
+process_t *alloc_process(char *name);
+void process_init(process_t *pro, void *elf_addr);
+void run_process(process_t *pro);
 
 #endif // PRO_H

@@ -56,6 +56,7 @@ typedef struct
     uint32_t sleep_ticks;
     uint32_t priority;
     uint32_t id;         // 任务ID
+    uint64_t pgdir;
     
     list_node_t process; // 属于哪个进程
 
@@ -106,6 +107,9 @@ void schedule();
 tcb_t * get_idle() ;
 void el1_idle_init(); // 初始化空闲任务
 uint64_t get_idle_sp_top() ;
+
+// 将来进程初始化一个任务，需要为这个任务分配准备页表基址
+void set_tcb_pgdir(tcb_t * task, uint64_t pgdir);
 
 // 系统调用
 void sys_sleep_tick(uint64_t ms);

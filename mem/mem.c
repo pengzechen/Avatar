@@ -60,7 +60,7 @@ void mark_kernel_memory_allocated(uint64_t heap_start) {
         bitmap_set(&g_alloc.bitmap, i);
     }
 
-    printf("Marked memory from 0x%lx to 0x%lx as allocated.\n", start, end);
+    printf("Marked memory from 0x%lx to 0x%lx as allocated. count: %d\n", start, end, end_page - start_page + 1);
 }
 
 void alloctor_init() 
@@ -128,11 +128,11 @@ void kfree_page(void *addr) {
 
 pte_t *find_pte(pte_t *page_dir, uint64_t vaddr, int alloc) {
 
-    printf("find_pte called for vaddr: 0x%lx\n", vaddr);
+    // printf("find_pte called for vaddr: 0x%lx\n", vaddr);
 
     // 获取PGD索引
     pte_t *pgd = &page_dir[GET_PGD_INDEX(vaddr)];
-    printf("    PGD Index: %d, PGD entry: 0x%lx\n", GET_PGD_INDEX(vaddr), pgd->pte);
+    // printf("    PGD Index: %d, PGD entry: 0x%lx\n", GET_PGD_INDEX(vaddr), pgd->pte);
 
     // 分配 PUD
     if (!pgd->table.is_valid) {
@@ -143,16 +143,16 @@ pte_t *find_pte(pte_t *page_dir, uint64_t vaddr, int alloc) {
         if (!pud_phys) return NULL;
 
         pgd->pte = (pud_phys >> 12) << 12 | 0x3; // valid + table
-        printf("    Allocated PUD at: 0x%lx, setting PGD entry to: 0x%lx\n", pud_phys, pgd->pte);
+        // printf("    Allocated PUD at: 0x%lx, setting PGD entry to: 0x%lx\n", pud_phys, pgd->pte);
         memset((void *)(pud_phys), 0, 0x1000);
     }
 
     // 获取PUD表项
     pte_t *pud = (pte_t *)(void*)(uint64_t)((pgd->table.next_table_addr) << 12ULL);
-    printf("    PUD entry: 0x%lx\n", pud->pte);
+    // printf("    PUD entry: 0x%lx\n", pud->pte);
 
     pte_t *pud_entry = &pud[GET_PUD_INDEX(vaddr)];
-    printf("    PUD Index: %d, PUD entry: 0x%lx\n", GET_PUD_INDEX(vaddr), pud_entry->pte);
+    // printf("    PUD Index: %d, PUD entry: 0x%lx\n", GET_PUD_INDEX(vaddr), pud_entry->pte);
 
     // 分配 PMD
     if (!pud_entry->table.is_valid) {
@@ -163,16 +163,16 @@ pte_t *find_pte(pte_t *page_dir, uint64_t vaddr, int alloc) {
         if (!pmd_phys) return NULL;
 
         pud_entry->pte = (pmd_phys >> 12) << 12 | 0x3;
-        printf("    Allocated PMD at: 0x%lx, setting PUD entry to: 0x%lx\n", pmd_phys, pud_entry->pte);
+        // printf("    Allocated PMD at: 0x%lx, setting PUD entry to: 0x%lx\n", pmd_phys, pud_entry->pte);
         memset((void *)(pmd_phys), 0, 0x1000);
     }
 
     // 获取PMD表项
     pte_t *pmd = (pte_t *)(void*)(uint64_t)((pud_entry->table.next_table_addr) << 12ULL);
-    printf("    PMD entry: 0x%lx\n", pmd->pte);
+    // printf("    PMD entry: 0x%lx\n", pmd->pte);
 
     pte_t *pmd_entry = &pmd[GET_PMD_INDEX(vaddr)];
-    printf("    PMD Index: %d, PMD entry: 0x%lx\n", GET_PMD_INDEX(vaddr), pmd_entry->pte);
+    // printf("    PMD Index: %d, PMD entry: 0x%lx\n", GET_PMD_INDEX(vaddr), pmd_entry->pte);
 
     // 分配 Page Table
     if (!pmd_entry->table.is_valid) {
@@ -183,19 +183,19 @@ pte_t *find_pte(pte_t *page_dir, uint64_t vaddr, int alloc) {
         if (!pt_phys) return NULL;
 
         pmd_entry->pte = (pt_phys >> 12) << 12 | 0x3;
-        printf("    Allocated Page Table at: 0x%lx, setting PMD entry to: 0x%lx\n", pt_phys, pmd_entry->pte);
+        // printf("    Allocated Page Table at: 0x%lx, setting PMD entry to: 0x%lx\n", pt_phys, pmd_entry->pte);
         memset((void *)(pt_phys), 0, 0x1000);
     }
 
     // 获取PTE表项
     pte_t *pte_base = (pte_t *)(void*)(uint64_t)((pmd_entry->table.next_table_addr) << 12ULL);
-    printf("    PTE Index: %d, PTE entry: 0x%lx\n", GET_PTE_INDEX(vaddr), pte_base[GET_PTE_INDEX(vaddr)].pte);
+    // printf("    PTE Index: %d, PTE entry: 0x%lx\n", GET_PTE_INDEX(vaddr), pte_base[GET_PTE_INDEX(vaddr)].pte);
 
     return &pte_base[GET_PTE_INDEX(vaddr)];
 }
 
 int memory_create_map(pte_t *page_dir, uint64_t vaddr, uint64_t paddr, int count, uint64_t perm) {
-    printf("Starting memory_create_map for vaddr 0x%lx, paddr 0x%lx, count %d\n", vaddr, paddr, count);
+    // printf("Starting memory_create_map for vaddr 0x%lx, paddr 0x%lx, count %d\n", vaddr, paddr, count);
     
     for (int i = 0; i < count; i++) {
         // 获取对应的 PTE
@@ -211,7 +211,7 @@ int memory_create_map(pte_t *page_dir, uint64_t vaddr, uint64_t paddr, int count
         }
 
         // 打印分配信息
-        printf("Mapping vaddr 0x%lx to paddr 0x%lx\n", vaddr, paddr);
+        // printf("Mapping vaddr 0x%lx to paddr 0x%lx\n", vaddr, paddr);    0(ng) 1(af) 11(sh) 00(ap) 0(ns) 000(attr) 01(table valid)  0x701
         
         // 设置 PTE 为有效并设置物理地址
         pte_entry->l3_page.is_valid = 1;
@@ -219,17 +219,26 @@ int memory_create_map(pte_t *page_dir, uint64_t vaddr, uint64_t paddr, int count
         pte_entry->l3_page.pfn = (paddr >> 12) & 0xFFFFFFFFF; // 36 bits PFN Page Frame Number
 
         // 设置权限
-        pte_entry->l3_page.AF = 1;
-        pte_entry->l3_page.SH = 3; // Inner shareable
-        pte_entry->l3_page.AP = 1;
-        pte_entry->l3_page.UXN = 0;
-        pte_entry->l3_page.PXN = 1;
-        pte_entry->l3_page.attr_index = 0; // Normal memory
+        if (perm == 0) {
+            pte_entry->l3_page.AF = 1;
+            pte_entry->l3_page.SH = 3; // Inner shareable
+            pte_entry->l3_page.AP = 1;
+            pte_entry->l3_page.UXN = 0;
+            pte_entry->l3_page.PXN = 1;
+            pte_entry->l3_page.attr_index = 1; // Normal memory
+        } else {
+            pte_entry->l3_page.AF = 1;
+            pte_entry->l3_page.SH = 3; // Inner shareable
+            pte_entry->l3_page.AP = 0;
+            pte_entry->l3_page.UXN = 0;
+            pte_entry->l3_page.PXN = 0;
+            pte_entry->l3_page.attr_index = 1; // Normal memory
+        }
 
         // 输出映射后的权限和地址信息
-        printf("Mapped PTE entry: is_valid=%d, pfn=0x%lx, AF=%d, SH=%d, AP=%d, UXN=%d, PXN=%d, attr_index=%d\n",
-               pte_entry->l3_page.is_valid, pte_entry->l3_page.pfn, pte_entry->l3_page.AF, pte_entry->l3_page.SH,
-               pte_entry->l3_page.AP, pte_entry->l3_page.UXN, pte_entry->l3_page.PXN, pte_entry->l3_page.attr_index);
+        // printf("Mapped PTE entry: is_valid=%d, pfn=0x%lx, AF=%d, SH=%d, AP=%d, UXN=%d, PXN=%d, attr_index=%d\n",
+        //        pte_entry->l3_page.is_valid, pte_entry->l3_page.pfn, pte_entry->l3_page.AF, pte_entry->l3_page.SH,
+        //        pte_entry->l3_page.AP, pte_entry->l3_page.UXN, pte_entry->l3_page.PXN, pte_entry->l3_page.attr_index);
 
         // 更新虚拟地址和物理地址
         vaddr += PAGE_SIZE;
@@ -299,8 +308,20 @@ pte_t * create_uvm (void) {
     }
     memset((void *)page_dir, 0, PAGE_SIZE);
 
-    //TODO: 这个地方需要让el0进程共享内核空间 
+    uint64_t start = KERNEL_RAM_START;
+    uint64_t end = (uint64_t)(void*)__heap_flag + 0x900000;
+    // 如果 heap_start 不是页对齐的，将其向上对齐
+    if (end % g_alloc.page_size != 0) {
+        end = (end + g_alloc.page_size - 1) & ~(g_alloc.page_size - 1);
+    }
 
+    printf("map kernel start: 0x%x, end: 0x%x\n", start, end);
+    
+    // TODO: 这个地方需要让el0进程共享内核空间 
+    // TODO: 这个地方原理上并不需要映射，因为内核应该使用 FFFF_0000_0000_0000 之后的地址
+    for (uint64_t addr = g_alloc.start; addr < end; addr += PAGE_SIZE) {
+        memory_create_map(page_dir, addr, addr, 1, 1);          // 内核空间先恒等映射
+    }
     return page_dir;
 }
 
@@ -747,7 +768,7 @@ void test_copydata_to_uvm() {
     // 准备内核数据
     char data[156] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
     uint64_t paddr = addr_alloc_page(&g_alloc, 1);
-    memcpy((const void *)paddr, data, 156);
+    memcpy((void *)paddr, data, 156);
 
     // 为进程空间申请内存
     memory_alloc_page(page_dir, 0x1000, 156, 0);

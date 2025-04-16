@@ -86,3 +86,8 @@ void enable_mmu_el2()
 {
     init_mmu_el2((uint64_t)(void *)pt0);
 }
+
+uint64_t get_kpgdir() 
+{
+    return (uint64_t)(void *)pt0;
+}

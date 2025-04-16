@@ -26,6 +26,7 @@ void * kalloc_page() ;
 void kfree_page(void *addr) ;
 pte_t * create_uvm (void) ;
 uint64_t memory_alloc_page(pte_t * page_dir, uint64_t vaddr, uint64_t size, int perm);  // 为某个进程空间申请一块内存
+uint64_t memory_get_paddr(pte_t * page_dir, uint64_t vaddr);
 void destroy_uvm_4level(pte_t *page_dir);
 
 #endif // MEM_H

@@ -116,6 +116,11 @@ $(BUILD_DIR)/context.s.o: task/context.S
 $(BUILD_DIR)/mutex.o: task/mutex.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) task/mutex.c $(INCLUDE) -o $(BUILD_DIR)/mutex.o
 
+
+#  process
+$(BUILD_DIR)/process.o: process/pro.c
+	$(TOOL_PREFIX)gcc $(CFLAGS) process/pro.c $(INCLUDE) -o $(BUILD_DIR)/process.o
+
 #  spinlock 
 $(BUILD_DIR)/spinlock.s.o: spinlock/spinlock.S
 	$(TOOL_PREFIX)gcc $(CFLAGS) spinlock/spinlock.S $(INCLUDE) -o $(BUILD_DIR)/spinlock.s.o
@@ -154,7 +159,7 @@ $(BUILD_DIR)/page.o $(BUILD_DIR)/ept.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string
 $(BUILD_DIR)/exception_el3.o $(BUILD_DIR)/exception_el2.o $(BUILD_DIR)/exception_el2.s.o $(BUILD_DIR)/gic.o  \
 $(BUILD_DIR)/syscall.o $(BUILD_DIR)/timer.o $(BUILD_DIR)/task.o $(BUILD_DIR)/context.s.o $(BUILD_DIR)/spinlock.s.o \
 $(BUILD_DIR)/vcpu.o $(BUILD_DIR)/hyper_ctx.s.o $(BUILD_DIR)/vgic.o $(BUILD_DIR)/vm.o $(BUILD_DIR)/list.o $(BUILD_DIR)/mem.o \
-$(BUILD_DIR)/mutex.o
+$(BUILD_DIR)/mutex.o $(BUILD_DIR)/process.o
 	$(TOOL_PREFIX)ld -T $(LD) -o $(BUILD_DIR)/kernel.elf \
 	$(BUILD_DIR)/boot.s.o 			\
 	$(BUILD_DIR)/guest.s.o          \
@@ -182,6 +187,7 @@ $(BUILD_DIR)/mutex.o
 	$(BUILD_DIR)/string.o 			\
 	$(BUILD_DIR)/timer.o  			\
 	$(BUILD_DIR)/task.o 			\
+	$(BUILD_DIR)/process.o          \
 	$(BUILD_DIR)/context.s.o 		\
 	$(BUILD_DIR)/mutex.o            \
 	$(BUILD_DIR)/spinlock.s.o       \

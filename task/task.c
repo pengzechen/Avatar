@@ -7,6 +7,7 @@
 #include <spinlock.h>
 #include <thread.h>
 #include "os_cfg.h"
+#include <mem/page.h>
 
 tcb_t g_task_dec[MAX_TASKS];
 cpu_t g_cpu_dec[MAX_TASKS];
@@ -62,6 +63,11 @@ tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
     task->ctx.sp_elx = stack_top - sizeof(trap_frame_t);
 
     return task;
+}
+
+void set_tcb_pgdir(tcb_t * task, uint64_t pgdir)
+{
+    task->pgdir = pgdir;
 }
 
 tcb_t *craete_vm_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
@@ -123,6 +129,21 @@ void print_current_task_list()
     printf("\n");
 }
 
+static inline void flush(void)
+{
+    // 确保页表写入已完成（比如 TTBR0_EL1 已写好）
+    __asm__ volatile("dsb ish");     // Data Synchronization Barrier，Inner Shareable
+
+    // 清除所有EL1 TLB项，适用于多核 inner shareable 域
+    __asm__ volatile("tlbi vmalle1is");  // Invalidate all TLB entries for EL1 (Inner Shareable)
+
+    // 等待 TLB 刷新完成
+    __asm__ volatile("dsb ish");
+
+    // 确保后续指令看到最新的 TLB 状态
+    __asm__ volatile("isb");
+}
+
 void schedule()
 {
     tcb_t *curr = NULL;
@@ -151,11 +172,19 @@ void schedule()
     // printf("core %d switch prev_task %d to next_task %d\n", 
     //     get_current_cpu_id(), prev_task->id, next_task->id);
     spin_unlock(&print_lock);
-
-    if (get_el() == 1)
+    
+    printf("next_task page dir: 0x%x\n", next_task->pgdir);
+    
+    if (get_el() == 1) {
+        // uint64_t val = next_task->pgdir;
+        // asm volatile("msr ttbr0_el1, %[x]" : : [x] "r"(val));
+        // asm volatile("dsb sy; isb");
+        // asm volatile("tlbi vmalle1");
+        // asm volatile("dsb sy; isb");
         switch_context(prev_task, next_task);
-    else
+    } else {
         switch_context_el2(prev_task, next_task);
+    }
 }
 
 void timer_tick_schedule(uint64_t *sp)
@@ -259,7 +288,7 @@ void el1_idle_init()
     idel->cpu_info->ctx.elr = (uint64_t)idle_task_el1; // elr_el1
     idel->cpu_info->ctx.spsr = SPSR_EL1_KERNEL;        // spsr_el1
     idel->cpu_info->ctx.usp = 0;
-    
+    idel->pgdir = get_kpgdir(); // pgdir
 
     uint64_t stack_top = get_idle_sp_top();
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &idel->cpu_info->ctx, sizeof(trap_frame_t));
