@@ -137,6 +137,11 @@ void process_init(process_t *pro, void *elf_addr)
 
     printf("process entry: 0x%x, process stack: 0x%x\n", pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE);
 
+    memory_create_map(pro->pg_base, (uint64_t)pro->el1_stack, (uint64_t)pro->el1_stack, 1, 1);
+
+    pro->el0_stack = kalloc_page();
+    memory_create_map(pro->pg_base, (uint64_t)pro->entry + 0x3000, (uint64_t)pro->el0_stack, 1, 0);
+
     tcb_t *main_thread = create_task((void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE, (1 << 0));
 
     main_thread->pgdir = (uint64_t)pro->pg_base;
@@ -161,6 +166,7 @@ void exit_process(process_t *pro)
     // 释放内存，把状态设置为退出
     destroy_uvm_4level(pro->pg_base);
     kfree_page(pro->el1_stack);
+    kfree_page(pro->el0_stack);
 
     pro->process_name[0] = '\0';
 }

@@ -55,7 +55,7 @@ tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
 
     task->cpu_info->ctx.elr = (uint64_t)task_func; // elr_el1
     task->cpu_info->ctx.spsr = SPSR_EL1_USER;      // spsr_el1
-    task->cpu_info->ctx.usp = (uint64_t)(task_func + 0x40000);
+    task->cpu_info->ctx.usp = (uint64_t)(task_func + 0x4000);
 
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &task->cpu_info->ctx, sizeof(trap_frame_t));
     extern void el0_tesk_entry();
@@ -169,18 +169,18 @@ void schedule()
     }
 
     spin_lock(&print_lock);
-    // printf("core %d switch prev_task %d to next_task %d\n", 
-    //     get_current_cpu_id(), prev_task->id, next_task->id);
+    printf("core %d switch prev_task %d to next_task %d\n", 
+        get_current_cpu_id(), prev_task->id, next_task->id);
     spin_unlock(&print_lock);
     
     printf("next_task page dir: 0x%x\n", next_task->pgdir);
     
     if (get_el() == 1) {
-        // uint64_t val = next_task->pgdir;
-        // asm volatile("msr ttbr0_el1, %[x]" : : [x] "r"(val));
-        // asm volatile("dsb sy; isb");
-        // asm volatile("tlbi vmalle1");
-        // asm volatile("dsb sy; isb");
+        uint64_t val = next_task->pgdir;
+        asm volatile("msr ttbr0_el1, %[x]" : : [x] "r"(val));
+        asm volatile("dsb sy; isb");
+        asm volatile("tlbi vmalle1");
+        asm volatile("dsb sy; isb");
         switch_context(prev_task, next_task);
     } else {
         switch_context_el2(prev_task, next_task);

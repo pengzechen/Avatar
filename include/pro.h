@@ -15,7 +15,7 @@ typedef struct _process_t {
     list_t threads;        // 任务列表
 
     void* el1_stack;    // el1 的栈
-    
+    void* el0_stack;
     void* pg_base;      // 进程页表基地址
     void* heap_start;
     void* heap_end;

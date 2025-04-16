@@ -12,6 +12,7 @@
 #include "mem/aj_string.h"
 #include "mem/mem.h"
 #include "app/app.h"
+#include "pro.h"
 
 void test_mem()
 {
@@ -60,17 +61,17 @@ void main_entry()
         schedule_init();
         task_manager_init();
 
-        // copy_app_shell();
-        // copy_app_testapp();
-        // memset(app_el1_stack, 0, sizeof(app_el1_stack));
-        // memset(app_el2_stack, 0, sizeof(app_el2_stack));
-        
-        tcb_t * task1 = create_task((void*)0x80000000, ((uint64_t)app_el1_stack + 4096), 1);
-        tcb_t * task2 = create_task((void*)0x90000000, ((uint64_t)app_el2_stack + 4096), 2);
+        process_t * pro1 = alloc_process("system");
+        process_init(pro1, __testapp_bin_start);
+        run_process(pro1);
+
+        // process_t * pro2 = alloc_process("system");
+        // process_init(pro2, __shell_bin_start);
+        // run_process(pro2);
         
         print_current_task_list();
-        task_set_ready(task1);
-        task_set_ready(task2);
+        // task_set_ready(task1);
+        // task_set_ready(task2);
     }
     el1_idle_init();        // idle 任务每个核都有自己的el1栈， 代码公用
     spin_lock(&lock);

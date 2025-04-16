@@ -12,7 +12,7 @@
 // 常用封装
 #define isb_sy()    isb(sy)
 #define dsb_ish()   dsb(ish)
-#define dmb_ish()   dmb(ish)
+// #define dmb_ish()   dmb(ish)
 
 #define mb()		dsb()
 #define rmb()		dsb()

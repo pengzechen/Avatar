@@ -215,7 +215,7 @@ int memory_create_map(pte_t *page_dir, uint64_t vaddr, uint64_t paddr, int count
         
         // 设置 PTE 为有效并设置物理地址
         pte_entry->l3_page.is_valid = 1;
-        pte_entry->l3_page.is_table = 0;
+        pte_entry->l3_page.is_table = 1;
         pte_entry->l3_page.pfn = (paddr >> 12) & 0xFFFFFFFFF; // 36 bits PFN Page Frame Number
 
         // 设置权限
@@ -226,13 +226,20 @@ int memory_create_map(pte_t *page_dir, uint64_t vaddr, uint64_t paddr, int count
             pte_entry->l3_page.UXN = 0;
             pte_entry->l3_page.PXN = 1;
             pte_entry->l3_page.attr_index = 1; // Normal memory
-        } else {
+        } else if (perm == 1) {
             pte_entry->l3_page.AF = 1;
             pte_entry->l3_page.SH = 3; // Inner shareable
             pte_entry->l3_page.AP = 0;
             pte_entry->l3_page.UXN = 0;
             pte_entry->l3_page.PXN = 0;
             pte_entry->l3_page.attr_index = 1; // Normal memory
+        } else if (perm == 2) {
+            pte_entry->l3_page.AF = 1;
+            pte_entry->l3_page.SH = 3; // Inner shareable
+            pte_entry->l3_page.AP = 0;
+            pte_entry->l3_page.UXN = 0;
+            pte_entry->l3_page.PXN = 0;
+            pte_entry->l3_page.attr_index = 0; // device memory
         }
 
         // 输出映射后的权限和地址信息
@@ -321,6 +328,10 @@ pte_t * create_uvm (void) {
     // TODO: 这个地方原理上并不需要映射，因为内核应该使用 FFFF_0000_0000_0000 之后的地址
     for (uint64_t addr = g_alloc.start; addr < end; addr += PAGE_SIZE) {
         memory_create_map(page_dir, addr, addr, 1, 1);          // 内核空间先恒等映射
+    }
+
+    for (uint64_t addr = 0x8000000; addr < 0xa000000; addr += PAGE_SIZE) {
+        memory_create_map(page_dir, addr, addr, 1, 2);          // 内核空间先恒等映射
     }
     return page_dir;
 }
