@@ -6,6 +6,7 @@
 #include "hyper/vcpu.h"
 #include "list.h"
 #include "os_cfg.h"
+#include "pro.h"
 
 #pragma pack(1)
 typedef struct _contex_t {
@@ -63,6 +64,8 @@ typedef struct
     list_node_t run_node;		// 运行相关结点
 	list_node_t wait_node;		// 等待队列
 	list_node_t all_node;		// 所有队列结点
+
+    struct _process_t * curr_pro; // 当前进程
 } tcb_t;
 #pragma pack()
 

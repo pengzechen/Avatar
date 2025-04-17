@@ -151,11 +151,13 @@ void process_init(process_t *pro, void *elf_addr, uint32_t priority)
     memory_create_map(pro->pg_base, (uint64_t)pro->el1_stack, (uint64_t)pro->el1_stack, 1, 1);
 
     pro->el0_stack = kalloc_page();
+    printf("map this task's el0 stack, 0x%x\n\n", (uint64_t)pro->el1_stack);
     memory_create_map(pro->pg_base, (uint64_t)pro->entry + 0x3000, (uint64_t)pro->el0_stack, 1, 0);
 
     tcb_t *main_thread = create_task((void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE, priority);
 
     main_thread->pgdir = (uint64_t)pro->pg_base;
+    main_thread->curr_pro = pro;
 
     list_insert_last(&pro->threads, &main_thread->process);
 }

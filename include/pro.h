@@ -21,6 +21,8 @@ typedef struct _process_t {
     void* heap_end;
 
     uint64_t entry;
+
+    struct _process_t * parent;
 } process_t;
 
 
