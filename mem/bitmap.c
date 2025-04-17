@@ -4,7 +4,7 @@
 #include <os_cfg.h>
 
 //  0x20000  128Kb
-uint8_t  bitmap_buffer[OS_CFG_BITMAP_SIZE / 8] __attribute__((section(".data.bitmap_buffer")));
+uint8_t  bitmap_buffer[OS_CFG_BITMAP_SIZE / 8] __attribute__((section(".bss.bitmap_buffer")));
 
 
 void bitmap_init(bitmap_t *bitmap, uint8_t *buffer, size_t size) {
