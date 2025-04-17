@@ -49,7 +49,7 @@ typedef struct
 {   
     contex_t         ctx;
     cpu_t            *cpu_info;
-    uint64_t         *sp;
+    uint64_t         sp;
     
     task_state_t state; 
     uint32_t counter;
@@ -99,6 +99,7 @@ tcb_t *craete_vm_task(
 
 void schedule_init();
 void task_manager_init(void);
+task_manager_t * get_task_manager() ;
 void schedule_init_local(tcb_t *task, void * new_sp);
 void task_set_ready(tcb_t *task) ;
 void task_set_block (tcb_t *task);

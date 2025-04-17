@@ -44,12 +44,8 @@ void test_types()
         ;
 }
 
-
 int inited_cpu_num = 0;
 spinlock_t lock;
-
-// static uint8_t  app_el1_stack[4096] __attribute__((aligned(16384)));
-// static uint8_t  app_el2_stack[4096] __attribute__((aligned(4096)));
 
 void main_entry()
 {
@@ -62,16 +58,14 @@ void main_entry()
         task_manager_init();
 
         process_t * pro1 = alloc_process("system");
-        process_init(pro1, __testapp_bin_start);
+        process_init(pro1, __testapp_bin_start, 1);
         run_process(pro1);
 
-        // process_t * pro2 = alloc_process("system");
-        // process_init(pro2, __shell_bin_start);
-        // run_process(pro2);
+        process_t * pro2 = alloc_process("system");
+        process_init(pro2, __shell_bin_start, 2);
+        run_process(pro2);
         
         print_current_task_list();
-        // task_set_ready(task1);
-        // task_set_ready(task2);
     }
     el1_idle_init();        // idle 任务每个核都有自己的el1栈， 代码公用
     spin_lock(&lock);

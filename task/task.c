@@ -61,6 +61,7 @@ tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
     extern void el0_tesk_entry();
     task->ctx.x30 = (uint64_t)el0_tesk_entry;
     task->ctx.sp_elx = stack_top - sizeof(trap_frame_t);
+    task->sp = (stack_top - PAGE_SIZE);
 
     return task;
 }
@@ -123,7 +124,7 @@ void print_current_task_list()
     while (curr) {
         list_node_t * next = list_node_next(curr);
         tcb_t *task = list_node_parent(curr, tcb_t, all_node);
-        printf("id: %x, elr: 0x%x\n", task->id, task->cpu_info->ctx.elr);
+        printf("id: %x, elr: 0x%x, priority: %d\n", task->id, task->cpu_info->ctx.elr, task->priority);
         curr = next;
     }
     printf("\n");
@@ -169,11 +170,11 @@ void schedule()
     }
 
     spin_lock(&print_lock);
-    printf("core %d switch prev_task %d to next_task %d\n", 
-        get_current_cpu_id(), prev_task->id, next_task->id);
+    // printf("core %d switch prev_task %d to next_task %d\n", 
+    //     get_current_cpu_id(), prev_task->id, next_task->id);
     spin_unlock(&print_lock);
     
-    printf("next_task page dir: 0x%x\n", next_task->pgdir);
+    // printf("next_task page dir: 0x%x\n", next_task->pgdir);
     
     if (get_el() == 1) {
         uint64_t val = next_task->pgdir;
@@ -306,6 +307,10 @@ void task_manager_init(void) {
     list_init(&task_manager.sleep_list);
 
     spinlock_init(&task_manager.lock);
+}
+
+task_manager_t * get_task_manager() {
+    return &task_manager;
 }
 
 // 将任务插入就绪队列 (后插)

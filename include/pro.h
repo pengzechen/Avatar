@@ -31,7 +31,7 @@ typedef struct _process_manager_t {
 } process_manager_t;
 
 process_t *alloc_process(char *name);
-void process_init(process_t *pro, void *elf_addr);
+void process_init(process_t *pro, void *elf_addr, uint32_t priority);
 void run_process(process_t *pro);
 
 #endif // PRO_H

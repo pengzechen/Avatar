@@ -60,7 +60,7 @@ void mark_kernel_memory_allocated(uint64_t heap_start) {
         bitmap_set(&g_alloc.bitmap, i);
     }
 
-    printf("Marked memory from 0x%lx to 0x%lx as allocated. count: %d\n", start, end, end_page - start_page + 1);
+    printf("Marked memory from 0x%lx to 0x%lx as allocated. count: %d\n\n", start, end, end_page - start_page + 1);
 }
 
 void alloctor_init() 
@@ -138,7 +138,7 @@ pte_t *find_pte(pte_t *page_dir, uint64_t vaddr, int alloc) {
     if (!pgd->table.is_valid) {
         
         if (!alloc) return NULL;
-        printf("    PGD entry is not valid, allocating PUD\n");
+        // printf("    PGD entry is not valid, allocating PUD\n");
         uint64_t pud_phys = addr_alloc_page(&g_alloc, 1);
         if (!pud_phys) return NULL;
 
@@ -158,7 +158,7 @@ pte_t *find_pte(pte_t *page_dir, uint64_t vaddr, int alloc) {
     if (!pud_entry->table.is_valid) {
         
         if (!alloc) return NULL;
-        printf("    PUD entry is not valid, allocating PMD\n");
+        // printf("    PUD entry is not valid, allocating PMD\n");
         uint64_t pmd_phys = addr_alloc_page(&g_alloc, 1);
         if (!pmd_phys) return NULL;
 
@@ -178,7 +178,7 @@ pte_t *find_pte(pte_t *page_dir, uint64_t vaddr, int alloc) {
     if (!pmd_entry->table.is_valid) {
         
         if (!alloc) return NULL;
-        printf("    PMD entry is not valid, allocating Page Table\n");
+        // printf("    PMD entry is not valid, allocating Page Table\n");
         uint64_t pt_phys = addr_alloc_page(&g_alloc, 1);
         if (!pt_phys) return NULL;
 
