@@ -33,7 +33,7 @@ void ramfs_init() {
     for (int i = 0; i < MAX_FILES; i++) {
         fs_files[i] = (File *)(RAM_FS_MEM_START + sizeof(Head) + i * sizeof(File));
         // 初始化每个文件的指针为NULL
-        memset(fs_files[i], 0, sizeof(File));
+        // memset(fs_files[i], 0, sizeof(File));
     }
 }
 
@@ -53,7 +53,7 @@ int ramfs_open(const char *name) {
         if (fs_files[i]->name[0] == 0) {  // 文件名为空，表示该位置尚未使用
             // 初始化新文件
             memset(fs_files[i], 0, sizeof(File));  // 清空文件内容
-            memcpy((char*)fs_files[i]->name, name, sizeof(fs_files[i]->name) - 1);  // 复制文件名
+            memcpy((char*)fs_files[i]->name, name, strlen(name) + 1);  // 复制文件名
             fs_files[i]->size = 0;  // 文件大小初始化为 0
             fs_files[i]->current_offset = 0;  // 初始化文件偏移量
             fs_files[i]->nlink = 1;  // 链接计数初始化为 1
@@ -446,6 +446,9 @@ int closedir(DIR *dir) {
 
 uint8_t test_buf[70*1024];
 
+// dump binary memory dumpfile2.bin 0x50000000 0x54000000
+// restore dumpfile binary 0x50000000
+
 void basic_test() {
     int fd = ramfs_open("/home/ajax/1.txt");
     printf("fd: %d\n", fd);
@@ -457,8 +460,8 @@ void basic_test() {
     int seek = ramfs_lseek(fd, 0, SEEK_SET);
     printf("seek set 0: %d\n", seek);
 
-    w = ramfs_read(fd, test_buf, size);
-    printf("read %d\n", w);
+    int r = ramfs_read(fd, test_buf, size);
+    printf("read %d\n", r);
 
     if (memcmp(test_buf, __shell_bin_start, size) == 0) {
         printf("write read ok!\n");
