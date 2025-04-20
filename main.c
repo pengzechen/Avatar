@@ -13,6 +13,7 @@
 #include "mem/mem.h"
 #include "app/app.h"
 #include "pro.h"
+#include "ramfs.h"
 
 void test_mem()
 {
@@ -56,7 +57,8 @@ void main_entry()
         kmem_test();
         schedule_init();
         task_manager_init();
-
+        ramfs_test();
+        
         process_t * pro1 = alloc_process("system");
         process_init(pro1, __testapp_bin_start, 1);
         run_process(pro1);

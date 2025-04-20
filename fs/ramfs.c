@@ -1,105 +1,205 @@
 
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
+#include <mem/mem.h>
+#include <mem/aj_string.h>
+#include <aj_types.h>
+#include <stdarg.h>
+#include <os_cfg.h>
+#include <ramfs.h>
+#include <io.h>
+#include "../app/app.h"
 
-#define MAX_FILES 10
-#define BLOCK_SIZE 1024
+static Head * fs_head;
+static File * fs_files[MAX_FILES];  // 存储文件的数组
+static uint64_t fs_data_ptr;
 
-typedef struct {
-    char *name;            // 文件名
-    size_t size;           // 文件大小
-    void *data;            // 文件内容（指向内存中的数据）
-    off_t current_offset;  // 当前文件偏移量
-    int nlink;             // 链接计数
-} File;
+// 每个块中可以放多少数据
+#define BLOCK_DATA_SIZE (BLOCK_SIZE - sizeof(Content))
 
-static File ramfs[MAX_FILES];  // 存储文件的数组
-static int num_files = 0;      // 当前文件数目
+// 文件系统初始化
+void ramfs_init() {
+    // 初始化数据区域分配指针
+    fs_data_ptr = RAM_FS_MEM_START + sizeof(Head) + MAX_FILES * sizeof(File);
+    fs_data_ptr = (fs_data_ptr + BLOCK_SIZE - 1) & ~(BLOCK_SIZE - 1);  // 保证 fs_data_ptr 按照 BLOCK_SIZE 对齐
+    uint32_t pages = (fs_data_ptr - RAM_FS_MEM_START) / BLOCK_SIZE;
+    printf("alloc %d pages memory for ramfs basic data\n", pages);
+    // 进行内存分配，确保我们为文件系统的数据区域分配足够的内存
+    fs_malloc_pages(pages);
+    
+    // 初始化指针
+    fs_head = (Head*)(void*)(RAM_FS_MEM_START);
+    fs_head->magic = 9270682;
+    // 为每个文件分配内存
+    for (int i = 0; i < MAX_FILES; i++) {
+        fs_files[i] = (File *)(RAM_FS_MEM_START + sizeof(Head) + i * sizeof(File));
+        // 初始化每个文件的指针为NULL
+        memset(fs_files[i], 0, sizeof(File));
+    }
+}
 
 // 打开文件
 int ramfs_open(const char *name) {
-    for (int i = 0; i < num_files; i++) {
-        if (strcmp(ramfs[i].name, name) == 0) {
-            ramfs[i].current_offset = 0;  // 重置偏移量
-            return i;
+    // 查找文件是否已存在
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (strcmp((const char*)fs_files[i]->name, name) == 0) {
+            fs_files[i]->current_offset = 0;  // 重置偏移量
+            return i;  // 返回文件描述符
         }
     }
 
-    if (num_files < MAX_FILES) {
-        ramfs[num_files].name = strdup(name);
-        ramfs[num_files].size = 0;
-        ramfs[num_files].data = malloc(BLOCK_SIZE);
-        if (ramfs[num_files].data == NULL) {
-            return -1;
+    // 如果文件不存在，并且文件数量未满
+    for (int i = 0; i < MAX_FILES; i++) {
+        // 找到一个空槽位，初始化新文件
+        if (fs_files[i]->name[0] == 0) {  // 文件名为空，表示该位置尚未使用
+            // 初始化新文件
+            memset(fs_files[i], 0, sizeof(File));  // 清空文件内容
+            memcpy((char*)fs_files[i]->name, name, sizeof(fs_files[i]->name) - 1);  // 复制文件名
+            fs_files[i]->size = 0;  // 文件大小初始化为 0
+            fs_files[i]->current_offset = 0;  // 初始化文件偏移量
+            fs_files[i]->nlink = 1;  // 链接计数初始化为 1
+
+            // 创建第一个数据块
+            fs_files[i]->content.content_offset = 0;  // 假设填充一个魔数，用于标识
+            fs_files[i]->content.next = NULL;  // 目前还没有其他数据块
+            fs_files[i]->content.prev = NULL;
+            uint64_t addr = fs_malloc_pages(1);
+            fs_files[i]->content.addr_offset = (void*)(addr - (uint64_t)fs_head) ;
+
+            return i;  // 返回文件描述符
         }
-        ramfs[num_files].current_offset = 0;  // 初始化偏移量
-        ramfs[num_files].nlink = 1;  // 新文件，初始化链接计数为1
-        return num_files++;
     }
 
-    return -1;
+    return -1;  // 文件系统已满，无法创建新文件
 }
 
 // 关闭文件
 int ramfs_close(int fd) {
-    if (fd < 0 || fd >= num_files) {
-        return -1;
+    // 检查文件描述符是否合法
+    if (fd < 0 || fd >= MAX_FILES || fs_files[fd]->name[0] == 0) {
+        return -1;  // 无效的文件描述符
     }
-    // 不需要处理任何关闭操作，因为文件存储在内存中，不涉及资源释放
-    return 0;
+
+    // 关闭操作（在内存中不需要实际的资源释放）
+    fs_files[fd]->current_offset = 0;  // 重置偏移量，确保下次打开时从头开始
+    // 如果有其他状态需要重置，可以在这里进行
+
+    return 0;  // 成功关闭文件
 }
 
 // 读取文件
-ssize_t ramfs_read(int fd, void *buf, size_t count) {
-    if (fd < 0 || fd >= num_files) {
-        return -1;
+size_t ramfs_read(int fd, void *buf, size_t count) {
+    if (fd < 0 || fd >= MAX_FILES || fs_files[fd]->name[0] == 0) {
+        return -1;  // 无效的文件描述符
     }
 
-    File *file = &ramfs[fd];
+    File *file = fs_files[fd];
     size_t bytes_to_read = count;
-    if (file->current_offset + bytes_to_read > file->size) {
-        bytes_to_read = file->size - file->current_offset;
+    size_t bytes_read = 0;
+    ssize_t offset = file->current_offset;
+    size_t newoffset = offset;
+    
+    // 从 content 链表中逐块读取数据
+    Content *content = &file->content;
+    while (content != NULL && offset >= BLOCK_DATA_SIZE) {
+        offset -= BLOCK_DATA_SIZE;
+        content = content->next;
     }
 
-    memcpy(buf, file->data + file->current_offset, bytes_to_read);
-    file->current_offset += bytes_to_read;
+    while (content != NULL && bytes_read < bytes_to_read) {
+        ssize_t block_offset = offset < BLOCK_DATA_SIZE ? offset : 0;
+        size_t block_remaining = BLOCK_DATA_SIZE - block_offset;
+        size_t to_copy = (bytes_to_read - bytes_read) < block_remaining ? (bytes_to_read - bytes_read) : block_remaining;
 
-    return bytes_to_read;
+        // 复制数据（跳过 Content 结构）
+        memcpy(buf + bytes_read, (void*)fs_head + (uint64_t)content->addr_offset + sizeof(Content) + block_offset, to_copy);
+        
+        bytes_read += to_copy;
+        newoffset += to_copy;
+        offset += to_copy;
+        
+        // 如果读取完当前块的内容，跳到下一个块
+        if (bytes_read < bytes_to_read) {
+            content = content->next;
+        }
+    }
+
+    // 更新文件的 current_offset
+    file->current_offset = newoffset;
+    return bytes_read;
 }
 
 // 写入文件
-ssize_t ramfs_write(int fd, const void *buf, size_t count) {
-    if (fd < 0 || fd >= num_files) {
-        return -1;
+size_t ramfs_write(int fd, const void *buf, size_t count) {
+    if (fd < 0 || fd >= MAX_FILES || fs_files[fd]->name[0] == 0) {
+        return -1;  // 无效的文件描述符
     }
 
-    File *file = &ramfs[fd];
+    File *file = fs_files[fd];
     size_t bytes_to_write = count;
-    if (file->current_offset + bytes_to_write > BLOCK_SIZE) {
-        bytes_to_write = BLOCK_SIZE - file->current_offset;
+    size_t bytes_written = 0;
+    ssize_t offset = file->current_offset;  // 文件内总偏移
+    uint32_t new_offset = offset;            // 新偏移只可能比当前偏移大
+
+
+    // 定位到文件的写入位置
+    Content *content = &file->content;
+    while (content != NULL && offset >= BLOCK_DATA_SIZE) {
+        offset -= BLOCK_DATA_SIZE;
+        content = content->next;
     }
 
-    memcpy(file->data + file->current_offset, buf, bytes_to_write);
-    file->current_offset += bytes_to_write;
+    // 从 content 链表中逐块写入数据
+    while (content != NULL && bytes_written < bytes_to_write) {
+        
+        ssize_t content_offset = offset > 0 ? offset : 0;   // 跳过了一些块，这是当前块要写的位置
+        size_t block_remaining = BLOCK_DATA_SIZE - content_offset;
+        size_t to_copy = (bytes_to_write - bytes_written) < block_remaining ? (bytes_to_write - bytes_written) : block_remaining;
+
+        uint64_t addr = (uint64_t)fs_head + (uint64_t)content->addr_offset + sizeof(Content);
+        // 复制数据到当前块（跳过 Content 结构）
+        memcpy( (void*)addr + content_offset, buf + bytes_written, to_copy);
+
+        bytes_written += to_copy;
+        new_offset += to_copy;
+        offset -= to_copy;
+
+        // 如果写完当前块，跳到下一个块
+        if (bytes_written < bytes_to_write) {
+            if (content->next == NULL) {
+                // 创建新的数据块
+                Content *new_content = (Content*)fs_malloc_pages(1);  // 使用 malloc_page 申请一页内存
+                if (new_content == NULL) {
+                    return -1;  // 内存分配失败
+                }
+                memset(new_content, 0, sizeof(Content));  // 清空新的 content 结构
+                content->next = new_content;
+                new_content->prev = content;
+                content = new_content;
+
+                // 新块的数据区域
+                content->addr_offset = (void*)((uint64_t)new_content - (uint64_t)fs_head);
+            } else {
+                content = content->next;
+            }
+        }
+    }
+
+    // 更新文件的 current_offset
+    file->current_offset = new_offset;
     if (file->current_offset > file->size) {
-        file->size = file->current_offset;
+        file->size = file->current_offset;  // 更新文件的大小
     }
 
-    return bytes_to_write;
+    return bytes_written;
 }
 
 // 定位文件指针
 off_t ramfs_lseek(int fd, off_t offset, int whence) {
-    if (fd < 0 || fd >= num_files) {
-        return -1;
+    if (fd < 0 || fd >= MAX_FILES || fs_files[fd]->name[0] == 0) {
+        return -1;  // 无效的文件描述符
     }
 
-    File *file = &ramfs[fd];
+    File *file = fs_files[fd];
     off_t new_offset = file->current_offset;
 
     switch (whence) {
@@ -109,125 +209,263 @@ off_t ramfs_lseek(int fd, off_t offset, int whence) {
         case SEEK_CUR:
             new_offset += offset;
             break;
-        case SEEK_END:
+        case SEEK_END:      // 这个是相对于末尾来说
             new_offset = file->size + offset;
             break;
         default:
-            return -1;
+            return -1;  // 无效的 whence 参数
     }
 
+    // 确保新偏移量有效，不越界
     if (new_offset < 0 || new_offset > file->size) {
-        return -1;
+        return -1;  // 无效的偏移量
     }
 
+    // 更新文件的 current_offset
     file->current_offset = new_offset;
     return new_offset;
 }
 
-// 获取文件信息
-int ramfs_stat(const char *path, struct stat *st) {
-    for (int i = 0; i < num_files; i++) {
-        if (strcmp(ramfs[i].name, path) == 0) {
-            st->st_size = ramfs[i].size;
-            st->st_nlink = ramfs[i].nlink;
-            return 0;
-        }
-    }
-
-    return -1;
-}
-
-// 获取文件状态
-int ramfs_fstat(int fd, struct stat *st) {
-    if (fd < 0 || fd >= num_files) {
-        return -1;
-    }
-
-    st->st_size = ramfs[fd].size;
-    st->st_nlink = ramfs[fd].nlink;
-    return 0;
-}
-
 // 文件控制操作
 int ramfs_fcntl(int fd, int cmd, ...) {
-    if (fd < 0 || fd >= num_files) {
-        return -1;
+    // 检查文件描述符是否有效
+    if (fd < 0 || fd >= MAX_FILES || fs_files[fd]->name[0] == 0) {
+        return -1;  // 无效的文件描述符
     }
 
     va_list args;
     va_start(args, cmd);
+
     switch (cmd) {
         case F_GETFL:
-            return O_RDWR;
-        case F_SETFL:
+            // 返回文件的打开标志（这里假设文件都以 O_RDWR 打开）
+            // 如果文件支持不同的打开模式，可以根据实际情况修改返回值
+            return O_RDWR;  // 默认返回可读写模式
+
+        case F_SETFL: {
+            // 设置文件状态标志
+            int flags = va_arg(args, int);  // 获取传入的标志
+
+            // 处理文件的附加操作标志
+            if (flags & O_APPEND) {
+                // 如果设置了 O_APPEND，文件操作应从文件尾部开始
+                // 这里你可以加入逻辑来处理 append 模式
+            }
             break;
+        }
+
         default:
+            // 未知命令，返回 -1
             return -1;
     }
-    va_end(args);
 
-    return 0;
+    va_end(args);
+    return 0;  // 成功
 }
 
 // 创建硬链接
 int ramfs_link(const char *oldname, const char *newname) {
-    for (int i = 0; i < num_files; i++) {
-        if (strcmp(ramfs[i].name, oldname) == 0) {
-            for (int j = 0; j < num_files; j++) {
-                if (strcmp(ramfs[j].name, newname) == 0) {
-                    return -1;  // 新文件名已存在
-                }
-            }
 
-            ramfs[num_files].name = strdup(newname);
-            ramfs[num_files].size = ramfs[i].size;
-            ramfs[num_files].data = ramfs[i].data;
-            ramfs[num_files].current_offset = 0;
-            ramfs[num_files].nlink = 1;
-            ramfs[i].nlink++;
-            return num_files++;
+    // 查找原文件
+    int old_fd = -1;
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (strcmp(fs_files[i]->name, oldname) == 0) {
+            old_fd = i;
+            break;
         }
     }
 
-    return -1;
+    if (old_fd == -1) {
+        return -1;  // 未找到原文件
+    }
+
+    // 检查新文件名是否已经存在
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (strcmp(fs_files[i]->name, newname) == 0) {
+            return -1;  // 新文件名已存在
+        }
+    }
+
+    // 添加新文件
+    for (int i = 0; i < MAX_FILES; i++) {
+        // 找到一个空槽位，初始化新文件
+        if (fs_files[i]->name[0] == 0) {  // 文件名为空，表示该位置尚未使用
+
+            File *new_file = fs_files[i];
+            // 使用原文件的文件名、内容和其他属性
+            memcpy(new_file->name, newname, sizeof(new_file->name) - 1);
+            new_file->name[sizeof(new_file->name) - 1] = '\0';  // 确保字符串结尾
+            new_file->size = fs_files[old_fd]->size;
+            new_file->content = fs_files[old_fd]->content;  // 新文件指向相同的数据区域
+            new_file->current_offset = 0;
+            new_file->nlink = 1;  // 新硬链接的链接计数
+            fs_files[old_fd]->nlink++;  // 增加原文件的链接计数
+
+            return i;  // 返回新文件的描述符
+        }
+    }
+
+    return -1;  // 文件系统已满，无法创建硬链接
 }
 
 // 删除文件
 int ramfs_unlink(const char *name) {
-    for (int i = 0; i < num_files; i++) {
-        if (strcmp(ramfs[i].name, name) == 0) {
-            if (ramfs[i].nlink > 1) {
-                ramfs[i].nlink--;
+    // 查找文件是否存在
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (strcmp((const char*)fs_files[i]->name, name) == 0) {
+            File *file = fs_files[i];
+
+            // 如果文件的链接计数大于 1，则只减少链接计数
+            if (file->nlink > 1) {
+                file->nlink--;
             } else {
-                free(ramfs[i].name);
-                free(ramfs[i].data);
-                ramfs[i] = ramfs[num_files - 1];
-                num_files--;
+                // 如果文件的链接计数为 1，需要删除文件的内容
+
+                // 遍历文件的 Content 链表，释放每个数据块
+                Content *content = &file->content;
+                while (content != NULL) {
+                    // 计算当前数据块的实际内存地址
+                    void *data_block = (void *)((uint64_t)fs_head + (uint64_t)content->addr_offset);
+                    kfree_page(data_block);  // 释放数据块
+
+                    content = content->next;  // 继续处理下一个数据块
+                }
+
+                memset(file, 0, sizeof(File));
             }
 
-            return 0;
+            return 0;  // 文件删除成功
         }
     }
 
-    return -1;
+    return -1;  // 文件不存在
 }
 
 // 重命名文件
 int ramfs_rename(const char *oldname, const char *newname) {
-    for (int i = 0; i < num_files; i++) {
-        if (strcmp(ramfs[i].name, oldname) == 0) {
-            for (int j = 0; j < num_files; j++) {
-                if (strcmp(ramfs[j].name, newname) == 0) {
+    // 查找旧文件名
+    for (int i = 0; i < MAX_FILES; i++) {
+        // 找到匹配的旧文件名
+        if (strcmp((const char*)fs_files[i]->name, oldname) == 0) {
+            
+            // 检查新文件名是否已经存在
+            for (int j = 0; j < MAX_FILES; j++) {
+                if (strcmp((const char*)fs_files[j]->name, newname) == 0) {
                     return -1;  // 新文件名已存在
                 }
             }
 
-            free(ramfs[i].name);
-            ramfs[i].name = strdup(newname);
-            return 0;
+            // 修改文件名
+            memcpy((char*)fs_files[i]->name, newname, sizeof(fs_files[i]->name) - 1);
+            fs_files[i]->name[sizeof(fs_files[i]->name) - 1] = '\0';  // 确保字符串以 '\0' 结尾
+
+            return 0;  // 重命名成功
         }
     }
 
-    return -1;
+    return -1;  // 找不到旧文件名
 }
 
+
+/*
+// 获取文件信息
+int ramfs_stat(const char *path, struct stat *st) {
+    // 查找文件是否存在
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (fs_files[i]->name[0] != 0 && strcmp((const char*)fs_files[i]->name, path) == 0) {
+            // 填充 stat 结构体
+            st->st_size = fs_files[i]->size;      // 文件大小
+            st->st_nlink = fs_files[i]->nlink;    // 文件链接数
+            // st->st_mode = S_IFREG | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // 设置文件类型和权限（假设为常规文件，所有者可读写，其他用户可读）
+            st->st_uid = 0;  // 假设 UID 为 0
+            st->st_gid = 0;  // 假设 GID 为 0
+            return 0;  // 找到文件，返回成功
+        }
+    }
+
+    return -1;  // 未找到文件，返回失败
+}
+
+// 获取文件状态
+int ramfs_fstat(int fd, struct stat *st) {
+    // 检查文件描述符是否合法
+    if (fd < 0 || fd >= MAX_FILES || fs_files[fd]->name[0] == 0) {
+        return -1;  // 无效的文件描述符
+    }
+
+    // 获取文件信息
+    File *file = fs_files[fd];
+    st->st_size = file->size;       // 文件大小
+    st->st_nlink = file->nlink;     // 文件链接计数
+    // st->st_mode = S_IFREG | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // 假设为常规文件，所有者可读写，其他用户可读
+    st->st_uid = 0;                 // 假设文件的用户 ID 为 0
+    st->st_gid = 0;                 // 假设文件的组 ID 为 0
+    return 0;  // 返回成功
+}
+*/
+
+/*
+DIR* opendir(const char *name) {
+    int fd = open(name, O_RDONLY);  // 打开目录文件，O_RDONLY 是只读模式
+    if (fd < 0) {
+        return NULL;  // 打开失败
+    }
+    
+    DIR *dir = malloc(sizeof(DIR));
+    if (!dir) {
+        close(fd);  // 内存分配失败，关闭文件描述符
+        return NULL;
+    }
+    
+    dir->fd = fd;  // 保存文件描述符
+    return dir;
+}
+
+struct dirent* readdir(DIR *dir) {
+    struct dirent *entry = malloc(sizeof(struct dirent));
+    if (!entry) {
+        return NULL;
+    }
+
+    ssize_t bytes_read = read(dir->fd, entry, sizeof(struct dirent));  // 读取目录项
+    if (bytes_read <= 0) {
+        free(entry);
+        return NULL;  // 读取失败或目录末尾
+    }
+
+    return entry;
+}
+
+int closedir(DIR *dir) {
+    int result = close(dir->fd);  // 关闭目录文件描述符
+    free(dir);  // 释放目录结构
+    return result;
+}
+*/
+
+
+uint8_t test_buf[70*1024];
+
+void basic_test() {
+    int fd = ramfs_open("/home/ajax/1.txt");
+    printf("fd: %d\n", fd);
+
+    int size = (uint64_t)__shell_bin_end - (uint64_t)__shell_bin_start;
+    int w = ramfs_write(fd, __shell_bin_start, size);
+    printf("write %d bytes\n", w);
+
+    int seek = ramfs_lseek(fd, 0, SEEK_SET);
+    printf("seek set 0: %d\n", seek);
+
+    w = ramfs_read(fd, test_buf, size);
+    printf("read %d\n", w);
+
+    if (memcmp(test_buf, __shell_bin_start, size) == 0) {
+        printf("write read ok!\n");
+    }
+}
+
+void ramfs_test() {
+    ramfs_init();
+    basic_test();
+}

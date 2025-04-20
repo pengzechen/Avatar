@@ -89,3 +89,23 @@ uint64_t bitmap_find_contiguous_free(const bitmap_t *bitmap, size_t count) {
     }
     return -1;
 }
+
+// 为文件系统分配内存
+uint64_t bitmap_find_contiguous_free_fs(const bitmap_t *bitmap, size_t count) {
+    // 计算偏移量，并将其转换为位图中的索引
+    size_t base_offset = RAM_FS_MEM_START - KERNEL_RAM_START;  // 偏移量：0x10000000 (256MB)
+    size_t start_index = base_offset / 0x1000;  // 4KB = 0x1000，所以除以 4KB 来转换为位图索引
+
+    for (size_t i = start_index; i <= bitmap->size - count; i++) {
+        size_t j;
+        for (j = 0; j < count; j++) {
+            if (bitmap_test(bitmap, i + j)) {
+                break;  // 如果当前位为已分配，跳出内层循环
+            }
+        }
+        if (j == count) {
+            return i;  // 找到一个连续的空闲区域
+        }
+    }
+    return -1;  // 如果没有找到足够的空闲区域，返回 -1
+}

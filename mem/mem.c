@@ -99,6 +99,25 @@ static uint64_t addr_alloc_page(addr_alloc_t *alloc, int page_count) {
     return addr;
 }
 
+uint64_t fs_malloc_pages(int page_count) {
+    uint64_t addr = 0;
+    mutex_lock(&g_alloc.mutex);
+
+    int page_index = bitmap_find_contiguous_free_fs(&g_alloc.bitmap, page_count);
+    if (page_index >= 0) {
+        // printf("Allocating pages starting from index: %d\n", page_index);
+        bitmap_set_range(&g_alloc.bitmap, page_index, page_count);
+        addr = g_alloc.start + page_index * g_alloc.page_size;
+    }
+    // 调试输出，确认是否设置了位图
+    if (bitmap_test(&g_alloc.bitmap, page_index)) {
+        printf("Page index %d marked as allocated, count: %d, addr 0x%x\n", page_index, page_count, addr);
+    }
+
+    mutex_unlock(&g_alloc.mutex);
+    return addr;
+}
+
 static void addr_free_page(addr_alloc_t *alloc, uint64_t addr, int page_count) {
     mutex_lock(&alloc->mutex);
     

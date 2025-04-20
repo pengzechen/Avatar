@@ -142,6 +142,12 @@ $(BUILD_DIR)/list.o: lib/list.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) lib/list.c $(INCLUDE) -o $(BUILD_DIR)/list.o
 
 
+#  ramfs
+$(BUILD_DIR)/ramfs.o: fs/ramfs.c
+	$(TOOL_PREFIX)gcc $(CFLAGS) fs/ramfs.c $(INCLUDE) -o $(BUILD_DIR)/ramfs.o
+
+
+
 #  guest
 $(BUILD_DIR)/guest.s.o: guest/guest.S
 	$(TOOL_PREFIX)gcc $(CFLAGS) guest/guest.S $(INCLUDE) -o $(BUILD_DIR)/guest.s.o
@@ -159,7 +165,7 @@ $(BUILD_DIR)/page.o $(BUILD_DIR)/ept.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string
 $(BUILD_DIR)/exception_el3.o $(BUILD_DIR)/exception_el2.o $(BUILD_DIR)/exception_el2.s.o $(BUILD_DIR)/gic.o  \
 $(BUILD_DIR)/syscall.o $(BUILD_DIR)/timer.o $(BUILD_DIR)/task.o $(BUILD_DIR)/context.s.o $(BUILD_DIR)/spinlock.s.o \
 $(BUILD_DIR)/vcpu.o $(BUILD_DIR)/hyper_ctx.s.o $(BUILD_DIR)/vgic.o $(BUILD_DIR)/vm.o $(BUILD_DIR)/list.o $(BUILD_DIR)/mem.o \
-$(BUILD_DIR)/mutex.o $(BUILD_DIR)/process.o
+$(BUILD_DIR)/mutex.o $(BUILD_DIR)/process.o $(BUILD_DIR)/ramfs.o
 	$(TOOL_PREFIX)ld -T $(LD) -o $(BUILD_DIR)/kernel.elf \
 	$(BUILD_DIR)/boot.s.o 			\
 	$(BUILD_DIR)/guest.s.o          \
@@ -195,7 +201,8 @@ $(BUILD_DIR)/mutex.o $(BUILD_DIR)/process.o
 	$(BUILD_DIR)/vgic.o             \
 	$(BUILD_DIR)/vm.o               \
 	$(BUILD_DIR)/hyper_ctx.s.o      \
-	$(BUILD_DIR)/list.o
+	$(BUILD_DIR)/list.o             \
+	$(BUILD_DIR)/ramfs.o
 
 deasm_get_bin: $(BUILD_DIR)/kernel.elf
 	$(TOOL_PREFIX)objdump -x -d -S $(BUILD_DIR)/kernel.elf > $(BUILD_DIR)/dis.txt

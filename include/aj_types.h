@@ -18,6 +18,7 @@ typedef    _Bool  bool;
 #define true  1
 
 typedef unsigned long long size_t;
+typedef long long ssize_t;
 
 #define SIZE_MAX		(9223372036854775807UL)
 
@@ -29,4 +30,5 @@ typedef unsigned long long size_t;
 #define vaddr_t uint64_t
 #define paddr_t uint64_t
 
+typedef  long long off_t;
 #endif

@@ -16,7 +16,7 @@ typedef struct _addr_alloc_t {
 
 void alloctor_init() ;
 void kmem_test() ;
-
+uint64_t fs_malloc_pages(int page_count);
 
 uint64_t mutex_test_add() ;
 uint64_t mutex_test_minus() ;

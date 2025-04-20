@@ -25,6 +25,9 @@
 // bit个数 = 内存大小 / 页大小
 #define OS_CFG_BITMAP_SIZE  (KERNEL_RAM_END - KERNEL_RAM_START) / PAGE_SIZE
 
+// ram fs 起始地址
+#define RAM_FS_MEM_START 0x50000000
+
 
 /* 内核线程栈定义区 */
 #define STACK_SIZE  (1 << 14)   // 16 K
