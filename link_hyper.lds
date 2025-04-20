@@ -44,17 +44,13 @@ SECTIONS
         __testapp_bin_end = .;
         . = ALIGN((1 << 10));
 
-        __bitmap_buffer_start = .;     
-        *(.data.bitmap_buffer)        
-        __bitmap_buffer_end = .;      
-        . = ALIGN((1 << 10));
-
         *(.data)
     }
 
     . = ALIGN((1<<10));
     __bss_start = .;
     .bss : {
+        *(.bss.bitmap_buffer)
         *(.bss)
     }
     __bss_end = .;
