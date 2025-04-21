@@ -6,6 +6,7 @@
 char getc();
 void putc(char c);
 void sleep(uint64_t ms);
+int execve(char *name, void *elf_addr) ;
 
 uint64_t mutex_test_add();
 uint64_t mutex_test_minus();

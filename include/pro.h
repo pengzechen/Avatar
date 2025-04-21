@@ -15,7 +15,7 @@ typedef struct _process_t {
     list_t threads;        // 任务列表
 
     void* el1_stack;    // el1 的栈
-    void* el0_stack;
+    void* el0_stack;    // el0 的栈
     void* pg_base;      // 进程页表基地址
     void* heap_start;
     void* heap_end;
@@ -35,5 +35,8 @@ typedef struct _process_manager_t {
 process_t *alloc_process(char *name);
 void process_init(process_t *pro, void *elf_addr, uint32_t priority);
 void run_process(process_t *pro);
+
+
+int pro_execve(char *name, void *elf_addr);
 
 #endif // PRO_H

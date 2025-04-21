@@ -9,9 +9,9 @@
 #include "os_cfg.h"
 #include <mem/page.h>
 
+// 下面三个变量仅仅在 alloc_tcb 和 free_tcb 使用
 tcb_t g_task_dec[MAX_TASKS];
 cpu_t g_cpu_dec[MAX_TASKS];
-uint32_t task_count = 0;
 
 static spinlock_t lock;
 static spinlock_t print_lock;
@@ -30,21 +30,41 @@ void task_set_wakeup(tcb_t *task);
  */
 tcb_t *alloc_tcb()
 {
-    if (task_count >= MAX_TASKS)
-        return (tcb_t *)0;
-    tcb_t *task = &g_task_dec[task_count];
-    task->cpu_info = &g_cpu_dec[task_count];
-    task->cpu_info->sys_reg = &cpu_sysregs[task_count];
-    task->id = task_count;
-    task->ctx.tpidr_elx = (uint64_t)task;
-    task->state = TASK_STATE_CREATE;
-    task_count++;
+    static uint32_t task_count = 1;  // 这个数字会不停累加下去
+    for (uint32_t i = 0; i < MAX_TASKS; ++i) {
+        if (g_task_dec[i].id == 0) {  // 找到空闲的 TCB
+            tcb_t *task = &g_task_dec[i];
+            task->cpu_info = &g_cpu_dec[i];
+            task->cpu_info->sys_reg = &cpu_sysregs[i];
+            task->id = task_count++;  // 使用空闲位置，设置有效的 ID
+            task->ctx.tpidr_elx = (uint64_t)task;
+            task->state = TASK_STATE_CREATE;
 
-    list_node_init(&task->all_node);
-    list_node_init(&task->run_node);
-    list_node_init(&task->wait_node);
-    list_insert_last(&task_manager.task_list, &task->all_node);
-    return task;
+            // 初始化任务的链表节点
+            list_node_init(&task->all_node);
+            list_node_init(&task->run_node);
+            list_node_init(&task->wait_node);
+            list_insert_last(&task_manager.task_list, &task->all_node);
+            return task;
+        }
+    }
+    return NULL;  // 如果没有空闲的 TCB，返回 NULL
+}
+
+/*
+ *  释放一个 tcb 块，恢复任务管理结构
+ */
+void free_tcb(tcb_t *task)
+{
+    if (task == NULL)
+        return;
+
+    // 从任务管理的任务列表中移除任务
+    list_delete(&task_manager.task_list, &task->all_node);
+    list_delete(&task_manager.ready_list, &task->run_node);
+    list_delete(&task_manager.sleep_list, &task->wait_node);
+
+    memset(task, 0, sizeof(tcb_t));
 }
 
 tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
@@ -94,10 +114,6 @@ void schedule_init()
 {
     spinlock_init(&lock);
     spinlock_init(&print_lock);
-    for (int i = 0; i < MAX_TASKS; i++)
-    {
-        g_task_dec[i].id = -1;
-    }
 }
 
 void schedule_init_local(tcb_t *task, void *new_sp)
@@ -179,9 +195,11 @@ void schedule()
     if (get_el() == 1) {
         uint64_t val = next_task->pgdir;
         asm volatile("msr ttbr0_el1, %[x]" : : [x] "r"(val));
-        asm volatile("dsb sy; isb");
-        asm volatile("tlbi vmalle1");
-        asm volatile("dsb sy; isb");
+        dsb_sy();
+        isb();
+        tlbi_vmalle1();
+        dsb_sy();
+        isb();
         switch_context(prev_task, next_task);
     } else {
         switch_context_el2(prev_task, next_task);
@@ -283,7 +301,7 @@ void el1_idle_init()
 {
     uint64_t core_id = get_current_cpu_id();
     tcb_t *idel = &task_manager.idle_task[core_id];
-    idel->id = -(core_id + 2);
+    idel->id = -(core_id + 1);
     idel->counter = 10;
     idel->cpu_info = &task_manager.idle_cpu[core_id];
     idel->cpu_info->ctx.elr = (uint64_t)idle_task_el1; // elr_el1

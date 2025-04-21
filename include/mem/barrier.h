@@ -10,9 +10,8 @@
 #define tlbi_vmalle1() __asm__ __volatile__ ("tlbi vmalle1" ::: "memory")
 
 // 常用封装
-#define isb_sy()    isb(sy)
-#define dsb_ish()   dsb(ish)
-// #define dmb_ish()   dmb(ish)
+#define dsb_sy()   dsb(sy)
+
 
 #define mb()		dsb()
 #define rmb()		dsb()

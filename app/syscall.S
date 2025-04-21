@@ -5,6 +5,7 @@
 .global mutex_test_add
 .global mutex_test_minus
 .global mutex_test_print
+.global execve
 
 putc:
     mov x8, #0
@@ -18,6 +19,11 @@ getc:
 
 sleep:
     mov x8, #2
+    svc #0
+    ret
+
+execve:
+    mov x8, #3
     svc #0
     ret
 

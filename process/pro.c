@@ -7,21 +7,31 @@
 #include <task/task.h>
 #include <elf.h>
 #include <list.h>
-
+#include <thread.h>
 static process_t g_pro_dec[MAX_TASKS];
-static uint32_t pro_count = 0;
+
 
 process_t *alloc_process(char *name)
 {
-    process_t *pro = &g_pro_dec[pro_count++];
-    pro->process_id = pro_count;
+    static uint32_t pro_count = 1;
+    for (int i=0; i<MAX_TASKS; i++) {
+        if (g_pro_dec[i].process_id == 0) {
+            process_t *pro = &g_pro_dec[i];
+            pro->process_id = pro_count++;
 
-    memcpy(pro->process_name, name, strlen(name));
-    pro->process_name[PRO_MAX_NAME_LEN] = '\0';
+            memcpy(pro->process_name, name, strlen(name));
+            pro->process_name[PRO_MAX_NAME_LEN] = '\0';
 
-    list_init(&pro->threads);
+            list_init(&pro->threads);
+            return pro;
+        }
+    }
+    return NULL;
+}
 
-    return pro;
+void free_process(process_t *pro) 
+{
+    memset(pro, 0, sizeof(process_t));
 }
 
 // void copy_app_testapp(void)
@@ -126,18 +136,17 @@ static uint64_t load_elf_file(process_t *pro, const char *elf_file_addr, pte_t *
     return elf_hdr->e_entry;
 }
 
-void process_init(process_t *pro, void *elf_addr, uint32_t priority)
+void prepare_vm(process_t **process, void *elf_addr) 
 {
-
-    pro->el1_stack = kalloc_page();
-
+    process_t * pro = *process;
+    
     pro->pg_base = (void *)create_uvm();
 
-    pro->entry = load_elf_file(pro, elf_addr, (pte_t *)pro->pg_base);
-
+    pro->entry = load_elf_file(pro, elf_addr, (pte_t *)pro->pg_base);   // map data 区的一块内存 将来优化这里
     printf("process entry: 0x%x, process stack: 0x%x\n", pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE);
 
     // 处理 EL1 的栈
+    pro->el1_stack = kalloc_page();
     list_node_t * iter = list_first(&get_task_manager()->task_list);   
     while (iter) {
         tcb_t *task = list_node_parent(iter, tcb_t, all_node);
@@ -147,12 +156,18 @@ void process_init(process_t *pro, void *elf_addr, uint32_t priority)
         memory_create_map((pte_t*)task->pgdir, (uint64_t)pro->el1_stack, (uint64_t)pro->el1_stack, 1, 1);  // 帮另一个任务映射一下这个任务的栈
         iter = list_node_next(iter);
     }
-    printf("map this task's el1 stack, 0x%x\n\n", (uint64_t)pro->el1_stack);
+    printf("map this task's el1 stack, 0x%x\n", (uint64_t)pro->el1_stack);
     memory_create_map(pro->pg_base, (uint64_t)pro->el1_stack, (uint64_t)pro->el1_stack, 1, 1);
 
+    // 处理 EL0 的栈
     pro->el0_stack = kalloc_page();
-    printf("map this task's el0 stack, 0x%x\n\n", (uint64_t)pro->el1_stack);
+    printf("map this task's el0 stack, 0x%x\n", (uint64_t)pro->el0_stack);
     memory_create_map(pro->pg_base, (uint64_t)pro->entry + 0x3000, (uint64_t)pro->el0_stack, 1, 0);
+}
+
+void process_init(process_t *pro, void *elf_addr, uint32_t priority)
+{
+    prepare_vm(&pro, elf_addr);
 
     tcb_t *main_thread = create_task((void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE, priority);
 
@@ -177,9 +192,47 @@ void run_process(process_t *pro)
 void exit_process(process_t *pro)
 {
     // 释放内存，把状态设置为退出
+    // 这里 elf 物理地址释放的时候会有问题
+    // 这里 el1 栈释放会重复释放
     destroy_uvm_4level(pro->pg_base);
-    kfree_page(pro->el1_stack);
-    kfree_page(pro->el0_stack);
 
-    pro->process_name[0] = '\0';
+    free_process(pro);
+}
+
+char * get_file_name (char * name) {
+    char * s = name;
+
+    // 定位到结束符
+    while (*s != '\0') {
+        s++;
+    }
+
+    // 反向搜索，直到找到反斜杆或者到文件开头
+    while ((*s != '\\') && (*s != '/') && (s >= name)) {
+        s--;
+    }
+    return s + 1;
+}
+
+int pro_execve(char *name, void *elf_addr) {
+    tcb_t * curr = (tcb_t *)(void *)read_tpidr_el0();
+    process_t * pro = curr->curr_pro;
+
+    strcpy(pro->process_name, get_file_name(name));  // 先把名字换过来
+
+    // 现在开始加载了，先准备应用页表，由于所有操作均在内核区中进行，所以可以直接先切换到新页表
+    uint64_t old_page_dir = (uint64_t)pro->pg_base;
+    
+    // 设置新的页表并切过去
+    prepare_vm(&pro, elf_addr);
+    uint64_t new_page_dir = (uint64_t)pro->pg_base;
+    asm volatile("msr ttbr0_el1, %[x]" : : [x] "r"(new_page_dir));
+    dsb_sy();
+    isb();
+    tlbi_vmalle1();
+    dsb_sy();
+    isb();
+
+    destroy_uvm_4level((pte_t*)(void*)old_page_dir);            // 再释放掉了原进程的内容空间
+    return 0;
 }

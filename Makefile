@@ -14,7 +14,7 @@ SMP = 1
 HV  = n
 
 CFLAGS = -g -c -O0 -fno-pie  -mgeneral-regs-only -fno-builtin-getc -fno-builtin-putc -fexec-charset=GBK\
-	 -fno-builtin-vsnprintf -fno-builtin-snprintf -fno-builtin-printf -DSMP_NUM=$(SMP)
+	 -fno-builtin-vsnprintf -fno-builtin-snprintf -fno-builtin-printf -fno-builtin-execve -DSMP_NUM=$(SMP)
 
 QEMU_ARGS = -m 4G -smp $(SMP) -cpu cortex-a72 -nographic 
 
