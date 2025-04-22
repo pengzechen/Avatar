@@ -49,7 +49,7 @@
 #define MMIO_AREA_GICD  0x8000000UL
 #define MMIO_AREA_GICC  0x8010000UL
 
-#define KERNEL_VMA 0xffff000000000000
+#define KERNEL_VMA 0xffff000000000000ULL
 
 extern uint64_t __heap_flag();
 

@@ -5,6 +5,13 @@
 #include "mem/bitmap.h"
 #include "task/mutex.h"
 #include "mem/page.h"
+#include "os_cfg.h"
+
+// 将物理地址映射到虚拟地址
+#define phys_to_virt(pa) ((void *)((uint64_t)(pa) + KERNEL_VMA))
+
+// 将虚拟地址转换为物理地址
+#define virt_to_phys(va) ((uint64_t)(va) - KERNEL_VMA)
 
 typedef struct _addr_alloc_t {
     mutex_t mutex; // for test
@@ -22,8 +29,8 @@ uint64_t mutex_test_add() ;
 uint64_t mutex_test_minus() ;
 void mutex_test_print();
 
-void * kalloc_page() ;
-void kfree_page(void *addr) ;
+void * kalloc_pages(uint32_t) ;
+void kfree_pages(void *addr, uint32_t pages) ;
 pte_t * create_uvm (void) ;
 uint64_t memory_alloc_page(pte_t * page_dir, uint64_t vaddr, uint64_t size, int perm);  // 为某个进程空间申请一块内存
 uint64_t memory_get_paddr(pte_t * page_dir, uint64_t vaddr);

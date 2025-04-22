@@ -8,6 +8,7 @@
 #include <thread.h>
 #include "os_cfg.h"
 #include <mem/page.h>
+#include <mem/mem.h>
 
 // 下面三个变量仅仅在 alloc_tcb 和 free_tcb 使用
 tcb_t g_task_dec[MAX_TASKS];
@@ -81,7 +82,7 @@ tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
     extern void el0_tesk_entry();
     task->ctx.x30 = (uint64_t)el0_tesk_entry;
     task->ctx.sp_elx = stack_top - sizeof(trap_frame_t);
-    task->sp = (stack_top - PAGE_SIZE);
+    task->sp = (stack_top - PAGE_SIZE * 2);
 
     return task;
 }
@@ -193,7 +194,7 @@ void schedule()
     // printf("next_task page dir: 0x%x\n", next_task->pgdir);
     
     if (get_el() == 1) {
-        uint64_t val = next_task->pgdir;
+        uint64_t val = virt_to_phys(next_task->pgdir);
         asm volatile("msr ttbr0_el1, %[x]" : : [x] "r"(val));
         dsb_sy();
         isb();

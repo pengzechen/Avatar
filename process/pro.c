@@ -70,7 +70,7 @@ static int load_phdr(const char *elf_file_addr, Elf64_Phdr *phdr, pte_t *page_di
         uint64_t paddr = memory_get_paddr(page_dir, vaddr);
 
         // 从文件数据（即内存）中读取当前的段内容
-        memcpy((char *)paddr, segment_start, curr_size);
+        memcpy((char *)phys_to_virt(paddr), segment_start, curr_size);
 
         // 更新剩余数据量和当前虚拟地址
         size -= curr_size;
@@ -146,30 +146,30 @@ void prepare_vm(process_t **process, void *elf_addr)
     printf("process entry: 0x%x, process stack: 0x%x\n", pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE);
 
     // 处理 EL1 的栈
-    pro->el1_stack = kalloc_page();
+    pro->el1_stack = kalloc_pages(2);
     list_node_t * iter = list_first(&get_task_manager()->task_list);   
     while (iter) {
         tcb_t *task = list_node_parent(iter, tcb_t, all_node);
         printf("map other task(%d) el1 stack: 0x%x\n", task->id, task->sp);
-        memory_create_map(pro->pg_base, task->sp, task->sp, 1, 1);  // 要把所有的task的el1栈都映射一下，不然 task_switch 结束的时候会page fault
+        memory_create_map(pro->pg_base, task->sp, virt_to_phys(task->sp), 2, 1);  // 要把所有的task的el1栈都映射一下，不然 task_switch 结束的时候会page fault
         printf("map this task's el1 stack for task(%d), 0x%x\n", task->id, (uint64_t)pro->el1_stack);
-        memory_create_map((pte_t*)task->pgdir, (uint64_t)pro->el1_stack, (uint64_t)pro->el1_stack, 1, 1);  // 帮另一个任务映射一下这个任务的栈
+        memory_create_map((pte_t*)task->pgdir, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 2, 1);  // 帮另一个任务映射一下这个任务的栈
         iter = list_node_next(iter);
     }
     printf("map this task's el1 stack, 0x%x\n", (uint64_t)pro->el1_stack);
-    memory_create_map(pro->pg_base, (uint64_t)pro->el1_stack, (uint64_t)pro->el1_stack, 1, 1);
+    memory_create_map(pro->pg_base, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 2, 1);
 
     // 处理 EL0 的栈
-    pro->el0_stack = kalloc_page();
+    pro->el0_stack = kalloc_pages(1);
     printf("map this task's el0 stack, 0x%x\n", (uint64_t)pro->el0_stack);
-    memory_create_map(pro->pg_base, (uint64_t)pro->entry + 0x3000, (uint64_t)pro->el0_stack, 1, 0);
+    memory_create_map(pro->pg_base, (uint64_t)pro->entry + 0x3000, virt_to_phys(pro->el0_stack), 1, 0);
 }
 
 void process_init(process_t *pro, void *elf_addr, uint32_t priority)
 {
     prepare_vm(&pro, elf_addr);
 
-    tcb_t *main_thread = create_task((void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE, priority);
+    tcb_t *main_thread = create_task((void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE * 2, priority);
 
     main_thread->pgdir = (uint64_t)pro->pg_base;
     main_thread->curr_pro = pro;

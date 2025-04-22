@@ -21,8 +21,6 @@
 // 向下对齐到 bound 边界
 #define DOWN2(size, bound) ((size) & ~((bound) - 1))
 
-// 内核虚拟地址和物理地址转换
-#define PHYS_TO_VIRT(pa) ((void *)((pa) + 0)) // 替换成你实际的转换
 
 #define assert(condition) \
     do { \
@@ -134,18 +132,21 @@ static void addr_free_page(addr_alloc_t *alloc, uint64_t addr, int page_count) {
 
 // ============= 内核内存分配释放 ================
 
-void * kalloc_page() {
-    return (void*)addr_alloc_page(&g_alloc, 1);
+void * kalloc_pages(uint32_t pages) {
+    return phys_to_virt( addr_alloc_page(&g_alloc, pages) );
 }
 
-void kfree_page(void *addr) {
-    addr_free_page(&g_alloc, (uint64_t)addr, 1);
+void kfree_pages(void *addr, uint32_t pages) {
+    addr_free_page(&g_alloc, virt_to_phys(addr), pages);
 }
 
 
 // ============= 用户程序内存分配释放 =================
 
-pte_t *find_pte(pte_t *page_dir, uint64_t vaddr, int alloc) {
+pte_t *find_pte(pte_t *page_dir, // 虚拟地址
+                uint64_t vaddr, 
+                int alloc)       // 返回虚拟地址
+{    
 
     // printf("find_pte called for vaddr: 0x%lx\n", vaddr);
 
@@ -163,11 +164,11 @@ pte_t *find_pte(pte_t *page_dir, uint64_t vaddr, int alloc) {
 
         pgd->pte = (pud_phys >> 12) << 12 | 0x3; // valid + table
         // printf("    Allocated PUD at: 0x%lx, setting PGD entry to: 0x%lx\n", pud_phys, pgd->pte);
-        memset((void *)(pud_phys), 0, 0x1000);
+        memset(phys_to_virt(pud_phys), 0, 0x1000);
     }
 
     // 获取PUD表项
-    pte_t *pud = (pte_t *)(void*)(uint64_t)((pgd->table.next_table_addr) << 12ULL);
+    pte_t *pud = (pte_t *)phys_to_virt( (uint64_t)((pgd->table.next_table_addr) << 12ULL) );
     // printf("    PUD entry: 0x%lx\n", pud->pte);
 
     pte_t *pud_entry = &pud[GET_PUD_INDEX(vaddr)];
@@ -183,11 +184,11 @@ pte_t *find_pte(pte_t *page_dir, uint64_t vaddr, int alloc) {
 
         pud_entry->pte = (pmd_phys >> 12) << 12 | 0x3;
         // printf("    Allocated PMD at: 0x%lx, setting PUD entry to: 0x%lx\n", pmd_phys, pud_entry->pte);
-        memset((void *)(pmd_phys), 0, 0x1000);
+        memset(phys_to_virt(pmd_phys), 0, 0x1000);
     }
 
     // 获取PMD表项
-    pte_t *pmd = (pte_t *)(void*)(uint64_t)((pud_entry->table.next_table_addr) << 12ULL);
+    pte_t *pmd = (pte_t *)phys_to_virt( (uint64_t)((pud_entry->table.next_table_addr) << 12ULL) );
     // printf("    PMD entry: 0x%lx\n", pmd->pte);
 
     pte_t *pmd_entry = &pmd[GET_PMD_INDEX(vaddr)];
@@ -203,13 +204,13 @@ pte_t *find_pte(pte_t *page_dir, uint64_t vaddr, int alloc) {
 
         pmd_entry->pte = (pt_phys >> 12) << 12 | 0x3;
         // printf("    Allocated Page Table at: 0x%lx, setting PMD entry to: 0x%lx\n", pt_phys, pmd_entry->pte);
-        memset((void *)(pt_phys), 0, 0x1000);
+        memset(phys_to_virt(pt_phys), 0, 0x1000);
     }
 
     // 获取PTE表项
-    pte_t *pte_base = (pte_t *)(void*)(uint64_t)((pmd_entry->table.next_table_addr) << 12ULL);
+    pte_t *pte_base = (pte_t *)phys_to_virt( (uint64_t)((pmd_entry->table.next_table_addr) << 12ULL) );
     // printf("    PTE Index: %d, PTE entry: 0x%lx\n", GET_PTE_INDEX(vaddr), pte_base[GET_PTE_INDEX(vaddr)].pte);
-
+    
     return &pte_base[GET_PTE_INDEX(vaddr)];
 }
 
@@ -274,11 +275,13 @@ int memory_create_map(pte_t *page_dir, uint64_t vaddr, uint64_t paddr, int count
     return 0;
 }
 
-pte_t * current_page_dir() {
+pte_t * current_page_dir() // 返回物理地址
+{
     return (pte_t *)read_ttbr0_el1();
 }
 
-uint64_t memory_get_paddr(pte_t * page_dir, uint64_t vaddr) {
+uint64_t memory_get_paddr(pte_t * page_dir, uint64_t vaddr) // 返回物理地址
+{
     
     pte_t * pte = find_pte(page_dir, vaddr, 0);
     
@@ -289,7 +292,11 @@ uint64_t memory_get_paddr(pte_t * page_dir, uint64_t vaddr) {
     return (pte->l3_page.pfn << 12) + (vaddr & (PAGE_SIZE - 1));
 }
 
-uint64_t memory_alloc_page(pte_t * page_dir, uint64_t vaddr, uint64_t size, int perm) {
+uint64_t memory_alloc_page(pte_t * page_dir,  // 虚拟地址
+                            uint64_t vaddr, 
+                            uint64_t size, 
+                            int perm) 
+{
     uint64_t curr_vaddr = vaddr;
     int page_count = UP2(size, PAGE_SIZE) / PAGE_SIZE;
     vaddr = DOWN2(vaddr, PAGE_SIZE);
@@ -321,14 +328,14 @@ void memory_free_page (pte_t * page_dir, uint64_t addr) {
     
     pte_t * pte = find_pte(page_dir, addr, 0);
 
-    addr_free_page(&g_alloc, (pte->l3_page.pfn << 12), 1);
+    addr_free_page(&g_alloc, (pte->l3_page.pfn << 12), 1);  // 释放的是物理地址
 
-    pte->pte = 0;
+    pte->pte = 0;  // 操作的是虚拟地址，但是物理内存也变了
 }
 
 
 pte_t * create_uvm (void) {
-    pte_t * page_dir = (pte_t *)(void*)addr_alloc_page(&g_alloc, 1);
+    pte_t * page_dir = (pte_t *)phys_to_virt( addr_alloc_page(&g_alloc, 1) );
     if (page_dir == 0) {
         return 0;
     }
@@ -340,6 +347,7 @@ pte_t * create_uvm (void) {
     if (end % g_alloc.page_size != 0) {
         end = (end + g_alloc.page_size - 1) & ~(g_alloc.page_size - 1);
     }
+    // 这里start和end计算出来的都是物理地址
 
     printf("map kernel start: 0x%x, end: 0x%x\n", start, end);
     
@@ -373,7 +381,7 @@ void _destroy_page_table_vm(pte_t *table, int level) {
             continue;
 
         uint64_t next_table_phys = entry->table.next_table_addr << 12;
-        void *next_table = (void *)next_table_phys;
+        void *next_table = phys_to_virt(next_table_phys);
 
         // 输出当前页表项的信息
         printf("Level %d, Entry %d: is_valid = %d, is_table = %d, Next Table Address = 0x%lx\n",
@@ -415,7 +423,7 @@ void _destroy_page_table(pte_t *table, int level) {
             continue;
 
         uint64_t next_table_phys = entry->table.next_table_addr << 12;
-        void *next_table = (void *)next_table_phys;
+        void *next_table = phys_to_virt(next_table_phys);
 
         // 输出当前页表项的信息
         printf("Level %d, Entry %d: is_valid = %d, is_table = %d, Next Table Address = 0x%lx\n",
@@ -445,19 +453,19 @@ bool _copy_page_table(pte_t *src_table, pte_t *dst_table, int level) {
             if (!dst_phys) return false;
 
             // 拷贝页内容
-            memcpy((void *)dst_phys, (void *)src_phys, PAGE_SIZE);
+            memcpy(phys_to_virt(dst_phys), phys_to_virt(src_phys), PAGE_SIZE);
 
             // 设置目标页表项
             dst_table[i].pte = (dst_phys >> 12 << 12) | (src_entry->pte & 0xFFF);
         } else {
             // 中间层级：创建目标子表并递归拷贝
             uint64_t src_next_phys = src_entry->table.next_table_addr << 12;
-            pte_t *src_next = (pte_t *)src_next_phys;
+            pte_t *src_next = (pte_t *)phys_to_virt( src_next_phys );
 
             uint64_t dst_next_phys = addr_alloc_page(&g_alloc, 1);
             if (!dst_next_phys) return false;
 
-            pte_t *dst_next = (pte_t *)dst_next_phys;
+            pte_t *dst_next = (pte_t *)phys_to_virt( dst_next_phys );
             memset(dst_next, 0, PAGE_SIZE);
 
             // 设置当前页表项指向新分配的页表
@@ -502,7 +510,7 @@ void copydata_to_uvm(pte_t * page_dir, uint64_t vaddr, uint64_t paddr, uint64_t 
         uint64_t page_paddr = page_pfn << 12;
 
         // 虚拟页起始地址（用于写入）
-        uint8_t *dest = (uint8_t *)PHYS_TO_VIRT(page_paddr);
+        uint8_t *dest = (uint8_t *)phys_to_virt(page_paddr);
 
         // 当前页剩余空间
         uint64_t page_offset = curr_vaddr & (PAGE_SIZE - 1);
@@ -510,7 +518,7 @@ void copydata_to_uvm(pte_t * page_dir, uint64_t vaddr, uint64_t paddr, uint64_t 
         uint64_t copy_len = (size - offset > page_remain) ? page_remain : (size - offset);
 
         // 源地址
-        uint8_t *src = (uint8_t *)PHYS_TO_VIRT(paddr + offset);
+        uint8_t *src = (uint8_t *)phys_to_virt(paddr + offset);
 
         // 拷贝数据
         memcpy(dest + page_offset, src, copy_len);

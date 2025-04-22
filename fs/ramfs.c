@@ -326,7 +326,7 @@ int ramfs_unlink(const char *name) {
                 while (content != NULL) {
                     // 计算当前数据块的实际内存地址
                     void *data_block = (void *)((uint64_t)fs_head + (uint64_t)content->addr_offset);
-                    kfree_page(data_block);  // 释放数据块
+                    kfree_pages(data_block, 1);  // 释放数据块
 
                     content = content->next;  // 继续处理下一个数据块
                 }
