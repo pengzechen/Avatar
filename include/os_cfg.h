@@ -51,7 +51,8 @@
 
 #define KERNEL_VMA 0xffff000000000000ULL
 
-extern uint64_t __heap_flag();
+extern char __kernal_start[];
+extern char __heap_flag[];
 
 /* 任务定义区 */
 #define MAX_TASKS       64

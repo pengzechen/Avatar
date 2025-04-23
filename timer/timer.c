@@ -21,7 +21,7 @@ void handle_timer_interrupt(uint64_t *sp)
     //     printf("timer: 10s\n");
     // }
     // printf("core: %d, handle irq exception\n", get_current_cpu_id());
-    // printf("get daif: %x\n", get_daif());
+    // printf("get daif: %llx\n", get_daif());
     timer_tick_schedule(sp);
     // schedule();
 

@@ -12,8 +12,8 @@ void handle_sync_exception_el3(uint64_t *stack_pointer)
 
     int ec = ((el3_esr >> 26) & 0b111111);
 
-    printf("        el1 esr: %x\n", el3_esr);
-    printf("        ec: %x\n", ec);
+    printf("        el1 esr: %llx\n", el3_esr);
+    printf("        ec: %llx\n", ec);
 
     if (ec == 0x17)
     { // smc
@@ -24,14 +24,14 @@ void handle_sync_exception_el3(uint64_t *stack_pointer)
     for (int i = 0; i < 31; i++)
     {
         uint64_t value = context->r[i];
-        printf("General-purpose register: %d, value: %x\n", i, value);
+        printf("General-purpose register: %d, value: %llx\n", i, value);
     }
 
     uint64_t elr_el1_value = context->elr;
     uint64_t usp_value = context->usp;
     uint64_t spsr_value = context->spsr;
 
-    printf("usp: %x, elr: %x, spsr: %x\n", usp_value, elr_el1_value, spsr_value);
+    printf("usp: %llx, elr: %llx, spsr: %llx\n", usp_value, elr_el1_value, spsr_value);
 
     while (1)
         ;

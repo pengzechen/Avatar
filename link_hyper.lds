@@ -7,7 +7,7 @@ SECTIONS
     /* 设置内核加载地址  */
     /* . = 0x70200000;   */
     . = 0x40080000;  
-
+    PROVIDE(__kernal_start = .);
     .text : {
         *(.text)
     }
@@ -57,5 +57,5 @@ SECTIONS
 
     . = ALIGN((1 << 14));
     ept_L1 = .;
-    __heap_flag = .;
+    PROVIDE(__heap_flag = .);
 }

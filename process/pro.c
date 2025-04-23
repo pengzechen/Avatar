@@ -39,9 +39,9 @@ void free_process(process_t *pro)
 //     size_t size = (size_t)(__testapp_bin_end - __testapp_bin_start);
 //     unsigned long *from = (unsigned long *)__testapp_bin_start;
 //     unsigned long *to = (unsigned long *)0x90000000;
-//     printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n", from, to, size, from[0], from[1]);
+//     printf("Copy app image from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n", from, to, size, from[0], from[1]);
 //     memcpy(to, from, size);
-//     printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
+//     printf("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
 // }
 
 static int load_phdr(const char *elf_file_addr, Elf64_Phdr *phdr, pte_t *page_dir)
@@ -143,25 +143,25 @@ void prepare_vm(process_t **process, void *elf_addr)
     pro->pg_base = (void *)create_uvm();
 
     pro->entry = load_elf_file(pro, elf_addr, (pte_t *)pro->pg_base);   // map data 区的一块内存 将来优化这里
-    printf("process entry: 0x%x, process stack: 0x%x\n", pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE);
+    printf("process entry: 0x%llx, process stack: 0x%llx\n", pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE);
 
     // 处理 EL1 的栈
     pro->el1_stack = kalloc_pages(2);
     list_node_t * iter = list_first(&get_task_manager()->task_list);   
     while (iter) {
         tcb_t *task = list_node_parent(iter, tcb_t, all_node);
-        printf("map other task(%d) el1 stack: 0x%x\n", task->id, task->sp);
+        printf("map other task(%d) el1 stack: 0x%llx\n", task->id, task->sp);
         memory_create_map(pro->pg_base, task->sp, virt_to_phys(task->sp), 2, 1);  // 要把所有的task的el1栈都映射一下，不然 task_switch 结束的时候会page fault
-        printf("map this task's el1 stack for task(%d), 0x%x\n", task->id, (uint64_t)pro->el1_stack);
+        printf("map this task's el1 stack for task(%d), 0x%llx\n", task->id, (uint64_t)pro->el1_stack);
         memory_create_map((pte_t*)task->pgdir, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 2, 1);  // 帮另一个任务映射一下这个任务的栈
         iter = list_node_next(iter);
     }
-    printf("map this task's el1 stack, 0x%x\n", (uint64_t)pro->el1_stack);
+    printf("map this task's el1 stack, 0x%llx\n", (uint64_t)pro->el1_stack);
     memory_create_map(pro->pg_base, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 2, 1);
 
     // 处理 EL0 的栈
     pro->el0_stack = kalloc_pages(1);
-    printf("map this task's el0 stack, 0x%x\n", (uint64_t)pro->el0_stack);
+    printf("map this task's el0 stack, 0x%llx\n", (uint64_t)pro->el0_stack);
     memory_create_map(pro->pg_base, (uint64_t)pro->entry + 0x3000, virt_to_phys(pro->el0_stack), 1, 0);
 }
 

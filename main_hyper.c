@@ -50,7 +50,7 @@ void vtcr_init(void)
     vtcr_val |= VTCR_T0SZ(64 - 32); /* 32 bit IPA */
     vtcr_val |= VTCR_SL0(0x1);      /* P2M starts at first level */
 
-    printf("vtcr val: 0x%x\n", vtcr_val);
+    printf("vtcr val: 0x%llx\n", vtcr_val);
     write_vtcr_el2(vtcr_val);
 }
 
@@ -61,7 +61,7 @@ static void guest_trap_init(void)
     hcr = read_hcr_el2();
     // WRITE_SYSREG(hcr | HCR_TGE, HCR_EL2);
     // hcr = READ_SYSREG(HCR_EL2);
-    printf("HCR : 0x%x\n", hcr);
+    printf("HCR : 0x%llx\n", hcr);
     isb();
 }
 
@@ -77,10 +77,10 @@ void copy_guest(void)
     size_t size = (size_t)(__guset_bin_end - __guset_bin_start);
     unsigned long *from = (unsigned long *)__guset_bin_start;
     unsigned long *to = (unsigned long *)GUEST_KERNEL_START;
-    printf("Copy guest kernel image from %x to %x (%d bytes): 0x%x / 0x%x\n",
+    printf("Copy guest kernel image from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
            from, to, size, from[0], from[1]);
     memcpy(to, from, size);
-    printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
+    printf("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
 }
 
 void copy_dtb(void)
@@ -88,10 +88,10 @@ void copy_dtb(void)
     size_t size = (size_t)(__guset_dtb_end - __guset_dtb_start);
     unsigned long *from = (unsigned long *)__guset_dtb_start;
     unsigned long *to = (unsigned long *)GUEST_DTB_START;
-    printf("Copy guest dtb from %x to %x (%d bytes): 0x%x / 0x%x\n",
+    printf("Copy guest dtb from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
            from, to, size, from[0], from[1]);
     memcpy(to, from, size);
-    printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
+    printf("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
 }
 
 void copy_fs(void)
@@ -99,10 +99,10 @@ void copy_fs(void)
     size_t size = (size_t)(__guset_fs_end - __guset_fs_start);
     unsigned long *from = (unsigned long *)__guset_fs_start;
     unsigned long *to = (unsigned long *)GUEST_FS_START;
-    printf("Copy guest fs from %x to %x (%d bytes): 0x%x / 0x%x\n",
+    printf("Copy guest fs from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
            from, to, size, from[0], from[1]);
     memcpy(to, from, size);
-    printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
+    printf("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
 }
 
 extern void test_guest();
@@ -156,9 +156,9 @@ void hyper_main()
     vm_init();
 
     printf("\nHello Hyper:\nthere's some hyper tests: \n");
-    printf("scrlr_el2: 0x%x\n", read_sctlr_el2());
-    printf("hcr_el2: 0x%x\n", read_hcr_el2());
-    printf("read_vttbr_el2: 0x%x\n", read_vttbr_el2());
+    printf("scrlr_el2: 0x%llx\n", read_sctlr_el2());
+    printf("hcr_el2: 0x%llx\n", read_hcr_el2());
+    printf("read_vttbr_el2: 0x%llx\n", read_vttbr_el2());
     printf("cacheline_bytes: %d\n", cacheline_bytes);
     printf("\n");
 

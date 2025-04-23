@@ -1,40 +1,40 @@
 
 #include "syscall.h"
 
-// int main()
-// {
-//     while(1) {
-//         for (int i = 0; i < 1000; i++) {
+int main()
+{
+    while(1) {
+        for (int i = 0; i < 1000; i++) {
                 
-//             uint64_t x = mutex_test_add();
-//             // putc('A');
-//             // putc('B');
-//             // putc('C');
-//             // putc('D');
-//             // putc('E');
-//             // putc('F');
-//             // putc('G');
-//             // putc('H');
-//             // putc('I');
-//             // putc('J');
-//             // putc('K');
-//             // putc('L');
-//             // putc('M');
-//             // putc('\r');
-//             // putc('\n');
-//             // sleep(20);
-//             // while(1);
-//             // ;
-//         }
-//         mutex_test_print();
-//     }
-//     sleep(10000000);
+            uint64_t x = mutex_test_add();
+            // putc('A');
+            // putc('B');
+            // putc('C');
+            // putc('D');
+            // putc('E');
+            // putc('F');
+            // putc('G');
+            // putc('H');
+            // putc('I');
+            // putc('J');
+            // putc('K');
+            // putc('L');
+            // putc('M');
+            // putc('\r');
+            // putc('\n');
+            // sleep(20);
+            // while(1);
+            // ;
+        }
+        mutex_test_print();
+    }
+    sleep(10000000);
 
-//     return 0;
-// }
-
-int main() {
-
-    int x = execve("test", (void*)0x42620400);
     return 0;
 }
+
+// int main() {
+
+//     int x = execve("test", (void*)0x42620400);
+//     return 0;
+// }

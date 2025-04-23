@@ -20,7 +20,7 @@ void thread_info_init(struct thread_info *ti, unsigned int flags, int id)
 void start_secondary_cpus()
 {
     thread_info_init((struct thread_info *)(_stack_top - STACK_SIZE), 0, 0);
-    printf("core 0 thread info addr: %x\n", (struct thread_into *)(void *)(_stack_top - STACK_SIZE));
+    printf("core 0 thread info addr: %llx\n", (struct thread_into *)(void *)(_stack_top - STACK_SIZE));
 
     for (int i = 1; i < SMP_NUM; i++)
     {
@@ -38,6 +38,6 @@ void start_secondary_cpus()
                 ;
         
         thread_info_init((struct thread_info *)(_stack_top_second - STACK_SIZE * i), 0, i);
-        printf("core %d thread info addr: %x\n", i, (void *)(_stack_top_second - STACK_SIZE * i));
+        printf("core %d thread info addr: %llx\n", i, (void *)(_stack_top_second - STACK_SIZE * i));
     }
 }

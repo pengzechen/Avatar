@@ -55,9 +55,9 @@ void vgicd_write(ept_violation_info_t *info, trap_frame_t *el2_ctx, void *paddr)
 
     // 从 MMIO 地址读取数据
     dst = (unsigned long *)(unsigned long)paddr;
-    printf("(%d bytes) 0x%x  R%d\n", (unsigned long)len, *dst, (unsigned long)reg_num);
+    printf("(%d bytes) 0x%llx  R%d\n", (unsigned long)len, *dst, (unsigned long)reg_num);
 
-    printf("old data: 0x%x\n", *dst);
+    printf("old data: 0x%llx\n", *dst);
     // 将数据写入寄存器或进行其他必要的操作
     if (reg_num != 30)
     {
@@ -66,7 +66,7 @@ void vgicd_write(ept_violation_info_t *info, trap_frame_t *el2_ctx, void *paddr)
     // 确保所有更改都能被看到
     dsb(sy);
     isb();
-    printf("new data: 0x%x\n", *dst);
+    printf("new data: 0x%llx\n", *dst);
 }
 
 void vgicd_read(ept_violation_info_t *info, trap_frame_t *el2_ctx, void *paddr)
@@ -88,16 +88,16 @@ void vgicd_read(ept_violation_info_t *info, trap_frame_t *el2_ctx, void *paddr)
 
     src = (unsigned long *)(unsigned long)paddr;
     dat = *src;
-    printf("(%d bytes) 0x%x R%d\n", (unsigned long)len, *src, (unsigned long)reg_num);
+    printf("(%d bytes) 0x%llx R%d\n", (unsigned long)len, *src, (unsigned long)reg_num);
 
-    printf("old data: 0x%x\n", *r);
+    printf("old data: 0x%llx\n", *r);
     if (reg_num != 30)
     {
         *(unsigned long *)buf = dat;
     }
     dsb(sy);
     isb();
-    printf("new data: 0x%x\n", *r);
+    printf("new data: 0x%llx\n", *r);
 
     // spin_unlock(&vcpu.lock);
 }
@@ -123,7 +123,7 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
                 // r = &vcpu.pctx->r[reg_num];
                 int r = el2_ctx->r[reg_num];
                 int len = 1 << (info->hsr.dabt.size & 0x00000003);
-                printf("gpa: %x, r: %x, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
+                printf("gpa: %llx, r: %llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
 
                 // 给它最高优先级
                 gic_enable_int(HIGHEST_BIT_POSITION(r), 0);
@@ -138,7 +138,7 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
                 int len = 1 << (info->hsr.dabt.size & 0x00000003);
 
                 int id = ((gpa - GICD_ISENABLER(0)) / 0x4) * 32;
-                printf("gpa: %x, r: %x, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
+                printf("gpa: %llx, r: %llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
 
                 // 给它最高优先级
                 gic_enable_int(HIGHEST_BIT_POSITION(r) + id, 0);
@@ -199,7 +199,7 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
             else
             {
                 print_info("# unsupported access\n");
-                printf("gpa: 0x%x\n", gpa);
+                printf("gpa: 0x%llx\n", gpa);
             }
         }
         else
@@ -295,7 +295,7 @@ void vgic_inject(uint32_t vector)
     uint32_t pri = gic_lr_read_pri(mask);
     uint32_t irq_no = gic_lr_read_vid(mask);
 
-    // printf("is_empty: 0x%x, is_active: 0x%x, pri: 0x%x, irq_no: %d\n", is_empty, is_active, pri, irq_no);
+    // printf("is_empty: 0x%llx, is_active: 0x%llx, pri: 0x%llx, irq_no: %d\n", is_empty, is_active, pri, irq_no);
 
     for (int i = 0; i < GICH_LR_NUM; i++)
     {

@@ -24,7 +24,7 @@ void handle_sync_exception(uint64_t *stack_pointer)
     { // svc
         // enable_interrupts();
         // printf("This is svc call handler\n");
-        // printf("svc number: %x\n", el1_ctx->r[8]);
+        // printf("svc number: %llx\n", el1_ctx->r[8]);
         uint64_t (*func)(void*) = (uint64_t (*)(void*)) syscall_table[el1_ctx->r[8]];
         // 传进去的应该是一个指针，指针偏移 0-7 是参数。现在只支持最多 8 个参数
         uint64_t ret = func((void*)el1_ctx);
@@ -42,18 +42,18 @@ void handle_sync_exception(uint64_t *stack_pointer)
 
     /* =============== UnDefined ================== */
     if (get_current_cpu_id() == 0) {
-        printf("el1 esr: %x\n", el1_esr);
-        printf("ec: %x\n", ec);
+        printf("el1 esr: %llx\n", el1_esr);
+        printf("ec: %llx\n", ec);
         printf("This is handle_sync_exception: \n");
         for (int i = 0; i < 31; i++)
         {
             uint64_t value = el1_ctx->r[i];
-            printf("General-purpose register: %d, value: %x\n", i, value);
+            printf("General-purpose register: %d, value: %llx\n", i, value);
         }
         uint64_t elr_el1_value = el1_ctx->elr;
         uint64_t usp_value = el1_ctx->usp;
         uint64_t spsr_value = el1_ctx->spsr;
-        printf("usp: %x, elr: %x, spsr: %x\n", usp_value, elr_el1_value, spsr_value);
+        printf("usp: %llx, elr: %llx, spsr: %llx\n", usp_value, elr_el1_value, spsr_value);
     }
     while (1)
         ;

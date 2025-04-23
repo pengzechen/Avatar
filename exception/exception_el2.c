@@ -20,14 +20,14 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
 
     int ec = ((el2_esr >> 26) & 0b111111);
 
-    // printf("        el2 esr: %x, ec: %x\n", el2_esr, ec);
+    // printf("        el2 esr: %llx, ec: %llx\n", el2_esr, ec);
 
     union hsr hsr = { .bits = el2_esr };
     save_cpu_ctx(ctx_el2);
     if (ec == 0x1) {
         // wfi
         ept_violation_info_t info;
-        //printf("Prefetch abort : %x\n", hsr.bits);
+        //printf("Prefetch abort : %llx\n", hsr.bits);
         info.hsr.bits = hsr.bits;
         print_info("            This is wfi trap handler\n");
         advance_pc(&info, ctx_el2);
@@ -41,7 +41,7 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
     else if (ec == 0x17)
     { // smc
         ept_violation_info_t info;
-        //printf("Prefetch abort : %x\n", hsr.bits);
+        //printf("Prefetch abort : %llx\n", hsr.bits);
         info.hsr.bits = hsr.bits;
         print_info("            This is smc call handler\n");
         advance_pc(&info, ctx_el2);
@@ -55,12 +55,12 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
     { // data abort
         //print_info("            This is data abort handler\n");
         ept_violation_info_t info;
-        //printf("Prefetch abort : %x\n", hsr.bits);
+        //printf("Prefetch abort : %llx\n", hsr.bits);
         info.hsr.bits = hsr.bits;
         info.reason = PREFETCH;
         uint64_t hpfar = read_hpfar_el2();  // 目前 hpfar 和 far 读到的内容不同，少了8位
         uint64_t far = read_far_el2();
-        // printf("far: 0x%x, hpfar: 0x%x\n", far, hpfar);
+        // printf("far: 0x%llx, hpfar: 0x%llx\n", far, hpfar);
         info.gpa = (far & 0xfff) | (hpfar << 8);
         info.gva = far;
 
@@ -74,14 +74,14 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
     for (int i = 0; i < 31; i++)
     {
         uint64_t value = ctx_el2->r[i];
-        printf("General-purpose register: %d, value: %x\n", i, value);
+        printf("General-purpose register: %d, value: %llx\n", i, value);
     }
 
     uint64_t elr_el1_value = ctx_el2->elr;
     uint64_t usp_value = ctx_el2->usp;
     uint64_t spsr_value = ctx_el2->spsr;
 
-    printf("usp: %x, elr: %x, spsr: %x\n", usp_value, elr_el1_value, spsr_value);
+    printf("usp: %llx, elr: %llx, spsr: %llx\n", usp_value, elr_el1_value, spsr_value);
 
     while (1)
         ;
@@ -121,20 +121,20 @@ void invalid_exception_el2(uint64_t *stack_pointer, uint64_t kind, uint64_t sour
 
     int ec = ((el2_esr >> 26) & 0b111111);
 
-    printf("        el2 esr: %x\n", el2_esr);
-    printf("        ec: %x\n", ec);
+    printf("        el2 esr: %llx\n", el2_esr);
+    printf("        ec: %llx\n", ec);
 
     for (int i = 0; i < 31; i++)
     {
         uint64_t value = context->r[i];
-        printf("General-purpose register: %d, value: %x\n", i, value);
+        printf("General-purpose register: %d, value: %llx\n", i, value);
     }
 
     uint64_t elr_el1_value = context->elr;
     uint64_t usp_value = context->usp;
     uint64_t spsr_value = context->spsr;
 
-    printf("usp: %x, elr: %x, spsr: %x\n", usp_value, elr_el1_value, spsr_value);
+    printf("usp: %llx, elr: %llx, spsr: %llx\n", usp_value, elr_el1_value, spsr_value);
 
 
     while(1)

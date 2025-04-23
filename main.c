@@ -19,10 +19,10 @@ void test_mem()
 {
     uint32_t mask = 97;
     void *addr = (void *)0x9000000;
-    printf("addr: 0x%x\n", addr);
-    printf("before value: 0x%x\n", *(const volatile uint32_t *)((addr)));
+    printf("addr: 0x%llx\n", addr);
+    printf("before value: 0x%llx\n", *(const volatile uint32_t *)((addr)));
     *(volatile uint32_t *)addr = mask;
-    printf("after  value: 0x%x\n", *(const volatile uint32_t *)((addr)));
+    printf("after  value: 0x%llx\n", *(const volatile uint32_t *)((addr)));
 
     while (1)
         ;
@@ -54,10 +54,10 @@ void main_entry()
     if (get_current_cpu_id() == 0)
     {
         alloctor_init();
-        kmem_test();
+        // kmem_test();
         schedule_init();
         task_manager_init();
-        ramfs_test();
+        // ramfs_test();
         
         process_t * pro1 = alloc_process("system");
         process_init(pro1, __testapp_bin_start, 1);

@@ -112,7 +112,7 @@ void gic_enable_int(int vector, int pri)
 {
     int reg = vector >> 5;                     //  vec / 32
     int mask = 1 << (vector & ((1 << 5) - 1)); //  vec % 32
-    printf("set enable: reg: %d, mask: 0x%x\n", reg, mask);
+    printf("set enable: reg: %d, mask: 0x%llx\n", reg, mask);
 
     write32(mask, (void *)GICD_ISENABLER(reg));
 
@@ -128,7 +128,7 @@ void gic_disable_int(int vector)
 {
     int reg = vector >> 5;                     //  vec / 32
     int mask = 1 << (vector & ((1 << 5) - 1)); //  vec % 32
-    printf("disable: reg: %d, mask: 0x%x\n", reg, mask);
+    printf("disable: reg: %d, mask: 0x%llx\n", reg, mask);
 
     write32(mask, (void *)GICD_ICENABLER(reg));
 }
@@ -141,7 +141,7 @@ int gic_get_enable(int vector)
 
     uint32_t val = read32((void *)GICD_ISENABLER(reg));
 
-    printf("get enable: reg: %x, mask: %x, value: %x\n", reg, mask, val);
+    printf("get enable: reg: %llx, mask: %llx, value: %llx\n", reg, mask, val);
     return val & mask != 0;
 }
 

@@ -57,9 +57,9 @@ void guest_ept_init(void)
 	ept_L3_root = &ept_L2_root[LPAE_L2_SIZE];
 
 	printf("Initialize EPT...\n");
-	printf("EPT root address : 0x%x\n", ept_L1);
-	printf("ept_L2_root : 0x%x\n", ept_L2_root);
-	printf("ept_L3_root : 0x%x\n", ept_L3_root);
+	printf("EPT root address : 0x%llx\n", ept_L1);
+	printf("ept_L2_root : 0x%llx\n", ept_L2_root);
+	printf("ept_L3_root : 0x%llx\n", ept_L3_root);
 	printf("LPAE_L1_SIZE : %d\n", LPAE_L1_SIZE);
 	printf("LPAE_L2_SIZE : %d\n", LPAE_L2_SIZE);
 	printf("LPAE_L3_SIZE : %d\n", LPAE_L3_SIZE);
@@ -79,7 +79,7 @@ void guest_ept_init(void)
 		{
 			lpae_t entry_l2;
 			lpae_t *ept_l3 = &ept_L3_root[LPAE_ENTRIES * LPAE_ENTRIES * index_l1 + LPAE_ENTRIES * index_l2];
-			// printf("(EPT_L3)0x%x - %d/%d (%d)\n",ept_l3, index_l1,index_l2, LPAE_L2_SIZE * LPAE_ENTRIES * index_l1  + LPAE_ENTRIES * index_l2);
+			// printf("(EPT_L3)0x%llx - %d/%d (%d)\n",ept_l3, index_l1,index_l2, LPAE_L2_SIZE * LPAE_ENTRIES * index_l1  + LPAE_ENTRIES * index_l2);
 
 			/* Set second level page table entries */
 			entry_l2.bits = 0;
@@ -125,15 +125,15 @@ void guest_ept_init(void)
 				//   if(pept != &ept_l3[index_l3])
 				//   {
 				//     printf("(Index)%d/%d/%d - ", index_l1,index_l2,index_l3);
-				//     printf("(L1)0x%x - ",(unsigned long)entry_l1.bits);
-				//     printf("(L2Adr)0x%x - ",(unsigned long)&ept_l2[index_l2]);
-				//     printf("(L2)0x%x - ",(unsigned long)entry_l2.bits);
-				//     printf("(L3Adr)0x%x - ",(unsigned long)&ept_l3[index_l3]);
-				//     printf("(L3)0x%x - ",(unsigned long)entry_l3.bits);
-				//     printf("(GPA)0x%x - ",(unsigned long)gpa);
+				//     printf("(L1)0x%llx - ",(unsigned long)entry_l1.bits);
+				//     printf("(L2Adr)0x%llx - ",(unsigned long)&ept_l2[index_l2]);
+				//     printf("(L2)0x%llx - ",(unsigned long)entry_l2.bits);
+				//     printf("(L3Adr)0x%llx - ",(unsigned long)&ept_l3[index_l3]);
+				//     printf("(L3)0x%llx - ",(unsigned long)entry_l3.bits);
+				//     printf("(GPA)0x%llx - ",(unsigned long)gpa);
 				//     printf("Error - ");
-				//     printf("(EPT)0x%x - ",ept_l3);
-				//     printf("(PAddr)0x%x - (PVAL)0x%x\n",pept,(unsigned long)pept->bits);
+				//     printf("(EPT)0x%llx - ",ept_l3);
+				//     printf("(PAddr)0x%llx - (PVAL)0x%llx\n",pept,(unsigned long)pept->bits);
 				//   }
 				// }
 				gpa += (4 * 1024); /* 4KB page frame */
@@ -188,14 +188,14 @@ void data_abort_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 	unsigned long tmp;
 
 	// printf("EPT Violation : %s\n", info->reason == PREFETCH ? "prefetch" : "data");
-	// printf("PC : %x\n", el2_ctx->elr);
-	// printf("GVA : 0x%x\n", info->gva);
-	// printf("GPA : 0x%x\n", (unsigned long)info->gpa);
+	// printf("PC : %llx\n", el2_ctx->elr);
+	// printf("GVA : 0x%llx\n", info->gva);
+	// printf("GPA : 0x%llx\n", (unsigned long)info->gpa);
 	// printf("Register : R%d\n", info->hsr.dabt.reg);
 
 	ept = get_ept_entry(info->gpa);
 	tmp = ept->bits & 0xFFFFFFFF;
-	// printf("EPT Entry : 0x%x(0x%x)\n", ept, tmp);
+	// printf("EPT Entry : 0x%llx(0x%llx)\n", ept, tmp);
 	/*
 	if (handle_mmio(info, el2_ctx))
 	{
@@ -223,7 +223,7 @@ void data_abort_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 	//   // dsb();
 	//   // ept = get_ept_entry(info.gpa);
 	//   // tmp = ept->bits & 0xFFFFFFFF;
-	//   // printf("EPT Entry : 0x%x(0x%x)\n",ept,tmp);
+	//   // printf("EPT Entry : 0x%llx(0x%llx)\n",ept,tmp);
 	//   // printf("Enable EPT Access\n");
 	//   // ept->p2m.read = 1;
 	//   // ept->p2m.write = 1;
@@ -240,7 +240,7 @@ void data_abort_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 {
 	paddr_t gpa = info->gpa;
-	// printf("operation gpa: 0x%x\n", gpa);
+	// printf("operation gpa: 0x%llx\n", gpa);
 	// if (MMIO_ARREA <= gpa && gpa <= (MMIO_ARREA + 4096))
 	// {
 		if (info->hsr.dabt.write)
@@ -261,9 +261,9 @@ int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 
 			// 从 MMIO 地址读取数据
 			dst = (unsigned long *)(unsigned long)gpa;
-			//printf("(%d bytes) 0x%x  R%d\n", (unsigned long)len, *dst, (unsigned long)reg_num);
+			//printf("(%d bytes) 0x%llx  R%d\n", (unsigned long)len, *dst, (unsigned long)reg_num);
 			
-			//printf("old data: 0x%x\n", *dst);
+			//printf("old data: 0x%llx\n", *dst);
 			// 将数据写入寄存器或进行其他必要的操作
 			if (reg_num != 30)
 			{
@@ -272,7 +272,7 @@ int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 			// 确保所有更改都能被看到
 			dsb(sy);
 			isb();
-			//printf("new data: 0x%x\n", *dst);
+			//printf("new data: 0x%llx\n", *dst);
 		}
 		else
 		{
@@ -293,16 +293,16 @@ int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 
 			src = (unsigned long *)(unsigned long)gpa;
 			dat = *src;
-			//printf("(%d bytes) 0x%x R%d\n", (unsigned long)len, *src, (unsigned long)reg_num);
+			//printf("(%d bytes) 0x%llx R%d\n", (unsigned long)len, *src, (unsigned long)reg_num);
 			
-			//printf("old data: 0x%x\n", *r);
+			//printf("old data: 0x%llx\n", *r);
 			if (reg_num != 30)
 			{
 				*(unsigned long *)buf = dat;
 			}
 			dsb(sy);
 			isb();
-			//printf("new data: 0x%x\n", *r);
+			//printf("new data: 0x%llx\n", *r);
 			
 			// spin_unlock(&vcpu.lock);
 		}

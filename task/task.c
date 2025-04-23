@@ -141,7 +141,7 @@ void print_current_task_list()
     while (curr) {
         list_node_t * next = list_node_next(curr);
         tcb_t *task = list_node_parent(curr, tcb_t, all_node);
-        printf("id: %x, elr: 0x%x, priority: %d\n", task->id, task->cpu_info->ctx.elr, task->priority);
+        printf("id: %llx, elr: 0x%llx, priority: %d\n", task->id, task->cpu_info->ctx.elr, task->priority);
         curr = next;
     }
     printf("\n");
@@ -174,7 +174,7 @@ void schedule()
     tcb_t *prev_task = curr;
     if (next_task == curr) {
         spin_lock(&print_lock);
-        // printf("[warning]: core: %d, n = c task 0x%x, id: %d, => ", get_current_cpu_id(), curr, curr->id);
+        // printf("[warning]: core: %d, n = c task 0x%llx, id: %d, => ", get_current_cpu_id(), curr, curr->id);
         list_node_t * iter = list_first(&task_manager.ready_list);
         while (iter) {
             tcb_t * task = list_node_parent(iter, tcb_t, run_node);
@@ -191,7 +191,7 @@ void schedule()
     //     get_current_cpu_id(), prev_task->id, next_task->id);
     spin_unlock(&print_lock);
     
-    // printf("next_task page dir: 0x%x\n", next_task->pgdir);
+    // printf("next_task page dir: 0x%llx\n", next_task->pgdir);
     
     if (get_el() == 1) {
         uint64_t val = virt_to_phys(next_task->pgdir);
