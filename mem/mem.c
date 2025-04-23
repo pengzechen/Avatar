@@ -349,7 +349,7 @@ pte_t * create_uvm (void) {
     }
     // 这里start和end计算出来的都是物理地址
 
-    printf("map kernel start: 0x%x, end: 0x%x\n", start, end);
+    printf("map kernel start: 0x%llx, end: 0x%llx\n", start, end);
     
     // TODO: 这个地方需要让el0进程共享内核空间 
     // TODO: 这个地方原理上并不需要映射，因为内核应该使用 FFFF_0000_0000_0000 之后的地址
@@ -365,7 +365,7 @@ pte_t * create_uvm (void) {
 
 void _destroy_page_table_vm(pte_t *table, int level) {
     // 输出当前正在处理的层级
-    printf("Destroying page table at level %d\n", level);
+    // printf("Destroying page table at level %d\n", level);
     
     if (level >= 4) return;
 
@@ -384,13 +384,13 @@ void _destroy_page_table_vm(pte_t *table, int level) {
         void *next_table = phys_to_virt(next_table_phys);
 
         // 输出当前页表项的信息
-        printf("Level %d, Entry %d: is_valid = %d, is_table = %d, Next Table Address = 0x%lx\n",
-               level, i, entry->table.is_valid, entry->l3_page.is_table, next_table_phys);
+        // printf("Level %d, Entry %d: is_valid = %d, is_table = %d, Next Table Address = 0x%lx\n",
+        //        level, i, entry->table.is_valid, entry->l3_page.is_table, next_table_phys);
 
         if (level == 3) {
             // PTE 层：释放实际映射的物理页
             uint64_t page_phys = entry->l3_page.pfn << 12;
-            printf("Level %d, Freeing physical page: 0x%lx\n", level, page_phys);
+            // printf("Level %d, Freeing physical page: 0x%lx\n", level, page_phys);
             addr_free_page(&g_alloc, page_phys, 1);
         } else {
             // 递归释放下一层页表
@@ -399,7 +399,7 @@ void _destroy_page_table_vm(pte_t *table, int level) {
 
         // 释放当前这一级的页表页
         if (entry->l3_page.is_table == 1) {
-            printf("Level %d, Freeing page table at entry %d: 0x%lx\n", level, i, next_table_phys);
+            // printf("Level %d, Freeing page table at entry %d: 0x%lx\n", level, i, next_table_phys);
             addr_free_page(&g_alloc, next_table_phys, 1);
         }
     }
@@ -407,12 +407,12 @@ void _destroy_page_table_vm(pte_t *table, int level) {
 
 void _destroy_page_table(pte_t *table, int level) {
     // 输出当前正在处理的层级
-    printf("Destroying page table at level %d\n", level);
+    // printf("Destroying page table at level %d\n", level);
     
-    if (level >= 4) return;
+    if (level >= 3) return;
 
     // 各级页表的最大项数（按实际情况调整）
-    static const int max_entries[] = {1, 4, 512, 512};
+    static const int max_entries[] = {1, 8, 512, 512};
     int entry_count = max_entries[level];
 
     // 遍历当前层级的所有页表项
@@ -426,15 +426,15 @@ void _destroy_page_table(pte_t *table, int level) {
         void *next_table = phys_to_virt(next_table_phys);
 
         // 输出当前页表项的信息
-        printf("Level %d, Entry %d: is_valid = %d, is_table = %d, Next Table Address = 0x%lx\n",
-               level, i, entry->table.is_valid, entry->l3_page.is_table, next_table_phys);
+        // printf("Level %d, Entry %d: is_valid = %d, is_table = %d, Next Table Address = 0x%lx\n",
+        //        level, i, entry->table.is_valid, entry->l3_page.is_table, next_table_phys);
         
         // 递归释放下一层页表
         _destroy_page_table((pte_t *)next_table, level + 1);
 
         // 释放当前这一级的页表页
         if (entry->l3_page.is_table == 1) {
-            printf("Level %d, Freeing page table at entry %d: 0x%lx\n", level, i, next_table_phys);
+            // printf("Level %d, Freeing page table at entry %d: 0x%lx\n", level, i, next_table_phys);
             addr_free_page(&g_alloc, next_table_phys, 1);
         }
     }
@@ -481,13 +481,13 @@ bool _copy_page_table(pte_t *src_table, pte_t *dst_table, int level) {
 void destroy_uvm_4level(pte_t *page_dir) {
     // level: 0 = PGD, 1 = PUD, 2 = PMD, 3 = PTE
     _destroy_page_table_vm(page_dir, 0);
-    addr_free_page(&g_alloc, (uint64_t)page_dir, 1);  // 最后释放 PGD 自身
+    addr_free_page(&g_alloc, virt_to_phys(page_dir), 1);  // 最后释放 PGD 自身
 }
 
 void destory_4level(pte_t *page_dir) {
     // level: 0 = PGD, 1 = PUD, 2 = PMD, 3 = PTE
     _destroy_page_table(page_dir, 0);
-    addr_free_page(&g_alloc, (uint64_t)page_dir, 1);  // 最后释放 PGD 自身
+    addr_free_page(&g_alloc, virt_to_phys(page_dir), 1);  // 最后释放 PGD 自身
 }
 
 // 内核将数据拷贝到指定进程空间下
@@ -737,7 +737,7 @@ void test_memory_create_map() {
 
     pte_t *page_dir = create_uvm();
     assert(page_dir != (pte_t*)0);
-    printf("Page directory created at: %lx\n", (unsigned long)page_dir);
+    printf("Page directory created at: %llx\n", (unsigned long)page_dir);
 
     uint64_t vaddr = 0x1000;                        // 虚拟地址
     uint64_t paddr = addr_alloc_page(&g_alloc, 3);  // 物理地址
@@ -836,7 +836,7 @@ uint64_t mock_addr_alloc_page(void *alloc, int count) {
     return (count == 1) ? 0 : addr_alloc_page(alloc, count);  // Fail for single-page allocation
 }
 
-bool validate_memory_content(uint64_t src_addr, uint64_t dst_addr, size_t size) {
+bool validate_memory_content(void* src_addr, void* dst_addr, size_t size) {
     for (size_t i = 0; i < size; i++) {
         if (*(uint8_t *)(src_addr + i) != *(uint8_t *)(dst_addr + i)) {
             return false;
@@ -850,6 +850,7 @@ void validate_page_table(pte_t *page_dir, uint64_t vaddr, uint64_t paddr) {
     assert(fetched_paddr == paddr);
 }
 
+// 现在只能测试一页以内
 void test_memory_copy_uvm_4level() {
     uint64_t total_nums = get_available_page_count(&g_alloc);
     printf("test start total nums: %d\n", total_nums);
@@ -858,21 +859,34 @@ void test_memory_copy_uvm_4level() {
     pte_t *src_pgd = create_uvm();
     pte_t *dst_pgd = create_uvm();
 
+    const char * data = "1234567890abcdefghijklmnooqrstuvwxyz"
+                        "1234567890abcdefghijklmnooqrstuvwxyz"
+                        "1234567890abcdefghijklmnooqrstuvwxyz"
+                        "1234567890abcdefghijklmnooqrstuvwxyz"
+                        "1234567890abcdefghijklmnooqrstuvwxyz"
+                        "1234567890abcdefghijklmnooqrstuvwxyz"
+                        "1234567890abcdefghijklmnooqrstuvwxyz"
+                        "1234567890abcdefghijklmnooqrstuvwxyz"
+                        "1234567890abcdefghijklmnooqrstuvwxyz"
+                        "1234567890abcdefghijklmnooqrstuvwxyz";
+    int data_len = strlen(data);
+
     // 准备内核数据
     uint64_t src_phys = addr_alloc_page(&g_alloc, 1);
-    memcpy((void *)src_phys, "test data", 9);  // Copy some data into the page
+    memcpy(phys_to_virt(src_phys), data, data_len);  // Copy some data into the page
     
         // 为进程分配内存
         memory_alloc_page(src_pgd, 0x1000, PAGE_SIZE, 0);  // Allocate a page
         // 内核将数据拷贝到指定进程空间下
-        copydata_to_uvm(src_pgd, 0x1000, src_phys, 9);
+        copydata_to_uvm(src_pgd, 0x1000, src_phys, data_len);
 
         int result = memory_copy_uvm_4level(dst_pgd, src_pgd);
         assert(result == 0);
 
         // Validate the data in the destination page table
         uint64_t dst_phys = memory_get_paddr(dst_pgd, 0x1000);
-        assert(validate_memory_content(src_phys, dst_phys, PAGE_SIZE));
+        printf("src: %llx, dest: %llx\n", src_phys, dst_phys);
+        assert(memcmp(phys_to_virt(src_phys), phys_to_virt(dst_phys), data_len) == 0);
 
         // Clean up
         memory_free_page(src_pgd, 0x1000);
@@ -894,25 +908,29 @@ void kmem_test()
     /*
      * 这里每个函数测试完成都会保证页释放。
      */
-    // uint64_t total_nums = get_available_page_count(&g_alloc);
-    // printf("test start total nums: %d\n", total_nums);
-    // test_alloc_free();
-    // test_find_free_page();
-    // test_find_contiguous_free_pages();
-    // uint64_t end_total_nums = get_available_page_count(&g_alloc);
-    // printf("test end total nums: %d\n", end_total_nums);
-    // assert(total_nums == end_total_nums);
+    uint64_t total_nums = get_available_page_count(&g_alloc);
+    printf("test start total nums: %d\n", total_nums);
+    
+    test_alloc_free();
+    test_find_free_page();
+    test_find_contiguous_free_pages();
+    
+    uint64_t end_total_nums = get_available_page_count(&g_alloc);
+    printf("test end total nums: %d\n", end_total_nums);
+    assert(total_nums == end_total_nums);
 
-    // printf("\n\n========== uvm tests: =========\n\n");
-    // test_create_uvm_find_pte();
+    printf("\n\n========== uvm tests: =========\n\n");
+    test_create_uvm_find_pte();
 
-    // printf("\n\n=========map and find paddr tests: =========\n\n");
-    // test_memory_create_map();
+    printf("\n\n=========map and find paddr tests: =========\n\n");
+    test_memory_create_map();
 
-    // printf("\n\n=========uvm alloc free tests: =========\n\n");
-    // test_uvm_alloc_free();
+    printf("\n\n=========uvm alloc free tests: =========\n\n");
+    test_uvm_alloc_free();
 
-    // test_copydata_to_uvm();
+    printf("\n\n=========copy data to uvm tests: =========\n\n");
+    test_copydata_to_uvm();
 
+    // printf("\n\n=========copy uvm to uvm tests: =========\n\n");
     // test_memory_copy_uvm_4level();
 }
