@@ -453,8 +453,8 @@ void basic_test() {
     int fd = ramfs_open("/home/ajax/1.txt");
     printf("fd: %d\n", fd);
 
-    int size = (uint64_t)__shell_bin_end - (uint64_t)__shell_bin_start;
-    int w = ramfs_write(fd, __shell_bin_start, size);
+    int size = (uint64_t)__add_bin_end - (uint64_t)__add_bin_start;
+    int w = ramfs_write(fd, __add_bin_start, size);
     printf("write %d bytes\n", w);
 
     int seek = ramfs_lseek(fd, 0, SEEK_SET);
@@ -463,7 +463,7 @@ void basic_test() {
     int r = ramfs_read(fd, test_buf, size);
     printf("read %d\n", r);
 
-    if (memcmp(test_buf, __shell_bin_start, size) == 0) {
+    if (memcmp(test_buf, __add_bin_start, size) == 0) {
         printf("write read ok!\n");
     }
 }
