@@ -146,18 +146,18 @@ void prepare_vm(process_t **process, void *elf_addr)
     printf("process entry: 0x%llx, process stack: 0x%llx\n", pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE);
 
     // 处理 EL1 的栈
-    pro->el1_stack = kalloc_pages(2);
+    pro->el1_stack = kalloc_pages(1);
     list_node_t * iter = list_first(&get_task_manager()->task_list);   
     while (iter) {
         tcb_t *task = list_node_parent(iter, tcb_t, all_node);
         printf("map other task(%d) el1 stack: 0x%llx\n", task->id, task->sp);
-        memory_create_map(pro->pg_base, task->sp, virt_to_phys(task->sp), 2, 1);  // 要把所有的task的el1栈都映射一下，不然 task_switch 结束的时候会page fault
+        memory_create_map(pro->pg_base, task->sp, virt_to_phys(task->sp), 1, 1);  // 要把所有的task的el1栈都映射一下，不然 task_switch 结束的时候会page fault
         printf("map this task's el1 stack for task(%d), 0x%llx\n", task->id, (uint64_t)pro->el1_stack);
-        memory_create_map((pte_t*)task->pgdir, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 2, 1);  // 帮另一个任务映射一下这个任务的栈
+        memory_create_map((pte_t*)task->pgdir, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 1, 1);  // 帮另一个任务映射一下这个任务的栈
         iter = list_node_next(iter);
     }
     printf("map this task's el1 stack, 0x%llx\n", (uint64_t)pro->el1_stack);
-    memory_create_map(pro->pg_base, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 2, 1);
+    memory_create_map(pro->pg_base, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 1, 1);
 
     // 处理 EL0 的栈
     pro->el0_stack = kalloc_pages(1);
@@ -169,7 +169,7 @@ void process_init(process_t *pro, void *elf_addr, uint32_t priority)
 {
     prepare_vm(&pro, elf_addr);
 
-    tcb_t *main_thread = create_task((void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE * 2, priority);
+    tcb_t *main_thread = create_task((void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE, priority);
 
     main_thread->pgdir = (uint64_t)pro->pg_base;
     main_thread->curr_pro = pro;
@@ -225,7 +225,14 @@ int pro_execve(char *name, void *elf_addr) {
     
     // 设置新的页表并切过去
     prepare_vm(&pro, elf_addr);
-    uint64_t new_page_dir = (uint64_t)pro->pg_base;
+    
+    list_node_t *iter = list_first(&pro->threads);
+    tcb_t *task = list_node_parent(iter, tcb_t, process);
+    reset_task(task, (void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE, 1);
+    task->pgdir = (uint64_t)pro->pg_base;
+    task->curr_pro = pro;
+    
+    uint64_t new_page_dir = virt_to_phys(pro->pg_base);
     asm volatile("msr ttbr0_el1, %[x]" : : [x] "r"(new_page_dir));
     dsb_sy();
     isb();
@@ -234,5 +241,10 @@ int pro_execve(char *name, void *elf_addr) {
     isb();
 
     destroy_uvm_4level((pte_t*)(void*)old_page_dir);            // 再释放掉了原进程的内容空间
+    uint64_t _sp = (uint64_t)pro->el1_stack + PAGE_SIZE - sizeof(trap_frame_t);
+    extern void exec_ret(void*);
+    exec_ret(task);
+
+    // 正常的话不会返回
     return 0;
 }

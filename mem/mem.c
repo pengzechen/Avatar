@@ -58,7 +58,7 @@ void mark_kernel_memory_allocated(uint64_t heap_start) {
         bitmap_set(&g_alloc.bitmap, i);
     }
 
-    printf("Marked memory from 0x%llx to 0x%llx as allocated. count: %d\n\n", start, end, end_page - start_page + 1);
+    printf("Marked memory from 0x%llx to 0x%llx as allocated. index start: %d, count: %d\n\n", start, end, start_page, end_page - start_page + 1);
 }
 
 void alloctor_init() 
@@ -348,6 +348,10 @@ pte_t * create_uvm (void) {
     // 这里start和end计算出来的都是物理地址
 
     printf("map kernel start: 0x%llx, end: 0x%llx\n", start, end);
+    if (start > KERNEL_VMA)
+        start -= KERNEL_VMA;
+    if (end > KERNEL_VMA)  
+        end -= KERNEL_VMA;
     
     // TODO: 这个地方需要让el0进程共享内核空间 
     // TODO: 这个地方原理上并不需要映射，因为内核应该使用 FFFF_0000_0000_0000 之后的地址
@@ -542,7 +546,7 @@ int memory_copy_uvm_4level(pte_t * dst_pgd, pte_t *src_pgd) {
 uint64_t mutex_test_num = 6;
 
 uint64_t mutex_test_add() {
-    mutex_lock(&g_alloc.mutex);
+    // mutex_lock(&g_alloc.mutex);
     for (int i=0; i<10000; i++) {
         mutex_test_num ++;
         mutex_test_num --;
@@ -553,12 +557,12 @@ uint64_t mutex_test_add() {
         mutex_test_num ++;
         mutex_test_num --;
     }
-    mutex_unlock(&g_alloc.mutex);
+    // mutex_unlock(&g_alloc.mutex);
     return mutex_test_num;
 }
 
 uint64_t mutex_test_minus() {
-    mutex_lock(&g_alloc.mutex);
+    // mutex_lock(&g_alloc.mutex);
     for (int i=0; i<10000; i++) {
         mutex_test_num ++;
         mutex_test_num --;
@@ -569,14 +573,14 @@ uint64_t mutex_test_minus() {
         mutex_test_num ++;
         mutex_test_num --;
     }
-    mutex_unlock(&g_alloc.mutex);
+    // mutex_unlock(&g_alloc.mutex);
     return mutex_test_num;
 }
 
 void mutex_test_print() {
     mutex_lock(&g_alloc.mutex);
     printf("mutex_test_num = %d, current task: %d\n", mutex_test_num, ((tcb_t*)(void*)read_tpidr_el0())->id);
-    mutex_test_num = 6;
+    // mutex_test_num = 6;
     mutex_unlock(&g_alloc.mutex);
 }
 

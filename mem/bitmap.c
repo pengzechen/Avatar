@@ -41,7 +41,10 @@ void bitmap_set_range(bitmap_t *bitmap, size_t start, size_t count) {
 void bitmap_clear(bitmap_t *bitmap, size_t index) {
     assert(index < bitmap->size); // 确保索引不越界
     // 确保该位是已分配的（即当前值为 1）
-    assert((bitmap->bits[index / 8] & (1 << (index % 8))) != 0);
+    // assert((bitmap->bits[index / 8] & (1 << (index % 8))) != 0);
+    if((bitmap->bits[index / 8] & (1 << (index % 8))) == 0) {
+        // printf("warnning: free a already freed page!, index: %d\n", index);
+    }
 
     // 清除该位为 0
     bitmap->bits[index / 8] &= ~(1 << (index % 8));

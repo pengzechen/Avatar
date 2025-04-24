@@ -100,6 +100,9 @@ tcb_t *craete_vm_task(
     uint32_t
     );
 
+void reset_task (tcb_t *task, void (*task_func)(), uint64_t stack_top, uint32_t priority);
+
+
 void schedule_init();
 void task_manager_init(void);
 task_manager_t * get_task_manager() ;

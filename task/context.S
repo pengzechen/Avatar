@@ -82,3 +82,20 @@ switch_context_el2:
     // msr daifclr, #0x3
 
     ret                    // 返回，执行下一个任务
+
+.global exec_ret
+exec_ret:
+    
+    ldp     x23, x24, [x0, #16*6]
+    msr     tpidr_el0, x23
+    mov     sp, x24
+    ldp     x19, x20, [x0, #16*0]
+    ldp     x21, x22, [x0, #16*1]
+    ldp     x23, x24, [x0, #16*2]
+    ldp     x25, x26, [x0, #16*3]
+    ldp     x27, x28, [x0, #16*4]
+    ldp     x29, x30, [x0, #16*5]
+
+    // msr daifclr, #0x3
+
+    ret                    // 返回，执行下一个任务
