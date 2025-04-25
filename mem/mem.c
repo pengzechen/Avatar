@@ -35,19 +35,11 @@ static addr_alloc_t g_alloc;
 
 static pte_t kpage_dir;
 
-void mark_kernel_memory_allocated(uint64_t heap_start) {
-    uint64_t start = KERNEL_RAM_START;
-    uint64_t end = heap_start;
-
-    // 确保起始地址小于结束地址
-    if (start >= end) {
-        return;
-    }
-
+void mark_kernel_memory_allocated() {
+    uint64_t start = (uint64_t)(void*)__kernal_start;
+    uint64_t end = (uint64_t)(void*)__heap_flag + 0x900000ULL;
     // 如果 heap_start 不是页对齐的，将其向上对齐
-    if (end % g_alloc.page_size != 0) {
-        end = (end + g_alloc.page_size - 1) & ~(g_alloc.page_size - 1);
-    }
+    end = UP2(end, PAGE_SIZE);
 
     // 计算起始和结束页索引
     uint64_t start_page = (start - g_alloc.start) / g_alloc.page_size;
@@ -61,7 +53,7 @@ void mark_kernel_memory_allocated(uint64_t heap_start) {
     printf("Marked memory from 0x%llx to 0x%llx as allocated. index start: %d, count: %d\n\n", start, end, start_page, end_page - start_page + 1);
 }
 
-void alloctor_init() 
+void alloctor_init() //  初始化 g_alloc
 {
     bitmap_init(&g_alloc.bitmap, bitmap_buffer, OS_CFG_BITMAP_SIZE);
     g_alloc.start = KERNEL_RAM_START;
@@ -71,8 +63,9 @@ void alloctor_init()
     mutex_init(&g_alloc.mutex);
 
     uint64_t heap_start = (uint64_t)(void*)__heap_flag + 0x900000;
+    heap_start = UP2(heap_start, PAGE_SIZE);
     printf("heap start: 0x%llx\n", heap_start);
-    mark_kernel_memory_allocated(heap_start);
+    mark_kernel_memory_allocated();
 }
 
 
@@ -120,9 +113,13 @@ static void addr_free_page(addr_alloc_t *alloc, uint64_t addr, int page_count) {
     mutex_lock(&alloc->mutex);
     
     static uint64_t heap_start = (uint64_t)(void*)__heap_flag + 0x900000;
-    heap_start = UP2(PAGE_SIZE, heap_start);
+    heap_start = UP2(heap_start, PAGE_SIZE);
     // 确保释放的页不在内核空间内（内核空间地址范围：KERNEL_RAM_START 到 heap_start）
-    assert( addr >= heap_start);
+    // assert( addr >= heap_start);
+    if (addr <= heap_start) {
+        // printf("warning: adddr: 0x%llx\n", addr);
+        return;
+    }
 
     uint64_t pg_idx = (addr - alloc->start) / alloc->page_size;
     bitmap_clear_range(&alloc->bitmap, pg_idx, page_count);
@@ -355,7 +352,7 @@ pte_t * create_uvm (void) {
     
     // TODO: 这个地方需要让el0进程共享内核空间 
     // TODO: 这个地方原理上并不需要映射，因为内核应该使用 FFFF_0000_0000_0000 之后的地址
-    for (uint64_t addr = g_alloc.start; addr < end; addr += PAGE_SIZE) {
+    for (uint64_t addr = start; addr < end; addr += PAGE_SIZE) {
         memory_create_map(page_dir, addr, addr, 1, 1);          // 内核空间先恒等映射
     }
 
@@ -393,6 +390,21 @@ void _destroy_page_table_vm(pte_t *table, int level) {
             // PTE 层：释放实际映射的物理页
             uint64_t page_phys = entry->l3_page.pfn << 12;
             // printf("Level %d, Freeing physical page: 0x%llx\n", level, page_phys);
+            
+            uint64_t start = (uint64_t)(void*)__kernal_start;
+            uint64_t end = (uint64_t)(void*)__heap_flag + 0x900000ULL;
+            // 如果 heap_start 不是页对齐的，将其向上对齐
+            end = UP2(end, PAGE_SIZE);
+            // 这里start和end计算出来的都是物理地址
+        
+            if (start > KERNEL_VMA)
+                start -= KERNEL_VMA;
+            if (end > KERNEL_VMA)  
+                end -= KERNEL_VMA;
+            
+            if (page_phys>= start && page_phys <= end) return;
+            if (page_phys>= 0x8000000 && page_phys <= 0xa000000) return;
+            
             addr_free_page(&g_alloc, page_phys, 1);
         } else {
             // 递归释放下一层页表
@@ -546,7 +558,7 @@ int memory_copy_uvm_4level(pte_t * dst_pgd, pte_t *src_pgd) {
 uint64_t mutex_test_num = 6;
 
 uint64_t mutex_test_add() {
-    // mutex_lock(&g_alloc.mutex);
+    mutex_lock(&g_alloc.mutex);
     for (int i=0; i<10000; i++) {
         mutex_test_num ++;
         mutex_test_num --;
@@ -557,12 +569,12 @@ uint64_t mutex_test_add() {
         mutex_test_num ++;
         mutex_test_num --;
     }
-    // mutex_unlock(&g_alloc.mutex);
+    mutex_unlock(&g_alloc.mutex);
     return mutex_test_num;
 }
 
 uint64_t mutex_test_minus() {
-    // mutex_lock(&g_alloc.mutex);
+    mutex_lock(&g_alloc.mutex);
     for (int i=0; i<10000; i++) {
         mutex_test_num ++;
         mutex_test_num --;
@@ -573,7 +585,7 @@ uint64_t mutex_test_minus() {
         mutex_test_num ++;
         mutex_test_num --;
     }
-    // mutex_unlock(&g_alloc.mutex);
+    mutex_unlock(&g_alloc.mutex);
     return mutex_test_num;
 }
 
