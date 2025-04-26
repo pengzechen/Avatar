@@ -184,7 +184,9 @@ void run_process(process_t *pro)
     while (iter)
     {
         tcb_t *task = list_node_parent(iter, tcb_t, process);
-        task_set_ready(task);
+        printf("run processs: task: 0x%x\n", task);
+        run_task_oncore(task, task->priority - 1);
+        // task_set_ready(task);
         iter = list_node_next(iter);
     }
 }

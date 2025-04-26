@@ -73,7 +73,7 @@ typedef struct
 
 typedef struct _task_manager_t {
 
-	list_t ready_list;			// 就绪队列
+	list_t ready_list[SMP_NUM];			// 就绪队列
 	list_t task_list;			// 所有已创建任务的队列
 	list_t sleep_list;          // 延时队列
 	
@@ -108,6 +108,7 @@ void task_manager_init(void);
 task_manager_t * get_task_manager() ;
 void schedule_init_local(tcb_t *task, void * new_sp);
 void task_set_ready(tcb_t *task) ;
+int run_task_oncore(tcb_t * task, uint32_t core_id) ;
 void task_set_block (tcb_t *task);
 void schedule();
 

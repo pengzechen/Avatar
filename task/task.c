@@ -45,7 +45,9 @@ tcb_t *alloc_tcb()
             list_node_init(&task->all_node);
             list_node_init(&task->run_node);
             list_node_init(&task->wait_node);
+            spin_lock(&task_manager.lock);
             list_insert_last(&task_manager.task_list, &task->all_node);
+            spin_unlock(&task_manager.lock);
             return task;
         }
     }
@@ -60,10 +62,15 @@ void free_tcb(tcb_t *task)
     if (task == NULL)
         return;
 
+    // 每个核删除自己的节点
+    uint32_t core_id = get_current_cpu_id();
+    spin_lock(&task_manager.lock);
+    list_delete(&task_manager.ready_list[core_id], &task->run_node);
+
     // 从任务管理的任务列表中移除任务
     list_delete(&task_manager.task_list, &task->all_node);
-    list_delete(&task_manager.ready_list, &task->run_node);
     list_delete(&task_manager.sleep_list, &task->wait_node);
+    spin_unlock(&task_manager.lock);
 
     memset(task, 0, sizeof(tcb_t));
 }
@@ -186,12 +193,13 @@ void schedule()
     else
         curr = (tcb_t *)(void *)read_tpidr_el0();
 
+    uint32_t core_id = get_current_cpu_id();
     tcb_t *next_task = task_next_run();
     tcb_t *prev_task = curr;
     if (next_task == curr) {
         spin_lock(&print_lock);
         // printf("[warning]: core: %d, n = c task 0x%llx, id: %d, => ", get_current_cpu_id(), curr, curr->id);
-        list_node_t * iter = list_first(&task_manager.ready_list);
+        list_node_t * iter = list_first(&task_manager.ready_list[core_id]);
         while (iter) {
             tcb_t * task = list_node_parent(iter, tcb_t, run_node);
             // printf("(id :%d, state: %d), ", task->id, task->state);
@@ -203,8 +211,8 @@ void schedule()
     }
 
     spin_lock(&print_lock);
-    // printf("core %d switch prev_task %d to next_task %d\n", 
-    //     get_current_cpu_id(), prev_task->id, next_task->id);
+    printf("core %d switch prev_task %d to next_task %d\n", 
+        get_current_cpu_id(), prev_task->id, next_task->id);
     spin_unlock(&print_lock);
     
     // printf("next_task page dir: 0x%llx\n", next_task->pgdir);
@@ -339,7 +347,9 @@ void el1_idle_init()
 // 初始化任务管理器，初始化空闲任务
 void task_manager_init(void) {
     // 各队列初始化
-    list_init(&task_manager.ready_list);
+    for (int i=0; i<SMP_NUM; i++) {
+        list_init(&task_manager.ready_list[i]);
+    }
     list_init(&task_manager.task_list);
     list_init(&task_manager.sleep_list);
 
@@ -350,29 +360,42 @@ task_manager_t * get_task_manager() {
     return &task_manager;
 }
 
+int run_task_oncore(tcb_t * task, uint32_t core_id) 
+{
+    if (core_id >= SMP_NUM) printf("error: wrong core id\n");
+    // printf("core id: %d\n", core_id);
+    spin_lock(&task_manager.lock);
+    if (task != &task_manager.idle_task[core_id])
+    {
+        list_insert_last(&task_manager.ready_list[core_id], &task->run_node);
+        task->state = TASK_STATE_READY;
+    }
+    spin_unlock(&task_manager.lock);
+}
+
 // 将任务插入就绪队列 (后插)
 void task_set_ready(tcb_t *task)
 {
     uint64_t core_id = get_current_cpu_id();
-    spin_lock(&task_manager.lock);
+    // spin_lock(&task_manager.lock);
     if (task != &task_manager.idle_task[core_id])
     {
-        list_insert_last(&task_manager.ready_list, &task->run_node);
+        list_insert_last(&task_manager.ready_list[core_id], &task->run_node);
         task->state = TASK_STATE_READY;
     }
-    spin_unlock(&task_manager.lock);
+    // spin_unlock(&task_manager.lock);
 }
 
 // 将任务从就绪队列移除
 void task_set_block(tcb_t *task)
 {
     uint64_t core_id = get_current_cpu_id();
-    spin_lock(&task_manager.lock);
+    // spin_lock(&task_manager.lock);
     if (task != &task_manager.idle_task[core_id])
     {
-        list_delete(&task_manager.ready_list, &task->run_node);
+        list_delete(&task_manager.ready_list[core_id], &task->run_node);
     }
-    spin_unlock(&task_manager.lock);
+    // spin_unlock(&task_manager.lock);
 }
 
 uint32_t can_run_on_core(uint32_t priority, uint32_t coreid) {
@@ -387,30 +410,22 @@ uint32_t can_run_on_core(uint32_t priority, uint32_t coreid) {
 static tcb_t *task_next_run(void)
 {
     uint64_t core_id = get_current_cpu_id();
-    spin_lock(&task_manager.lock);
-    // 如果没有任务，则运行空闲任务
-    if (list_count(&task_manager.ready_list) == 0)
-    {
-        spin_unlock(&task_manager.lock);
-        return &task_manager.idle_task[core_id];
-    }
+    
 
-    list_node_t * iter = list_first(&task_manager.ready_list);
+    list_node_t * iter = list_first(&task_manager.ready_list[core_id]);
     while (iter) {
         tcb_t * task = list_node_parent(iter, tcb_t, run_node);
-        if (task->state == TASK_STATE_READY && 
-            can_run_on_core(task->priority, core_id)) {  // 别的核可能在运行这个任务
+        if (task->state == TASK_STATE_READY ) {
             break;
         }
         iter = list_node_next(iter);
     }
     
     if (iter == NULL) {
-        spin_unlock(&task_manager.lock);
+        // spin_unlock(&task_manager.lock);
         return &task_manager.idle_task[core_id];
     }
     tcb_t * task = list_node_parent(iter, tcb_t, run_node);
-    spin_unlock(&task_manager.lock);
     
     task_set_block(task);
     task_set_ready(task);

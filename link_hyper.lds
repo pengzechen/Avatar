@@ -34,9 +34,14 @@ SECTIONS
         . = ALIGN((1 << 10));
 
         /* Automatically generated lds file */
-        __shell_bin_start = .;
-        *(.data.shell_bin)
-        __shell_bin_end = .;
+        __add_bin_start = .;
+        *(.data.add_bin)
+        __add_bin_end = .;
+        . = ALIGN((1 << 10));
+
+        __sub_bin_start = .;
+        *(.data.sub_bin)
+        __sub_bin_end = .;
         . = ALIGN((1 << 10));
 
         __testapp_bin_start = .;
