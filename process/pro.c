@@ -222,7 +222,6 @@ int pro_execve(char *name, void *elf_addr) {
 
     strcpy(pro->process_name, get_file_name(name));  // 先把名字换过来
 
-    // 现在开始加载了，先准备应用页表，由于所有操作均在内核区中进行，所以可以直接先切换到新页表
     uint64_t old_page_dir = (uint64_t)pro->pg_base;
     
     // 设置新的页表并切过去
@@ -242,10 +241,9 @@ int pro_execve(char *name, void *elf_addr) {
     dsb_sy();
     isb();
 
-    destroy_uvm_4level((pte_t*)(void*)old_page_dir);            // 再释放掉了原进程的内容空间
-    uint64_t _sp = (uint64_t)pro->el1_stack + PAGE_SIZE - sizeof(trap_frame_t);
+    // destroy_uvm_4level((pte_t*)(void*)old_page_dir);            // 再释放掉了原进程的空间
     extern void exec_ret(void*);
-    exec_ret(task);
+    exec_ret(task);             // 这里有问题，原来的栈被破坏了。
 
     // 正常的话不会返回
     return 0;

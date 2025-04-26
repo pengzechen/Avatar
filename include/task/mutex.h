@@ -3,6 +3,7 @@
 
 #include "task/task.h"
 #include "list.h"
+#include "spinlock.h"
 
 /**
  * 任务同步用的计数信号量
@@ -11,6 +12,7 @@ typedef struct _mutex_t {
     tcb_t * owner;
     int locked_count;
     list_t wait_list;
+    spinlock_t lock;
 }mutex_t;
 
 void mutex_init (mutex_t * mutex);

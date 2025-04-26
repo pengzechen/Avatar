@@ -211,8 +211,8 @@ void schedule()
     }
 
     spin_lock(&print_lock);
-    printf("core %d switch prev_task %d to next_task %d\n", 
-        get_current_cpu_id(), prev_task->id, next_task->id);
+    // printf("core %d switch prev_task %d to next_task %d\n", 
+    //     get_current_cpu_id(), prev_task->id, next_task->id);
     spin_unlock(&print_lock);
     
     // printf("next_task page dir: 0x%llx\n", next_task->pgdir);

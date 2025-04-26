@@ -558,7 +558,7 @@ int memory_copy_uvm_4level(pte_t * dst_pgd, pte_t *src_pgd) {
 uint64_t mutex_test_num = 6;
 
 uint64_t mutex_test_add() {
-    // mutex_lock(&g_alloc.mutex);
+    mutex_lock(&g_alloc.mutex);
     for (int i=0; i<10000; i++) {
         mutex_test_num ++;
         mutex_test_num --;
@@ -569,12 +569,12 @@ uint64_t mutex_test_add() {
         mutex_test_num ++;
         mutex_test_num --;
     }
-    // mutex_unlock(&g_alloc.mutex);
+    mutex_unlock(&g_alloc.mutex);
     return mutex_test_num;
 }
 
 uint64_t mutex_test_minus() {
-    // mutex_lock(&g_alloc.mutex);
+    mutex_lock(&g_alloc.mutex);
     for (int i=0; i<10000; i++) {
         mutex_test_num ++;
         mutex_test_num --;
@@ -585,15 +585,15 @@ uint64_t mutex_test_minus() {
         mutex_test_num ++;
         mutex_test_num --;
     }
-    // mutex_unlock(&g_alloc.mutex);
+    mutex_unlock(&g_alloc.mutex);
     return mutex_test_num;
 }
 
 void mutex_test_print() {
-    // mutex_lock(&g_alloc.mutex);
+    mutex_lock(&g_alloc.mutex);
     printf("mutex_test_num = %d, current task: %d\n", mutex_test_num, ((tcb_t*)(void*)read_tpidr_el0())->id);
     // mutex_test_num = 6;
-    // mutex_unlock(&g_alloc.mutex);
+    mutex_unlock(&g_alloc.mutex);
 }
 
 
