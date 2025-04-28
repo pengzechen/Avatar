@@ -26,9 +26,7 @@ void task_set_block (tcb_t *task);
 void task_set_ready (tcb_t *task);
 
 void task_set_wakeup(tcb_t *task);
-/*
- *  分配一个 tcb 块，设置id，状态为 CREATE
- */
+
 tcb_t *alloc_tcb()
 {
     static uint32_t task_count = 1;  // 这个数字会不停累加下去
@@ -45,18 +43,12 @@ tcb_t *alloc_tcb()
             list_node_init(&task->all_node);
             list_node_init(&task->run_node);
             list_node_init(&task->wait_node);
-            spin_lock(&task_manager.lock);
-            list_insert_last(&task_manager.task_list, &task->all_node);
-            spin_unlock(&task_manager.lock);
             return task;
         }
     }
     return NULL;  // 如果没有空闲的 TCB，返回 NULL
 }
 
-/*
- *  释放一个 tcb 块，恢复任务管理结构
- */
 void free_tcb(tcb_t *task)
 {
     if (task == NULL)
@@ -80,6 +72,7 @@ tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
     tcb_t *task = alloc_tcb();
     task->counter = SYS_TASK_TICK;
     task->priority = priority;
+    list_insert_last(&task_manager.task_list, &task->all_node);
 
     task->cpu_info->ctx.elr = (uint64_t)task_func; // elr_el1
     task->cpu_info->ctx.spsr = SPSR_EL1_USER;      // spsr_el1
@@ -91,6 +84,26 @@ tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
     task->ctx.x29 = stack_top - sizeof(trap_frame_t);
     task->ctx.sp_elx = stack_top - sizeof(trap_frame_t);
     task->sp = (stack_top - PAGE_SIZE * 2);
+
+    return task;
+}
+
+tcb_t *craete_vm_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
+{
+    tcb_t *task = alloc_tcb();
+    task->counter = SYS_TASK_TICK;
+    task->priority = priority;
+    list_insert_last(&task_manager.task_list, &task->all_node);
+
+    task->cpu_info->ctx.elr = (uint64_t)task_func; // elr_el2
+    task->cpu_info->ctx.spsr = SPSR_VALUE; // spsr_el2
+    task->cpu_info->ctx.r[0] = (0x70000000);
+    task->cpu_info->sys_reg->spsr_el1 = 0x30C50830;
+
+    memcpy((void *)(stack_top - sizeof(trap_frame_t)), &task->cpu_info->ctx, sizeof(trap_frame_t));
+    extern void guest_entry();
+    task->ctx.x30 = (uint64_t)guest_entry;
+    task->ctx.sp_elx = stack_top - sizeof(trap_frame_t);   // el2 的栈
 
     return task;
 }
@@ -110,30 +123,6 @@ void reset_task (tcb_t *task, void (*task_func)(), uint64_t stack_top, uint32_t 
     task->ctx.x29 = stack_top - sizeof(trap_frame_t);
     task->ctx.sp_elx = stack_top - sizeof(trap_frame_t);
     task->sp = (stack_top - PAGE_SIZE * 2);
-}
-
-void set_tcb_pgdir(tcb_t * task, uint64_t pgdir)
-{
-    task->pgdir = pgdir;
-}
-
-tcb_t *craete_vm_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
-{
-    tcb_t *task = alloc_tcb();
-    task->counter = SYS_TASK_TICK;
-    task->priority = priority;
-
-    task->cpu_info->ctx.elr = (uint64_t)task_func; // elr_el2
-    task->cpu_info->ctx.spsr = SPSR_VALUE; // spsr_el2
-    task->cpu_info->ctx.r[0] = (0x70000000);
-    task->cpu_info->sys_reg->spsr_el1 = 0x30C50830;
-
-    memcpy((void *)(stack_top - sizeof(trap_frame_t)), &task->cpu_info->ctx, sizeof(trap_frame_t));
-    extern void guest_entry();
-    task->ctx.x30 = (uint64_t)guest_entry;
-    task->ctx.sp_elx = stack_top - sizeof(trap_frame_t);   // el2 的栈
-
-    return task;
 }
 
 void schedule_init()

@@ -1,7 +1,7 @@
 
 #include "syscall.h"
 
-int main()
+int _start()
 {
     // while (1)
     // {

@@ -203,21 +203,6 @@ void exit_process(process_t *pro)
     free_process(pro);
 }
 
-char * get_file_name (char * name) {
-    char * s = name;
-
-    // 定位到结束符
-    while (*s != '\0') {
-        s++;
-    }
-
-    // 反向搜索，直到找到反斜杆或者到文件开头
-    while ((*s != '\\') && (*s != '/') && (s >= name)) {
-        s--;
-    }
-    return s + 1;
-}
-
 // int execve (const char *__path, char * const __argv[], char * const __envp[]);
 int pro_execve(char *name, char ** __argv, char ** __envp) {
     tcb_t * curr = (tcb_t *)(void *)read_tpidr_el0();
@@ -288,6 +273,8 @@ int pro_fork (void) {
     tcb_t * child_task = alloc_tcb();
     child_task->counter = SYS_TASK_TICK;
     child_task->priority = curr->priority;
+    list_insert_last(&get_task_manager()->task_list, &child_task->all_node);
+
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &curr->cpu_info->ctx, sizeof(trap_frame_t));
     extern void el0_tesk_entry();
     child_task->ctx.x30 = (uint64_t)el0_tesk_entry;

@@ -53,7 +53,7 @@ char *envp[] = {
     NULL
 };
 
-int main() {
+int _start() {
     int pid = fork();
     if (pid == 0) {  // 子进程执行
         execve("add", argv, envp);

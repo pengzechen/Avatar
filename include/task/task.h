@@ -48,24 +48,23 @@ typedef enum _task_state_t {
 #pragma pack(1)
 typedef struct
 {   
-    contex_t         ctx;
-    cpu_t            *cpu_info;
-    uint64_t         sp;
+    contex_t          ctx;
+    cpu_t             *cpu_info;
+    uint64_t          sp;
     
-    task_state_t state; 
-    uint32_t counter;
-    uint32_t sleep_ticks;
-    uint32_t priority;
-    uint32_t id;         // 任务ID
-    uint64_t pgdir;
+    task_state_t      state; 
+    uint32_t          counter;
+    uint32_t          sleep_ticks;
+    uint32_t          priority;
+    uint32_t          id;         // 任务ID
+    uint64_t          pgdir;      // 页表基址
     
-    list_node_t process; // 属于哪个进程
-
-    list_node_t run_node;		// 运行相关结点
-	list_node_t wait_node;		// 等待队列
-	list_node_t all_node;		// 所有队列结点
-
-    struct _process_t * curr_pro; // 当前进程
+    list_node_t       run_node;		// 运行相关结点
+	list_node_t       wait_node;		// 等待队列
+	list_node_t       all_node;		// 所有队列结点
+    
+    list_node_t          process;            // 属于哪个进程
+    struct _process_t  * curr_pro;   // 当前进程
 } tcb_t;
 #pragma pack()
 
@@ -118,8 +117,6 @@ tcb_t * get_idle() ;
 void el1_idle_init(); // 初始化空闲任务
 uint64_t get_idle_sp_top() ;
 
-// 将来进程初始化一个任务，需要为这个任务分配准备页表基址
-void set_tcb_pgdir(tcb_t * task, uint64_t pgdir);
 
 // 系统调用
 void sys_sleep_tick(uint64_t ms);

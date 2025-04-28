@@ -175,3 +175,19 @@ long atol(const char *ptr)
 
     return acc;
 }
+
+char * get_file_name (char * name) 
+{
+    char * s = name;
+
+    // 定位到结束符
+    while (*s != '\0') {
+        s++;
+    }
+
+    // 反向搜索，直到找到反斜杆或者到文件开头
+    while ((*s != '\\') && (*s != '/') && (s >= name)) {
+        s--;
+    }
+    return s + 1;
+}

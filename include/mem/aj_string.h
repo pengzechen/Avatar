@@ -23,5 +23,5 @@ extern void *memmove(void *dest, const void *src, size_t n);
 extern void *memchr(const void *s, int c, size_t n);
 
 long atol(const char *ptr);
-
+char * get_file_name (char * name);
 #endif /* _STRING_H */
