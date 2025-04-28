@@ -38,5 +38,6 @@ void run_process(process_t *pro);
 
 
 int pro_execve(char *name, void *elf_addr);
+int pro_fork (void);
 
 #endif // PRO_H

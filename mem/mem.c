@@ -212,7 +212,17 @@ pte_t *find_pte(pte_t *page_dir, // 虚拟地址
 }
 
 int memory_create_map(pte_t *page_dir, uint64_t vaddr, uint64_t paddr, int count, uint64_t perm) {
-    // printf("Starting memory_create_map for vaddr 0x%llx, paddr 0x%llx, count %d\n", vaddr, paddr, count);
+    uint64_t start = (uint64_t)(void*)__kernal_start;
+    uint64_t end = (uint64_t)(void*)__heap_flag + 0x900000ULL;
+    // 如果 heap_start 不是页对齐的，将其向上对齐
+    end = UP2(end, PAGE_SIZE);
+    // 这里start和end计算出来的都是物理地址
+    if (start > KERNEL_VMA)
+        start -= KERNEL_VMA;
+    if (end > KERNEL_VMA)  
+        end -= KERNEL_VMA;
+    if ( (paddr < start || paddr > end) && (paddr > 0xa000000) )
+    printf("=>Starting memory_create_map for vaddr 0x%llx, paddr 0x%llx, count %d\n", vaddr, paddr, count);
     
     for (int i = 0; i < count; i++) {
         // 获取对应的 PTE
@@ -484,7 +494,7 @@ bool _copy_page_table(pte_t *src_table, pte_t *dst_table, int level) {
 
             // 设置当前页表项指向新分配的页表
             dst_table[i].pte = (dst_next_phys >> 12 << 12) | (src_entry->pte & 0xFFF);
-
+            printf("copy structure, src_next_phys: 0x%llx, dest phys: 0x%llx, level: %d\n", src_next_phys, dst_next_phys, level);
             if (!_copy_page_table(src_next, dst_next, level + 1))
                 return false;
         }

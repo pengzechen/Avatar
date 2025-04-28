@@ -9,6 +9,7 @@
 #include <list.h>
 #include <thread.h>
 #include "../app/app.h"
+#include "sys/sys.h"
 static process_t g_pro_dec[MAX_TASKS];
 
 
@@ -256,4 +257,44 @@ int pro_execve(char *name, void *elf_addr) {
 
     // 正常的话不会返回
     return 0;
+}
+
+int pro_fork (void) {
+    tcb_t * curr = (tcb_t *)(void *)read_tpidr_el0();
+    process_t * pro = curr->curr_pro;
+
+
+    process_t * child_pro = alloc_process("new");
+    child_pro->pg_base = (void*)create_uvm();
+    // 复制父进程的内存空间到子进程
+    // int ret = memory_copy_uvm_4level(child_pro->pg_base, pro->pg_base);
+    // if (ret < 0) {
+    //     printf("copy uvm error!\n");
+    // }
+    child_pro->pg_base = pro->pg_base;
+
+    child_pro->el1_stack = kalloc_pages(2);
+    uint64_t stack_top = (uint64_t)child_pro->el1_stack + PAGE_SIZE * 2;
+    memcpy(child_pro->el1_stack, pro->el1_stack, PAGE_SIZE * 2);
+    
+    // 分配任务结构
+    tcb_t * child_task = alloc_tcb();
+    child_task->counter = SYS_TASK_TICK;
+    child_task->priority = curr->priority;
+    memcpy((void *)(stack_top - sizeof(trap_frame_t)), &curr->cpu_info->ctx, sizeof(trap_frame_t));
+    extern void el0_tesk_entry();
+    child_task->ctx.x30 = (uint64_t)el0_tesk_entry;
+    child_task->ctx.x29 = stack_top - sizeof(trap_frame_t);
+    child_task->ctx.sp_elx = stack_top - sizeof(trap_frame_t);
+    child_task->sp = (stack_top - PAGE_SIZE * 2);
+    child_task->pgdir = (uint64_t)child_pro->pg_base;
+    child_task->curr_pro = child_pro;
+
+    curr->cpu_info->pctx->r[0] = 0;
+
+    list_insert_last(&child_pro->threads, &child_task->process);
+
+    run_process(child_pro);
+
+    return child_pro->process_id;
 }

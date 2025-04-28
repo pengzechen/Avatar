@@ -36,6 +36,7 @@ uint64_t memory_alloc_page(pte_t * page_dir, uint64_t vaddr, uint64_t size, int 
 uint64_t memory_get_paddr(pte_t * page_dir, uint64_t vaddr);
 void destory_4level(pte_t *page_dir);
 void destroy_uvm_4level(pte_t *page_dir);
+int memory_copy_uvm_4level(pte_t * dst_pgd, pte_t *src_pgd);
 int memory_create_map(pte_t *page_dir, uint64_t vaddr, uint64_t paddr, int count, uint64_t perm);
 
 #endif // MEM_H

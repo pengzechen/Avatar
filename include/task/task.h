@@ -87,6 +87,8 @@ typedef struct _task_manager_t {
 void timer_tick_schedule(uint64_t *);
 void print_current_task_list();
 
+tcb_t *alloc_tcb();
+
 // @param: task_func: el0 任务真正的入口, sp: el0 任务的内核栈
 tcb_t *create_task(
     void (*task_func)(),  // el0 任务真正的入口

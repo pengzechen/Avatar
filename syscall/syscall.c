@@ -32,11 +32,16 @@ int _pro_execve(void* args) {
 	return pro_execve(*(char**)args, *((void**)args + 1));
 }
 
+int _pro_fork(void* args) {
+	return pro_fork();
+}
+
 const void *syscall_table[NR_SYSCALL] = {
 	[SYS_putc] = _putc,
 	[SYS_getc] = _getc,
 	[SYS_sleep] = _sleep_tick,
 	[SYS_execve] = _pro_execve,
+	[SYS_fork] = _pro_fork,
 	
 	[SYS_mutex_test_print] = mutex_test_print,
 	[SYS_mutex_add] = mutex_test_add,

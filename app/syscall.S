@@ -6,6 +6,7 @@
 .global mutex_test_minus
 .global mutex_test_print
 .global execve
+.global fork
 
 putc:
     mov x8, #0
@@ -24,6 +25,11 @@ sleep:
 
 execve:
     mov x8, #3
+    svc #0
+    ret
+
+fork:
+    mov x8, #4
     svc #0
     ret
 

@@ -63,9 +63,9 @@ void main_entry()
         process_init(pro1, __testapp_bin_start, 1); // 将来替换 add
         run_process(pro1);
 
-        process_t * pro2 = alloc_process("sub");
-        process_init(pro2, __sub_bin_start, 2);
-        run_process(pro2);
+        // process_t * pro2 = alloc_process("sub");
+        // process_init(pro2, __sub_bin_start, 2);
+        // run_process(pro2);
         
         print_current_task_list();
     }
