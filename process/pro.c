@@ -8,6 +8,7 @@
 #include <elf.h>
 #include <list.h>
 #include <thread.h>
+#include "../app/app.h"
 static process_t g_pro_dec[MAX_TASKS];
 
 
@@ -143,21 +144,21 @@ void prepare_vm(process_t **process, void *elf_addr)
     pro->pg_base = (void *)create_uvm();
 
     pro->entry = load_elf_file(pro, elf_addr, (pte_t *)pro->pg_base);   // map data 区的一块内存 将来优化这里
-    printf("process entry: 0x%llx, process stack: 0x%llx\n", pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE);
+    printf("process entry: 0x%llx\n", pro->entry);
 
     // 处理 EL1 的栈
-    pro->el1_stack = kalloc_pages(1);
-    list_node_t * iter = list_first(&get_task_manager()->task_list);   
-    while (iter) {
-        tcb_t *task = list_node_parent(iter, tcb_t, all_node);
-        printf("map other task(%d) el1 stack: 0x%llx\n", task->id, task->sp);
-        memory_create_map(pro->pg_base, task->sp, virt_to_phys(task->sp), 1, 1);  // 要把所有的task的el1栈都映射一下，不然 task_switch 结束的时候会page fault
-        printf("map this task's el1 stack for task(%d), 0x%llx\n", task->id, (uint64_t)pro->el1_stack);
-        memory_create_map((pte_t*)task->pgdir, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 1, 1);  // 帮另一个任务映射一下这个任务的栈
-        iter = list_node_next(iter);
-    }
-    printf("map this task's el1 stack, 0x%llx\n", (uint64_t)pro->el1_stack);
-    memory_create_map(pro->pg_base, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 1, 1);
+    pro->el1_stack = kalloc_pages(2);
+    // list_node_t * iter = list_first(&get_task_manager()->task_list);   
+    // while (iter) {
+    //     tcb_t *task = list_node_parent(iter, tcb_t, all_node);
+    //     printf("map other task(%d) el1 stack: 0x%llx\n", task->id, task->sp);
+    //     memory_create_map(pro->pg_base, task->sp, virt_to_phys(task->sp), 1, 1);  // 要把所有的task的el1栈都映射一下，不然 task_switch 结束的时候会page fault
+    //     printf("map this task's el1 stack for task(%d), 0x%llx\n", task->id, (uint64_t)pro->el1_stack);
+    //     memory_create_map((pte_t*)task->pgdir, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 1, 1);  // 帮另一个任务映射一下这个任务的栈
+    //     iter = list_node_next(iter);
+    // }
+    // printf("map this task's el1 stack, 0x%llx\n", (uint64_t)pro->el1_stack);
+    // memory_create_map(pro->pg_base, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 1, 1);
 
     // 处理 EL0 的栈
     pro->el0_stack = kalloc_pages(1);
@@ -169,7 +170,7 @@ void process_init(process_t *pro, void *elf_addr, uint32_t priority)
 {
     prepare_vm(&pro, elf_addr);
 
-    tcb_t *main_thread = create_task((void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE, priority);
+    tcb_t *main_thread = create_task((void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE * 2, priority);
 
     main_thread->pgdir = (uint64_t)pro->pg_base;
     main_thread->curr_pro = pro;
@@ -221,6 +222,14 @@ int pro_execve(char *name, void *elf_addr) {
     process_t * pro = curr->curr_pro;
 
     strcpy(pro->process_name, get_file_name(name));  // 先把名字换过来
+    if (strcmp(pro->process_name, "add") == 0) {
+        elf_addr = (void*)__add_bin_start;
+    } else if (strcmp(pro->process_name, "sub") == 0) {
+        elf_addr = (void*)__sub_bin_start;
+    } else {
+        printf("[warning]: app not support\n");
+        return -1;
+    }
 
     uint64_t old_page_dir = (uint64_t)pro->pg_base;
     
@@ -229,7 +238,7 @@ int pro_execve(char *name, void *elf_addr) {
     
     list_node_t *iter = list_first(&pro->threads);
     tcb_t *task = list_node_parent(iter, tcb_t, process);
-    reset_task(task, (void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE, 1);
+    reset_task(task, (void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE * 2, 1);
     task->pgdir = (uint64_t)pro->pg_base;
     task->curr_pro = pro;
     
@@ -241,7 +250,7 @@ int pro_execve(char *name, void *elf_addr) {
     dsb_sy();
     isb();
 
-    // destroy_uvm_4level((pte_t*)(void*)old_page_dir);            // 再释放掉了原进程的空间
+    destroy_uvm_4level((pte_t*)(void*)old_page_dir);            // 再释放掉了原进程的空间
     extern void exec_ret(void*);
     exec_ret(task);             // 这里有问题，原来的栈被破坏了。
 

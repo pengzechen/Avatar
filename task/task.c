@@ -88,8 +88,9 @@ tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &task->cpu_info->ctx, sizeof(trap_frame_t));
     extern void el0_tesk_entry();
     task->ctx.x30 = (uint64_t)el0_tesk_entry;
+    task->ctx.x29 = stack_top - sizeof(trap_frame_t);
     task->ctx.sp_elx = stack_top - sizeof(trap_frame_t);
-    task->sp = (stack_top - PAGE_SIZE);
+    task->sp = (stack_top - PAGE_SIZE * 2);
 
     return task;
 }
@@ -106,8 +107,9 @@ void reset_task (tcb_t *task, void (*task_func)(), uint64_t stack_top, uint32_t 
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &task->cpu_info->ctx, sizeof(trap_frame_t));
     extern void el0_tesk_entry();
     task->ctx.x30 = (uint64_t)el0_tesk_entry;
+    task->ctx.x29 = stack_top - sizeof(trap_frame_t);
     task->ctx.sp_elx = stack_top - sizeof(trap_frame_t);
-    task->sp = (stack_top - PAGE_SIZE);
+    task->sp = (stack_top - PAGE_SIZE * 2);
 }
 
 void set_tcb_pgdir(tcb_t * task, uint64_t pgdir)

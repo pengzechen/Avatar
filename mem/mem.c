@@ -73,7 +73,7 @@ void alloctor_init() //  初始化 g_alloc
 
 static uint64_t addr_alloc_page(addr_alloc_t *alloc, int page_count) {
     uint64_t addr = 0;
-    mutex_lock(&alloc->mutex);
+    // mutex_lock(&alloc->mutex);
 
     int page_index = bitmap_find_contiguous_free(&alloc->bitmap, page_count);
     if (page_index >= 0) {
@@ -86,7 +86,7 @@ static uint64_t addr_alloc_page(addr_alloc_t *alloc, int page_count) {
         // printf("Page index %d marked as allocated.\n", page_index);
     }
 
-    mutex_unlock(&alloc->mutex);
+    // mutex_unlock(&alloc->mutex);
     return addr;
 }
 
@@ -110,7 +110,7 @@ uint64_t fs_malloc_pages(int page_count) {
 }
 
 static void addr_free_page(addr_alloc_t *alloc, uint64_t addr, int page_count) {
-    mutex_lock(&alloc->mutex);
+    // mutex_lock(&alloc->mutex);
     
     static uint64_t heap_start = (uint64_t)(void*)__heap_flag + 0x900000;
     heap_start = UP2(heap_start, PAGE_SIZE);
@@ -124,7 +124,7 @@ static void addr_free_page(addr_alloc_t *alloc, uint64_t addr, int page_count) {
     uint64_t pg_idx = (addr - alloc->start) / alloc->page_size;
     bitmap_clear_range(&alloc->bitmap, pg_idx, page_count);
 
-    mutex_unlock(&alloc->mutex);
+    // mutex_unlock(&alloc->mutex);
 }
 
 // ============= 内核内存分配释放 ================
@@ -592,7 +592,6 @@ uint64_t mutex_test_minus() {
 void mutex_test_print() {
     mutex_lock(&g_alloc.mutex);
     printf("mutex_test_num = %d, current task: %d\n", mutex_test_num, ((tcb_t*)(void*)read_tpidr_el0())->id);
-    // mutex_test_num = 6;
     mutex_unlock(&g_alloc.mutex);
 }
 
@@ -602,7 +601,7 @@ static int get_available_page_count(addr_alloc_t *alloc) {
     int available_page_count = 0;
     
     // 锁住分配器，确保线程安全
-    mutex_lock(&alloc->mutex);
+    // mutex_lock(&alloc->mutex);
     
     // 获取位图的总页数
     uint64_t start_page = (0x40000000 - g_alloc.start) / g_alloc.page_size;
@@ -616,7 +615,7 @@ static int get_available_page_count(addr_alloc_t *alloc) {
     }
 
     // 解锁
-    mutex_unlock(&alloc->mutex);
+    // mutex_unlock(&alloc->mutex);
     
     return available_page_count;
 }
