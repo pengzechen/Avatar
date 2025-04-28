@@ -54,18 +54,7 @@ static unsigned char *heap = NULL;
 uint8_t kstack[8192] __attribute__((section(".bss.kstack")));
 
 
-void *_sbrk(int incr) 
-{
-    unsigned char *prev_heap;
-    if (heap == NULL)
-    {
-        heap = (unsigned char *)&_end;
-    }
-    prev_heap = heap;
-    heap += incr;
-    return prev_heap;
-}
-// open
+
 
 int _open(const char *, int, ...) {
     return 0;
@@ -113,8 +102,6 @@ int _read(int file, char *ptr, int len)
     return read;
 }
 
-
-
 int _fstat(int file, struct stat *st)
 {
     st->st_mode = S_IFCHR;
@@ -130,6 +117,19 @@ int _isatty(int file)
 int _lseek(int file, int ptr, int dir)
 {
     return 0;
+}
+
+
+void *_sbrk(int incr) 
+{
+    unsigned char *prev_heap;
+    if (heap == NULL)
+    {
+        heap = (unsigned char *)&_end;
+    }
+    prev_heap = heap;
+    heap += incr;
+    return prev_heap;
 }
 
 void _exit(int status)

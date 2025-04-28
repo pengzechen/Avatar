@@ -265,17 +265,15 @@ int pro_fork (void) {
 
 
     process_t * child_pro = alloc_process("new");
-    child_pro->pg_base = (void*)create_uvm();
+    child_pro->pg_base = kalloc_pages(1);
     // 复制父进程的内存空间到子进程
-    // int ret = memory_copy_uvm_4level(child_pro->pg_base, pro->pg_base);
-    // if (ret < 0) {
-    //     printf("copy uvm error!\n");
-    // }
-    child_pro->pg_base = pro->pg_base;
+    int ret = memory_copy_uvm_4level(child_pro->pg_base, pro->pg_base);
+    if (ret < 0) {
+        printf("copy uvm error!\n");
+    }
 
     child_pro->el1_stack = kalloc_pages(2);
     uint64_t stack_top = (uint64_t)child_pro->el1_stack + PAGE_SIZE * 2;
-    memcpy(child_pro->el1_stack, pro->el1_stack, PAGE_SIZE * 2);
     
     // 分配任务结构
     tcb_t * child_task = alloc_tcb();

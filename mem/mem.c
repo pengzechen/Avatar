@@ -111,13 +111,13 @@ uint64_t fs_malloc_pages(int page_count) {
 
 static void addr_free_page(addr_alloc_t *alloc, uint64_t addr, int page_count) {
     // mutex_lock(&alloc->mutex);
-    
+    uint64_t start = (uint64_t)(void*)__kernal_start;
     static uint64_t heap_start = (uint64_t)(void*)__heap_flag + 0x900000;
     heap_start = UP2(heap_start, PAGE_SIZE);
     // 确保释放的页不在内核空间内（内核空间地址范围：KERNEL_RAM_START 到 heap_start）
     // assert( addr >= heap_start);
-    if (addr <= heap_start) {
-        // printf("warning: adddr: 0x%llx\n", addr);
+    if (addr >= start && addr <= heap_start) {
+        printf("warning: adddr: 0x%llx in kernel\n", addr);
         return;
     }
 
@@ -473,6 +473,22 @@ bool _copy_page_table(pte_t *src_table, pte_t *dst_table, int level) {
         if (level == 3) {
             // 第4级页表：实际映射的物理页
             uint64_t src_phys = src_entry->l3_page.pfn << 12;
+            
+            uint64_t start = (uint64_t)(void*)__kernal_start;
+            uint64_t end = (uint64_t)(void*)__heap_flag + 0x900000ULL;
+            end = UP2(end, PAGE_SIZE);
+        
+            if (start > KERNEL_VMA)
+                start -= KERNEL_VMA;
+            if (end > KERNEL_VMA)  
+                end -= KERNEL_VMA;
+            
+            if ((src_phys>= start && src_phys <= end) || (src_phys>= 0x8000000 && src_phys <= 0xa000000)) {
+                // 设置目标页表项
+                dst_table[i].pte = (src_phys >> 12 << 12) | (src_entry->pte & 0xFFF);
+                continue;
+            }
+
             uint64_t dst_phys = addr_alloc_page(&g_alloc, 1);
             if (!dst_phys) return false;
 
@@ -494,7 +510,7 @@ bool _copy_page_table(pte_t *src_table, pte_t *dst_table, int level) {
 
             // 设置当前页表项指向新分配的页表
             dst_table[i].pte = (dst_next_phys >> 12 << 12) | (src_entry->pte & 0xFFF);
-            printf("copy structure, src_next_phys: 0x%llx, dest phys: 0x%llx, level: %d\n", src_next_phys, dst_next_phys, level);
+            // printf("copy structure, src_next_phys: 0x%llx, dest phys: 0x%llx, level: %d\n", src_next_phys, dst_next_phys, level);
             if (!_copy_page_table(src_next, dst_next, level + 1))
                 return false;
         }
@@ -880,7 +896,7 @@ void test_memory_copy_uvm_4level() {
 
     // Create source and destination page tables
     pte_t *src_pgd = create_uvm();
-    pte_t *dst_pgd = create_uvm();
+    pte_t *dst_pgd = phys_to_virt (addr_alloc_page(&g_alloc, 1));
 
     const char * data = "1234567890abcdefghijklmnooqrstuvwxyz"
                         "1234567890abcdefghijklmnooqrstuvwxyz"
@@ -954,6 +970,6 @@ void kmem_test()
     printf("\n\n=========copy data to uvm tests: =========\n\n");
     test_copydata_to_uvm();
 
-    // printf("\n\n=========copy uvm to uvm tests: =========\n\n");
-    // test_memory_copy_uvm_4level();
+    printf("\n\n=========copy uvm to uvm tests: =========\n\n");
+    test_memory_copy_uvm_4level();
 }
