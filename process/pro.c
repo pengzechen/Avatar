@@ -218,10 +218,19 @@ char * get_file_name (char * name) {
     return s + 1;
 }
 
-int pro_execve(char *name, void *elf_addr) {
+// int execve (const char *__path, char * const __argv[], char * const __envp[]);
+int pro_execve(char *name, char ** __argv, char ** __envp) {
     tcb_t * curr = (tcb_t *)(void *)read_tpidr_el0();
     process_t * pro = curr->curr_pro;
 
+    for (int i = 0; __argv[i] != NULL; i++) {
+        printf("argv[%d]: %s\n", i, __argv[i]);
+    }
+    for (int i = 0; __envp[i] != NULL; i++) {
+        printf("argv[%d]: %s\n", i, __envp[i]);
+    }
+
+    void *elf_addr = NULL;
     strcpy(pro->process_name, get_file_name(name));  // 先把名字换过来
     if (strcmp(pro->process_name, "add") == 0) {
         elf_addr = (void*)__add_bin_start;
@@ -291,8 +300,12 @@ int pro_fork (void) {
     curr->cpu_info->pctx->r[0] = 0;
 
     list_insert_last(&child_pro->threads, &child_task->process);
+    child_pro->parent = pro;
 
     run_process(child_pro);
 
     return child_pro->process_id;
+
+    // 出错返回-1
+    return -1;
 }

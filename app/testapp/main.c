@@ -39,14 +39,26 @@
 //     }
 // }
 
+char *argv[] = {
+    "argv1",
+    "argv2",
+    "argv3",
+    NULL
+};
 
+char *envp[] = {
+    "test envp1",
+    "test envp2",
+    "test envp3",
+    NULL
+};
 
 int main() {
     int pid = fork();
     if (pid == 0) {  // 子进程执行
-        execve("add", (void*)0x40147000);
+        execve("add", argv, envp);
     } else {
-        execve("sub", (void*)0x40147000);
+        execve("sub", argv, envp);
     }
     return 0;
 }
