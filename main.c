@@ -9,20 +9,9 @@
 #include "task.h"
 #include "spinlock.h"
 #include "uart_pl011.h"
+#include "mem/aj_string.h"
 
 
-void simple_console()
-{
-    while (1)
-    {
-        char c = getc();
-        if(c == '\r') {
-            putc('\r');
-            putc('\n');
-        }
-        putc(c);
-    }
-}
 
 void test_mem()
 {
@@ -54,128 +43,87 @@ void test_types()
         ;
 }
 
-void task7()
-{
-    while (1)
-    {
-        for (uint64_t i = 0; i < 0xfffff; i++)
-            ;
-        putc('7');
-        // putc('\n');
-        // printf("task 7: get_current_cpu_id: %d\n", get_current_cpu_id());
-    }
-}
-
-void task6()
-{
-    while (1)
-    {
-        for (uint64_t i = 0; i < 0xfffff; i++)
-            ;
-        putc('6');
-        // putc('\n');
-        // printf("task 6: get_current_cpu_id: %d\n", get_current_cpu_id());
-    }
-}
-
-void task5()
-{
-    while (1)
-    {
-        for (uint64_t i = 0; i < 0xfffff; i++)
-            ;
-        putc('5');
-        // putc('\n');
-        // printf("task 5: get_current_cpu_id: %d\n", get_current_cpu_id());
-    }
-}
-
-void task4()
-{
-    while (1)
-    {
-        for (uint64_t i = 0; i < 0xfffff; i++)
-            ;
-        putc('4');
-        // putc('\n');
-        // printf("task 4: get_current_cpu_id: %d\n", get_current_cpu_id());
-    }
-}
-
-void task3()
-{
-    while (1)
-    {
-        for (uint64_t i = 0; i < 0xfffff; i++)
-            ;
-        putc('3');
-        // putc('\n');
-        // printf("task 3: get_current_cpu_id: %d\n", get_current_cpu_id());
-    }
-}
-
-void task2()
-{
-    while (1)
-    {
-        for (uint64_t i = 0; i < 0xfffff; i++)
-            ;
-        putc('2');
-        // putc('\n');
-        // printf("task 2: get_current_cpu_id: %d\n", get_current_cpu_id());
-    }
-}
-
-void task1()
-{
-    while (1)
-    {
-        for (uint64_t i = 0; i < 0xfffff; i++)
-            ;
-        putc('1');
-        // putc('\n');
-        // printf("task 1: get_current_cpu_id: %d\n", get_current_cpu_id());
-    }
-}
-
-void task0()
-{
-    while (1)
-    {
-        for (uint64_t i = 0; i < 0xfffff; i++)
-            ;
-        putc('0');
-        // putc('\n');
-        // printf("task 0: get_current_cpu_id: %d\n", get_current_cpu_id());
-    }
-}
-
-char task7_stack[8192] = {0};
-char task6_stack[8192] = {0};
-char task5_stack[8192] = {0};
-char task4_stack[8192] = {0};
-char task3_stack[8192] = {0};
-char task2_stack[8192] = {0};
-char task1_stack[8192] = {0};
-char task0_stack[8192] = {0};
 
 int inited_cpu_num = 0;
 spinlock_t lock;
 
+extern void __app1_bin_start();
+extern void __app1_bin_end();
+extern void __app2_bin_start();
+extern void __app2_bin_end();
+
+void copy_app(void)
+{
+    size_t size = (size_t)(__app1_bin_end - __app1_bin_start);
+    unsigned long *from = (unsigned long *)__app1_bin_start;
+    unsigned long *to = (unsigned long *)0x80000000;
+    printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n",
+           from, to, size, from[0], from[1]);
+    memcpy(to, from, size);
+    printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
+}
+void copy_app2(void)
+{
+    size_t size = (size_t)(__app2_bin_end - __app2_bin_start);
+    unsigned long *from = (unsigned long *)__app2_bin_start;
+    unsigned long *to = (unsigned long *)0x82000000;
+    printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n"
+           , from, to, size, from[0], from[1]);
+    memcpy(to, from, size);
+    printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
+}
+void copy_app3(void)
+{
+    size_t size = (size_t)(__app2_bin_end - __app2_bin_start);
+    unsigned long *from = (unsigned long *)__app2_bin_start;
+    unsigned long *to = (unsigned long *)0x83000000;
+    printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n"
+           , from, to, size, from[0], from[1]);
+    memcpy(to, from, size);
+    printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
+}
+void copy_app4(void)
+{
+    size_t size = (size_t)(__app2_bin_end - __app2_bin_start);
+    unsigned long *from = (unsigned long *)__app2_bin_start;
+    unsigned long *to = (unsigned long *)0x84000000;
+    printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n"
+           , from, to, size, from[0], from[1]);
+    memcpy(to, from, size);
+    printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
+}
+void copy_app5(void)
+{
+    size_t size = (size_t)(__app2_bin_end - __app2_bin_start);
+    unsigned long *from = (unsigned long *)__app2_bin_start;
+    unsigned long *to = (unsigned long *)0x85000000;
+    printf("Copy app image from %x to %x (%d bytes): 0x%x / 0x%x\n"
+           , from, to, size, from[0], from[1]);
+    memcpy(to, from, size);
+    printf("Copy end : 0x%x / 0x%x\n", to[0], to[1]);
+}
+
+
+
 void main_entry()
 {
     printf("main entry: get_current_cpu_id: %d\n", get_current_cpu_id());
+    
     if (get_current_cpu_id() == 0)
     {
-        create_task(task0, 0); //task0_stack + 4096);
-        create_task(task1, 0); //task1_stack + 4096);
-        create_task(task2, 0); //task2_stack + 4096);
-        create_task(task3, 0); //task3_stack + 4096);
-        create_task(task4, 0); //task4_stack + 4096);
-        create_task(task5, 0); //task5_stack + 4096);
-        create_task(task6, 0); //task6_stack + 4096);
-        create_task(task7, 0); //task7_stack + 4096);
+        copy_app();
+        copy_app2();
+        copy_app3();
+        copy_app4();
+        copy_app5();
         schedule_init();
+
+        create_task((void*)0x80000000, (void*)(0x80001000));
+        create_task((void*)0x82000000, (void*)(0x82001000));
+        create_task((void*)0x83000000, (void*)(0x83001000));
+        create_task((void*)0x84000000, (void*)(0x84001000));
+        create_task((void*)0x85000000, (void*)(0x85001000));
+        
         print_current_task_list();
     }
     spin_lock(&lock);
@@ -188,8 +136,6 @@ void main_entry()
     schedule_init_local();
     enable_interrupts();
     
-    // simple_console();
-
     while (1)
         ;
 }
@@ -199,6 +145,8 @@ void kernel_main(void)
     print_info("starting primary core 0 ...\n");
     io_early_init();
     gic_init();
+
+    *(int*)(void*)0x8000404 = 0x1;
     timer_init();
     print_info("core 0 starting is done.\n\n");
     spinlock_init(&lock);
@@ -230,3 +178,5 @@ void second_kernel_main()
     main_entry();
     // can't reach here !
 }
+
+// 100100 10000000000000000001001101

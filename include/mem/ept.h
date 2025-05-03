@@ -5,7 +5,7 @@
 
 #define LPAE_SHIFT 9
 #define LPAE_ENTRIES (1 << LPAE_SHIFT)
-#define LPAE_L1_SIZE (8)
+#define LPAE_L1_SIZE (4)
 #define LPAE_L2_SIZE (LPAE_L1_SIZE * LPAE_ENTRIES)
 #define LPAE_L3_SIZE (LPAE_L2_SIZE * LPAE_ENTRIES)
 
@@ -14,7 +14,7 @@
 #define PADDR_MASK              ((1ULL << PADDR_BITS)-1)
 #define PAGE_MASK               (1 << 12)                // 页对齐掩码
 
-#include <page.h>
+#include <mem/page.h>
 #include <exception.h>
 
 void guest_ept_init(void);

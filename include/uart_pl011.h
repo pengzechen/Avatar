@@ -4,7 +4,6 @@
 #define __PL011_H__
 
 #include "aj_types.h"
-
 #include "os_cfg.h"
 
 #define UART0_DR (*(volatile uint32_t *)(UART0_BASE + 0x00))   // 数据寄存器

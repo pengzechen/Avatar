@@ -9,7 +9,7 @@
 
 #include <stdarg.h>
 #include <aj_types.h>
-#include <aj_string.h>
+#include <mem/aj_string.h>
 #include <io.h>
 
 #define BINSTR_SZ (sizeof(uint32_t) * 8 + sizeof(uint32_t) * 2)

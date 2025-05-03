@@ -1,4 +1,4 @@
-#include "mmu.h"
+#include "mem/mmu.h"
 #include "sys/sys.h"
 
 // startup.S
@@ -20,6 +20,7 @@ _start:
 
     // 设置栈指针
     ldr x0, =_stack_top_el3
+    and x0, x0, #0xFFFFFFFF  // 屏蔽高 32 位
     mov sp, x0
 
     mrs x0, CurrentEL          // Read current exception level
@@ -52,8 +53,9 @@ second_entry:
     // 使用 cpu0 的页表
     bl      enable_mmu
 
-    adrp    x0, exception_vector_base
-    add     x0, x0, :lo12:exception_vector_base
+    //adrp    x0, exception_vector_base
+    //add     x0, x0, :lo12:exception_vector_base
+    ldr x0, =exception_vector_base
     msr     vbar_el1, x0
     dsb     sy      // 确保所有内存访问完成
     isb             // 确保所有指令都执行完成
@@ -62,6 +64,7 @@ second_entry:
 
     b .
 
+
 // 此时CPU已经工作在EL1状态
 primary_entry:
     // 查看当前异常等级
@@ -69,20 +72,24 @@ primary_entry:
     lsr x0, x0, #2             // 右移两位
 
     // 设置栈指针
-    ldr x0, =_stack_top
-    mov sp, x0
+    //ldr x0, =_stack_top
+    //mov sp, x0
+    ldr x0, =_stack_top      // 加载 _stack_top 地址
+    and x0, x0, #0xFFFFFFFF  // 屏蔽高 32 位
+    mov sp, x0               // 设置栈指针
 
     msr daifset, #2   // 关闭所有中断
 
     bl init_page_table
     bl enable_mmu
 
-    // 设置栈指针
+    // 设置栈指针, 这里不应该再使用低地址
     ldr x0, =_stack_top
     mov sp, x0
 
-    adrp    x0, exception_vector_base
-    add     x0, x0, :lo12:exception_vector_base
+    //adrp    x0, exception_vector_base
+    //add     x0, x0, :lo12:exception_vector_base
+    ldr x0, =exception_vector_base
     msr     vbar_el1, x0
     dsb     sy      // 确保所有内存访问完成
     isb             // 确保所有指令都执行完成

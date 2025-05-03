@@ -1,0 +1,22 @@
+{
+    "C_Cpp.errorSquiggles": "disabled",
+    "files.associations": {
+        "page.h": "c",
+        "os_cfg.h": "c",
+        "bitmap.h": "c",
+        "aj_string.h": "c",
+        "barrier.h": "c",
+        "thread.h": "c",
+        "spinlock.h": "c",
+        "sys.h": "c",
+        "gic.h": "c",
+        "task.h": "c",
+        "io.h": "c",
+        "uart_pl011.h": "c",
+        "psci.h": "c",
+        "smp.h": "c",
+        "cstdio": "c",
+        "syscall_num.h": "c",
+        "syscall.h": "c"
+    }
+}

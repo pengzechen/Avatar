@@ -3,7 +3,7 @@
 #include <io.h>
 #include <exception.h>
 #include <gic.h>
-#include <ept.h>
+#include <mem/ept.h>
 #include <hyper/vcpu.h>
 
 void advance_pc(ept_violation_info_t *info, trap_frame_t *context)

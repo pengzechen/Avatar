@@ -47,7 +47,6 @@ test_guest:
 
 
 .section .text 
-// 这个函数被 guest_entry 取代
 guest_start:
 
 	adrp    x1,:got:test_guest

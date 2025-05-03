@@ -1,13 +1,12 @@
-/* link.ld */
+/* link_hyper.ld */
 ENTRY(_start)
-
 
 
 SECTIONS
 {
     /* 设置内核加载地址  */
     /* . = 0x70200000;   */
-    . = 0xffff000040080000;  
+    . = 0x40080000;  
 
     .text : {
         *(.text)
@@ -46,8 +45,6 @@ SECTIONS
         __app2_bin_end = .;
         . = ALIGN((1 << 10));
 
-        /*  bitmap buffer   */
-        /* ================ */
         __bitmap_buffer_start = .;     
         *(.data.bitmap_buffer)        
         __bitmap_buffer_end = .;      

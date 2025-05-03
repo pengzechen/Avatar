@@ -4,40 +4,48 @@
 
 #include "aj_types.h"
 #include "stdarg.h"
-#include "barrier.h"
+#include "mem/barrier.h"
 
 static inline uint8_t read8(const volatile void *addr) {
-    return *(const volatile uint8_t *)addr;
+    uint8_t val;
+    __asm__ volatile ("ldrb %w0, [%1]" : "=r" (val) : "r" (addr));
+    return val;
 }
 
 static inline void write8(uint8_t value, volatile void *addr) {
-    *(volatile uint8_t *)addr = value;
+    __asm__ volatile ("strb %w0, [%1]" :: "r" (value), "r" (addr));
 }
 
 static inline uint16_t read16(const volatile void *addr) {
-    return *(const volatile uint16_t *)addr;
+    uint16_t val;
+    __asm__ volatile ("ldrh %w0, [%1]" : "=r" (val) : "r" (addr));
+    return val;
 }
 
 static inline void write16(uint16_t value, volatile void *addr) {
-    *(volatile uint16_t *)addr = value;
+    __asm__ volatile ("strh %w0, [%1]" :: "r" (value), "r" (addr));
 }
 
-
 static inline uint32_t read32(const volatile void *addr) {
-    return *(const volatile uint32_t *)addr;
+    uint32_t val;
+    __asm__ volatile ("ldr %w0, [%1]" : "=r" (val) : "r" (addr));
+    return val;
 }
 
 static inline void write32(uint32_t value, volatile void *addr) {
-    *(volatile uint32_t *)addr = value;
+    __asm__ volatile ("str %w0, [%1]" :: "r" (value), "r" (addr));
 }
 
 static inline uint64_t read64(const volatile void *addr) {
-    return *(const volatile uint64_t *)addr;
+    uint64_t val;
+    __asm__ volatile ("ldr %0, [%1]" : "=r" (val) : "r" (addr));
+    return val;
 }
 
 static inline void write64(uint64_t value, volatile void *addr) {
-    *(volatile uint64_t *)addr = value;
+    __asm__ volatile ("str %0, [%1]" :: "r" (value), "r" (addr));
 }
+
 
 void uart_early_init();
 void uart_early_putc(char c);

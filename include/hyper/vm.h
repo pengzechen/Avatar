@@ -10,7 +10,6 @@
 struct vm_t {
     uint32_t id;
 
-    cpu_t *vcpus;
     uint32_t vcpu_num;
 
     struct vgic_t *vgic;

@@ -3,12 +3,12 @@
 #include "io.h"
 #include "gic.h"
 #include "timer.h"
-#include "mmu.h"
+#include "mem/mmu.h"
 #include "sys/vtcr.h"
-#include "ept.h"
-#include "page.h"
+#include "mem/ept.h"
+#include "mem/page.h"
 #include "task.h"
-#include "aj_string.h"
+#include "mem/aj_string.h"
 #include "hyper/vm.h"
 #include "os_cfg.h"
 
@@ -45,7 +45,7 @@ void vtcr_init(void)
     uint64_t vtcr_val = VTCR_VS_8BIT | VTCR_PS_MASK_36_BITS |
                         VTCR_TG0_4K | VTCR_SH0_IS | VTCR_ORGN0_WBWA | VTCR_IRGN0_WBWA;
 
-    vtcr_val |= VTCR_T0SZ(64 - 36); /* 40 bit IPA */
+    vtcr_val |= VTCR_T0SZ(64 - 32); /* 32 bit IPA */
     vtcr_val |= VTCR_SL0(0x1);      /* P2M starts at first level */
 
     printf("vtcr val: 0x%x\n", vtcr_val);
@@ -162,8 +162,8 @@ void hyper_main()
     apply_ept(avr_entry);
     *(uint64_t *)0x50000000 = 0x1234;
 
-    craete_vm(test_guest);
-    craete_vm((void *)GUEST_KERNEL_START);
+    craete_vm_task(test_guest);
+    craete_vm_task((void *)GUEST_KERNEL_START);
     schedule_init(); // 设置当前 task 为 task0（test_guest）
     schedule_init_local();
     print_current_task_list();

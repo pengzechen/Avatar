@@ -118,7 +118,9 @@ void gic_enable_int(int vector, int pri)
 
     int n = vector >> 2;
     int m = vector & ((1 << 2) - 1);
-    write32((pri << 3) | (1 << 7), (void *)(GICD_IPRIORITYR(n) + m));
+    printf("set priority: n: %d, m: %d, pri: %d\n", n, m, pri);
+    write8((pri << 3) | (1 << 7), (void *)(GICD_IPRIORITYR(n) + m));
+
 }
 
 // disables the given interrupt.

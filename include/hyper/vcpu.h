@@ -87,24 +87,14 @@ typedef struct _cpu_sysregs
 
 } cpu_sysregs_t;
 
-typedef struct _cpu_t
-{
-	cpu_ctx_t     ctx;
-	cpu_ctx_t     *pctx;  // 指向trap的栈，可以修改restore的数据
-	cpu_sysregs_t sys_reg;
-	spinlock_t    lock;
-} cpu_t ;
+extern cpu_sysregs_t cpu_sysregs[];
 
-
-
-extern cpu_t vcpu[];
-
-#define select_user_reg(reg) (&(vcpu.regs[reg]))
+// #define select_user_reg(reg) (&(vcpu.regs[reg]))
 
 extern void set_stage2_pgd(unsigned long, unsigned long);
 extern void restore_sysregs(cpu_sysregs_t *);
 extern void save_sysregs(cpu_sysregs_t *);
 extern void get_all_sysregs(cpu_sysregs_t *);
-void save_cpu_ctx(trap_frame_t *);
+extern void save_cpu_ctx(trap_frame_t *);
 
 #endif // __VCPU_H__

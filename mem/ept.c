@@ -1,8 +1,7 @@
 
-#include <page.h>
-#include <ept.h>
+#include <mem/page.h>
+#include <mem/ept.h>
 #include <os_cfg.h>
-#include <page.h>
 #include <io.h>
 #include <exception.h>
 #include <hyper/vcpu.h>
@@ -12,13 +11,14 @@ extern lpae_t ept_L1[];
 lpae_t *ept_L2_root;
 lpae_t *ept_L3_root;
 
-int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx);
+static int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx);
 
 /* Return the cache property of the input gpa */
-/* It is determined depending on whether the address is for device or memory */
+/* It is determined depending on whether the */
+/* address is for device or memory */
 static bool isInMemory(unsigned long gpa)
 {
-	if (RAM_START <= gpa && gpa < RAM_END)
+	if (GUEST_RAM_START <= gpa && gpa < GUEST_RAM_END)
 	{
 		return 1;
 	}
@@ -40,6 +40,7 @@ void apply_ept(void *ept)
 	dsb(sy);
 }
 
+// 2 9 9 12 最多管理4G内存
 void guest_ept_init(void)
 {
 	int index_l1, index_l2, index_l3;
