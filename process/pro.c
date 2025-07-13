@@ -12,12 +12,13 @@
 #include "sys/sys.h"
 static process_t g_pro_dec[MAX_TASKS];
 
-
 process_t *alloc_process(char *name)
 {
     static uint32_t pro_count = 1;
-    for (int i=0; i<MAX_TASKS; i++) {
-        if (g_pro_dec[i].process_id == 0) {
+    for (int i = 0; i < MAX_TASKS; i++)
+    {
+        if (g_pro_dec[i].process_id == 0)
+        {
             process_t *pro = &g_pro_dec[i];
             pro->process_id = pro_count++;
 
@@ -31,7 +32,7 @@ process_t *alloc_process(char *name)
     return NULL;
 }
 
-void free_process(process_t *pro) 
+void free_process(process_t *pro)
 {
     memset(pro, 0, sizeof(process_t));
 }
@@ -131,25 +132,25 @@ static uint64_t load_elf_file(process_t *pro, const char *elf_file_addr, pte_t *
         }
 
         // 设置堆的起始和结束地址
-        pro->heap_start = (void*)(elf_phdr.p_vaddr + elf_phdr.p_memsz);
+        pro->heap_start = (void *)(elf_phdr.p_vaddr + elf_phdr.p_memsz);
         pro->heap_end = pro->heap_start;
     }
 
     return elf_hdr->e_entry;
 }
 
-void prepare_vm(process_t **process, void *elf_addr) 
+void prepare_vm(process_t **process, void *elf_addr)
 {
-    process_t * pro = *process;
-    
+    process_t *pro = *process;
+
     pro->pg_base = (void *)create_uvm();
 
-    pro->entry = load_elf_file(pro, elf_addr, (pte_t *)pro->pg_base);   // map data 区的一块内存 将来优化这里
+    pro->entry = load_elf_file(pro, elf_addr, (pte_t *)pro->pg_base); // map data 区的一块内存 将来优化这里
     printf("process entry: 0x%llx\n", pro->entry);
 
     // 处理 EL1 的栈
     pro->el1_stack = kalloc_pages(2);
-    // list_node_t * iter = list_first(&get_task_manager()->task_list);   
+    // list_node_t * iter = list_first(&get_task_manager()->task_list);
     // while (iter) {
     //     tcb_t *task = list_node_parent(iter, tcb_t, all_node);
     //     printf("map other task(%d) el1 stack: 0x%llx\n", task->id, task->sp);
@@ -171,7 +172,7 @@ void process_init(process_t *pro, void *elf_addr, uint32_t priority)
 {
     prepare_vm(&pro, elf_addr);
 
-    tcb_t *main_thread = create_task((void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE * 2, priority);
+    tcb_t *main_thread = create_task((void (*)())(void *)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE * 2, priority);
 
     main_thread->pgdir = (uint64_t)pro->pg_base;
     main_thread->curr_pro = pro;
@@ -204,39 +205,47 @@ void exit_process(process_t *pro)
 }
 
 // int execve (const char *__path, char * const __argv[], char * const __envp[]);
-int pro_execve(char *name, char ** __argv, char ** __envp) {
-    tcb_t * curr = (tcb_t *)(void *)read_tpidr_el0();
-    process_t * pro = curr->curr_pro;
+int pro_execve(char *name, char **__argv, char **__envp)
+{
+    tcb_t *curr = (tcb_t *)(void *)read_tpidr_el0();
+    process_t *pro = curr->curr_pro;
 
-    for (int i = 0; __argv[i] != NULL; i++) {
+    for (int i = 0; __argv[i] != NULL; i++)
+    {
         printf("argv[%d]: %s\n", i, __argv[i]);
     }
-    for (int i = 0; __envp[i] != NULL; i++) {
+    for (int i = 0; __envp[i] != NULL; i++)
+    {
         printf("argv[%d]: %s\n", i, __envp[i]);
     }
 
     void *elf_addr = NULL;
-    strcpy(pro->process_name, get_file_name(name));  // 先把名字换过来
-    if (strcmp(pro->process_name, "add") == 0) {
-        elf_addr = (void*)__add_bin_start;
-    } else if (strcmp(pro->process_name, "sub") == 0) {
-        elf_addr = (void*)__sub_bin_start;
-    } else {
+    strcpy(pro->process_name, get_file_name(name)); // 先把名字换过来
+    if (strcmp(pro->process_name, "add") == 0)
+    {
+        elf_addr = (void *)__add_bin_start;
+    }
+    else if (strcmp(pro->process_name, "sub") == 0)
+    {
+        elf_addr = (void *)__sub_bin_start;
+    }
+    else
+    {
         printf("[warning]: app not support\n");
         return -1;
     }
 
     uint64_t old_page_dir = (uint64_t)pro->pg_base;
-    
+
     // 设置新的页表并切过去
     prepare_vm(&pro, elf_addr);
-    
+
     list_node_t *iter = list_first(&pro->threads);
     tcb_t *task = list_node_parent(iter, tcb_t, process);
-    reset_task(task, (void (*)())(void*)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE * 2, 1);
+    reset_task(task, (void (*)())(void *)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE * 2, 1);
     task->pgdir = (uint64_t)pro->pg_base;
     task->curr_pro = pro;
-    
+
     uint64_t new_page_dir = virt_to_phys(pro->pg_base);
     asm volatile("msr ttbr0_el1, %[x]" : : [x] "r"(new_page_dir));
     dsb_sy();
@@ -245,32 +254,33 @@ int pro_execve(char *name, char ** __argv, char ** __envp) {
     dsb_sy();
     isb();
 
-    destroy_uvm_4level((pte_t*)(void*)old_page_dir);            // 再释放掉了原进程的空间
-    extern void exec_ret(void*);
-    exec_ret(task);             // 这里有问题，原来的栈被破坏了。
+    destroy_uvm_4level((pte_t *)(void *)old_page_dir); // 再释放掉了原进程的空间
+    extern void exec_ret(void *);
+    exec_ret(task); // 这里有问题，原来的栈被破坏了。
 
     // 正常的话不会返回
     return 0;
 }
 
-int pro_fork (void) {
-    tcb_t * curr = (tcb_t *)(void *)read_tpidr_el0();
-    process_t * pro = curr->curr_pro;
+int pro_fork(void)
+{
+    tcb_t *curr = (tcb_t *)(void *)read_tpidr_el0();
+    process_t *pro = curr->curr_pro;
 
-
-    process_t * child_pro = alloc_process("new");
+    process_t *child_pro = alloc_process("new");
     child_pro->pg_base = kalloc_pages(1);
     // 复制父进程的内存空间到子进程
     int ret = memory_copy_uvm_4level(child_pro->pg_base, pro->pg_base);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         printf("copy uvm error!\n");
     }
 
     child_pro->el1_stack = kalloc_pages(2);
     uint64_t stack_top = (uint64_t)child_pro->el1_stack + PAGE_SIZE * 2;
-    
+
     // 分配任务结构
-    tcb_t * child_task = alloc_tcb();
+    tcb_t *child_task = alloc_tcb();
     child_task->counter = SYS_TASK_TICK;
     child_task->priority = curr->priority;
     list_insert_last(&get_task_manager()->task_list, &child_task->all_node);

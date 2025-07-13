@@ -4,23 +4,25 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef struct {
-    volatile uint32_t rbr;      // 0x00: Get or Put Register
-    volatile uint32_t ier;      // 0x04: Interrupt Enable Register
-    volatile uint32_t fcr;      // 0x08: FIFO Control Register
-    volatile uint32_t lcr;      // 0x0c: Line Control Register
-    volatile uint32_t mcr;      // 0x10: Modem Control Register
-    volatile uint32_t lsr;      // 0x14: Line Status Register
-    volatile uint32_t msr;      // 0x18: Modem Status Register
-    volatile uint32_t scr;      // 0x1c: Scratch Register
-    volatile uint32_t lpdll;    // 0x20: Low Power Divisor Latch (Low)
+typedef struct
+{
+    volatile uint32_t rbr;   // 0x00: Get or Put Register
+    volatile uint32_t ier;   // 0x04: Interrupt Enable Register
+    volatile uint32_t fcr;   // 0x08: FIFO Control Register
+    volatile uint32_t lcr;   // 0x0c: Line Control Register
+    volatile uint32_t mcr;   // 0x10: Modem Control Register
+    volatile uint32_t lsr;   // 0x14: Line Status Register
+    volatile uint32_t msr;   // 0x18: Modem Status Register
+    volatile uint32_t scr;   // 0x1c: Scratch Register
+    volatile uint32_t lpdll; // 0x20: Low Power Divisor Latch (Low)
     volatile uint32_t _reserved0;
-    volatile uint32_t usr;      // 0x7c: Uart Status Register
+    volatile uint32_t usr; // 0x7c: Uart Status Register
     volatile uint32_t _reserved1;
-    volatile uint32_t dlf;      // 0xc0: Divisor Latch Fraction
+    volatile uint32_t dlf; // 0xc0: Divisor Latch Fraction
 } DW8250Regs;
 
-typedef struct {
+typedef struct
+{
     uintptr_t base_vaddr;
 } DW8250;
 
@@ -28,21 +30,25 @@ typedef struct {
 #define BST_UART_DLF_LEN 6
 #define BAUDRATE 115200
 
-static inline DW8250Regs* regs(DW8250* uart) {
-    return (DW8250Regs*)uart->base_vaddr;
+static inline DW8250Regs *regs(DW8250 *uart)
+{
+    return (DW8250Regs *)uart->base_vaddr;
 }
 
-uint32_t get_baud_divider(uint32_t baudrate) {
+uint32_t get_baud_divider(uint32_t baudrate)
+{
     return (UART_SRC_CLK << (BST_UART_DLF_LEN - 4)) / baudrate;
 }
 
-void DW8250_init(DW8250* uart) {
-    
+void DW8250_init(DW8250 *uart)
+{
 
     uint32_t divider = get_baud_divider(BAUDRATE);
 
     // Waiting to be no USR_BUSY.
-    while (regs(uart)->usr & 0b1) {}
+    while (regs(uart)->usr & 0b1)
+    {
+    }
 
     // bst_serial_hw_init_clk_rst
 
@@ -71,27 +77,36 @@ void DW8250_init(DW8250* uart) {
     regs(uart)->lcr |= 0b11;
 }
 
-void DW8250_putchar(DW8250* uart, uint8_t c) {
+void DW8250_putchar(DW8250 *uart, uint8_t c)
+{
     // Check LSR_TEMT
     // Wait for last character to go.
-    while (!(regs(uart)->lsr & (1 << 6))) {}
+    while (!(regs(uart)->lsr & (1 << 6)))
+    {
+    }
     regs(uart)->rbr = c;
 }
 
-uint8_t DW8250_getchar(DW8250* uart) {
+uint8_t DW8250_getchar(DW8250 *uart)
+{
     // Check LSR_DR
     // Wait for a character to arrive.
-    if (regs(uart)->lsr & 0b1) {
+    if (regs(uart)->lsr & 0b1)
+    {
         return regs(uart)->rbr & 0xff;
     }
     return 0;
 }
 
-void DW8250_set_ier(DW8250* uart, bool enable) {
-    if (enable) {
+void DW8250_set_ier(DW8250 *uart, bool enable)
+{
+    if (enable)
+    {
         // Enable interrupts
         regs(uart)->ier = 1;
-    } else {
+    }
+    else
+    {
         // Disable interrupts
         regs(uart)->ier = 0;
     }

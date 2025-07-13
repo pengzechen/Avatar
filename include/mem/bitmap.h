@@ -6,7 +6,8 @@
 #include <os_cfg.h>
 #include <io.h>
 
-typedef struct {
+typedef struct
+{
     uint8_t *bits;
     size_t size; // 以 bit 为单位的大小
 } bitmap_t;
@@ -23,13 +24,16 @@ uint64_t bitmap_find_contiguous_free_fs(const bitmap_t *bitmap, size_t count);
 
 extern uint8_t bitmap_buffer[OS_CFG_BITMAP_SIZE / 8] __attribute__((section(".bss.bitmap_buffer")));
 
-#define assert(condition) \
-    do { \
-        if (!(condition)) { \
+#define assert(condition)                                                   \
+    do                                                                      \
+    {                                                                       \
+        if (!(condition))                                                   \
+        {                                                                   \
             printf("Assertion failed: %s, function %s, file %s, line %d\n", \
-                    #condition, __func__, __FILE__, __LINE__); \
-            while(1); \
-        } \
-    } while(0)
+                   #condition, __func__, __FILE__, __LINE__);               \
+            while (1)                                                       \
+                ;                                                           \
+        }                                                                   \
+    } while (0)
 
 #endif // BITMAP_H

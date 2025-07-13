@@ -20,56 +20,56 @@ static char digits[16] = "0123456789abcdef";
 
 typedef struct pstream
 {
-	char *buffer;
-	int remain;
-	int added;
+    char *buffer;
+    int remain;
+    int added;
 } pstream_t;
 
 typedef struct strprops
 {
-	char pad;
-	int npad;
-	bool alternate;
+    char pad;
+    int npad;
+    bool alternate;
 } strprops_t;
 
 static void addchar(pstream_t *p, char c)
 {
-	if (p->remain)
-	{
-		*p->buffer++ = c;
-		--p->remain;
-	}
-	++p->added;
+    if (p->remain)
+    {
+        *p->buffer++ = c;
+        --p->remain;
+    }
+    ++p->added;
 }
 
 static void print_str(pstream_t *p, const char *s, strprops_t props)
 {
-	const char *s_orig = s;
-	int npad = props.npad;
+    const char *s_orig = s;
+    int npad = props.npad;
 
-	if (npad > 0)
-	{
-		npad -= strlen(s_orig);
-		while (npad > 0)
-		{
-			addchar(p, props.pad);
-			--npad;
-		}
-	}
+    if (npad > 0)
+    {
+        npad -= strlen(s_orig);
+        while (npad > 0)
+        {
+            addchar(p, props.pad);
+            --npad;
+        }
+    }
 
-	while (*s)
-		addchar(p, *s++);
+    while (*s)
+        addchar(p, *s++);
 
-	if (npad < 0)
-	{
-		props.pad = ' '; /* ignore '0' flag with '-' flag */
-		npad += strlen(s_orig);
-		while (npad < 0)
-		{
-			addchar(p, props.pad);
-			++npad;
-		}
-	}
+    if (npad < 0)
+    {
+        props.pad = ' '; /* ignore '0' flag with '-' flag */
+        npad += strlen(s_orig);
+        while (npad < 0)
+        {
+            addchar(p, props.pad);
+            ++npad;
+        }
+    }
 }
 
 static void print_int(pstream_t *ps, long long n, int base, strprops_t props)
@@ -151,21 +151,20 @@ static void print_unsigned(pstream_t *ps, uint64_t n, int base, strprops_t props
     print_str(ps, buf, props);
 }
 
-
 static int fmtnum(const char **fmt)
 {
-	const char *f = *fmt;
-	int len = 0, num;
+    const char *f = *fmt;
+    int len = 0, num;
 
-	if (*f == '-')
-		++f, ++len;
+    if (*f == '-')
+        ++f, ++len;
 
-	while (*f >= '0' && *f <= '9')
-		++f, ++len;
+    while (*f >= '0' && *f <= '9')
+        ++f, ++len;
 
-	num = atol(*fmt);
-	*fmt += len;
-	return num;
+    num = atol(*fmt);
+    *fmt += len;
+    return num;
 }
 
 int vsnprintf(char *buf, int size, const char *fmt, va_list va)
@@ -283,101 +282,100 @@ int vsnprintf(char *buf, int size, const char *fmt, va_list va)
     return s.added;
 }
 
-
 int snprintf(char *buf, int size, const char *fmt, ...)
 {
-	va_list va;
-	int r;
+    va_list va;
+    int r;
 
-	va_start(va, fmt);
-	r = vsnprintf(buf, size, fmt, va);
-	va_end(va);
-	return r;
+    va_start(va, fmt);
+    r = vsnprintf(buf, size, fmt, va);
+    va_end(va);
+    return r;
 }
 
 int vprintf(const char *fmt, va_list va)
 {
-	char buf[BUFSZ];
-	int r;
+    char buf[BUFSZ];
+    int r;
 
-	r = vsnprintf(buf, sizeof(buf), fmt, va);
-	puts(buf);
-	return r;
+    r = vsnprintf(buf, sizeof(buf), fmt, va);
+    puts(buf);
+    return r;
 }
 
 int printf(const char *fmt, ...)
 {
-	va_list va;
-	char buf[BUFSZ];
-	int r;
+    va_list va;
+    char buf[BUFSZ];
+    int r;
 
-	va_start(va, fmt);
-	r = vsnprintf(buf, sizeof buf, fmt, va);
-	va_end(va);
+    va_start(va, fmt);
+    r = vsnprintf(buf, sizeof buf, fmt, va);
+    va_end(va);
 
-	puts(buf);
+    puts(buf);
 
-	return r;
+    return r;
 }
 
 int warning(const char *fmt, ...)
 {
-	va_list va;
-	char buf[BUFSZ];
-	int r;
+    va_list va;
+    char buf[BUFSZ];
+    int r;
 
-	va_start(va, fmt);
-	r = vsnprintf(buf, sizeof buf, fmt, va);
-	va_end(va);
+    va_start(va, fmt);
+    r = vsnprintf(buf, sizeof buf, fmt, va);
+    va_end(va);
 
-	puts(buf);
+    puts(buf);
 
-	return r;
+    return r;
 }
 
 int error(const char *fmt, ...)
 {
-	va_list va;
-	char buf[BUFSZ];
-	int r;
+    va_list va;
+    char buf[BUFSZ];
+    int r;
 
-	va_start(va, fmt);
-	r = vsnprintf(buf, sizeof buf, fmt, va);
-	va_end(va);
+    va_start(va, fmt);
+    r = vsnprintf(buf, sizeof buf, fmt, va);
+    va_end(va);
 
-	puts(buf);
+    puts(buf);
 
-	return r;
+    return r;
 }
 
 void binstr(uint32_t x, char out[BINSTR_SZ])
 {
-	int i;
-	char *c;
-	int n;
+    int i;
+    char *c;
+    int n;
 
-	n = sizeof(uint32_t) * 8;
-	i = 0;
-	c = &out[0];
-	for (;;)
-	{
-		*c++ = (x & (1ul << (n - i - 1))) ? '1' : '0';
-		i++;
+    n = sizeof(uint32_t) * 8;
+    i = 0;
+    c = &out[0];
+    for (;;)
+    {
+        *c++ = (x & (1ul << (n - i - 1))) ? '1' : '0';
+        i++;
 
-		if (i == n)
-		{
-			*c = '\0';
-			break;
-		}
-		if (i % 4 == 0)
-			*c++ = '\'';
-	}
-	// assert(c + 1 - &out[0] == BINSTR_SZ);
+        if (i == n)
+        {
+            *c = '\0';
+            break;
+        }
+        if (i % 4 == 0)
+            *c++ = '\'';
+    }
+    // assert(c + 1 - &out[0] == BINSTR_SZ);
 }
 
 void print_binstr(uint32_t x)
 {
-	char out[BINSTR_SZ];
-	binstr(x, out);
-	printf("%s", out);
+    char out[BINSTR_SZ];
+    binstr(x, out);
+    printf("%s", out);
 }

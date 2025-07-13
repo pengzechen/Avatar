@@ -73,7 +73,7 @@ void uart_advance_putc(char c)
 }
 
 // 中断处理程序
-void uart_interrupt_handler(uint64_t * )
+void uart_interrupt_handler(uint64_t *)
 {
     // 处理接收中断
     if (UART0_MIS & 0x10)

@@ -201,12 +201,14 @@ void data_abort_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 	{
 	}
 	*/
-	if (GICD_BASE_ADDR <= info->gpa && info->gpa <= (GICD_BASE_ADDR + 0x0010000)) {
+	if (GICD_BASE_ADDR <= info->gpa && info->gpa <= (GICD_BASE_ADDR + 0x0010000))
+	{
 		intc_handler(info, el2_ctx);
 		return;
 	}
-	
-	if (GICC_BASE_ADDR <= info->gpa && info->gpa <= (GICC_BASE_ADDR + 0x0010000)) {
+
+	if (GICC_BASE_ADDR <= info->gpa && info->gpa <= (GICC_BASE_ADDR + 0x0010000))
+	{
 		info->gpa = info->gpa + 0x30000;
 		handle_mmio(info, el2_ctx);
 		return;
@@ -243,70 +245,70 @@ int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 	// printf("operation gpa: 0x%llx\n", gpa);
 	// if (MMIO_ARREA <= gpa && gpa <= (MMIO_ARREA + 4096))
 	// {
-		if (info->hsr.dabt.write)
+	if (info->hsr.dabt.write)
+	{
+		unsigned long reg_num;
+		volatile uint64_t *r;
+		volatile void *buf;
+		volatile unsigned long len;
+		volatile unsigned long *dst;
+
+		// 获取寄存器编号和 MMIO 操作的大小
+		reg_num = info->hsr.dabt.reg;
+		len = 1 << (info->hsr.dabt.size & 0x00000003);
+
+		// 计算目标缓冲区
+		r = &el2_ctx->r[reg_num];
+		buf = (void *)r;
+
+		// 从 MMIO 地址读取数据
+		dst = (unsigned long *)(unsigned long)gpa;
+		// printf("(%d bytes) 0x%llx  R%d\n", (unsigned long)len, *dst, (unsigned long)reg_num);
+
+		// printf("old data: 0x%llx\n", *dst);
+		//  将数据写入寄存器或进行其他必要的操作
+		if (reg_num != 30)
 		{
-			unsigned long reg_num;
-			volatile uint64_t *r;
-			volatile void *buf;
-			volatile unsigned long len;
-			volatile unsigned long *dst;
-
-			// 获取寄存器编号和 MMIO 操作的大小
-			reg_num = info->hsr.dabt.reg;
-			len = 1 << (info->hsr.dabt.size & 0x00000003);
-
-			// 计算目标缓冲区
-			r = &el2_ctx->r[reg_num];
-			buf = (void *)r;
-
-			// 从 MMIO 地址读取数据
-			dst = (unsigned long *)(unsigned long)gpa;
-			//printf("(%d bytes) 0x%llx  R%d\n", (unsigned long)len, *dst, (unsigned long)reg_num);
-			
-			//printf("old data: 0x%llx\n", *dst);
-			// 将数据写入寄存器或进行其他必要的操作
-			if (reg_num != 30)
-			{
-				*dst = *(unsigned long *)buf;
-			}
-			// 确保所有更改都能被看到
-			dsb(sy);
-			isb();
-			//printf("new data: 0x%llx\n", *dst);
+			*dst = *(unsigned long *)buf;
 		}
-		else
+		// 确保所有更改都能被看到
+		dsb(sy);
+		isb();
+		// printf("new data: 0x%llx\n", *dst);
+	}
+	else
+	{
+		unsigned long reg_num;
+		volatile uint64_t *r;
+		volatile void *buf;
+		volatile unsigned long *src;
+		volatile unsigned long len;
+		volatile unsigned long dat;
+		// spin_lock(&vcpu.lock);
+
+		reg_num = info->hsr.dabt.reg;
+		// r = (uint64_t *)select_user_reg(reg_num);
+		// r = &vcpu.pctx->r[reg_num];
+		r = &el2_ctx->r[reg_num];
+		len = 1 << (info->hsr.dabt.size & 0x00000003);
+		buf = (void *)r;
+
+		src = (unsigned long *)(unsigned long)gpa;
+		dat = *src;
+		// printf("(%d bytes) 0x%llx R%d\n", (unsigned long)len, *src, (unsigned long)reg_num);
+
+		// printf("old data: 0x%llx\n", *r);
+		if (reg_num != 30)
 		{
-			unsigned long reg_num;
-			volatile uint64_t *r;
-			volatile void *buf;
-			volatile unsigned long *src;
-			volatile unsigned long len;
-			volatile unsigned long dat;
-			// spin_lock(&vcpu.lock);
-
-			reg_num = info->hsr.dabt.reg;
-			// r = (uint64_t *)select_user_reg(reg_num);
-			// r = &vcpu.pctx->r[reg_num];
-			r = &el2_ctx->r[reg_num];
-			len = 1 << (info->hsr.dabt.size & 0x00000003);
-			buf = (void *)r;
-
-			src = (unsigned long *)(unsigned long)gpa;
-			dat = *src;
-			//printf("(%d bytes) 0x%llx R%d\n", (unsigned long)len, *src, (unsigned long)reg_num);
-			
-			//printf("old data: 0x%llx\n", *r);
-			if (reg_num != 30)
-			{
-				*(unsigned long *)buf = dat;
-			}
-			dsb(sy);
-			isb();
-			//printf("new data: 0x%llx\n", *r);
-			
-			// spin_unlock(&vcpu.lock);
+			*(unsigned long *)buf = dat;
 		}
-		return 1;
+		dsb(sy);
+		isb();
+		// printf("new data: 0x%llx\n", *r);
+
+		// spin_unlock(&vcpu.lock);
+	}
+	return 1;
 	// }
 
 	// return 0;

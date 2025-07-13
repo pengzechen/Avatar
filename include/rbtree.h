@@ -29,4 +29,4 @@ void rbtree_insert(rbtree_t *tree, void *key, void *val);
 rbnode_t *rbtree_search(rbtree_t *tree, void *key);
 void rbtree_delete(rbtree_t *tree, void *key);
 
-#endif  // __RBTREE_H__
+#endif // __RBTREE_H__

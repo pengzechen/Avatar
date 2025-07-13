@@ -53,10 +53,8 @@ static unsigned char *heap = NULL;
 
 uint8_t kstack[8192] __attribute__((section(".bss.kstack")));
 
-
-
-
-int _open(const char *, int, ...) {
+int _open(const char *, int, ...)
+{
     return 0;
 }
 
@@ -119,8 +117,7 @@ int _lseek(int file, int ptr, int dir)
     return 0;
 }
 
-
-void *_sbrk(int incr) 
+void *_sbrk(int incr)
 {
     unsigned char *prev_heap;
     if (heap == NULL)
@@ -149,8 +146,6 @@ int _getpid(void)
     return -1;
 }
 
-
-
 struct _reent my_reent_data __attribute__((aligned(64)));
 
 void init_reent_data()
@@ -177,4 +172,3 @@ int main()
 
     return 0;
 }
-

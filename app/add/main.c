@@ -12,9 +12,11 @@ int _start()
     //     }
     //     putc(c);
     // }
-    while(1) {
-        for (int i = 0; i < 1000; i++) {
-                
+    while (1)
+    {
+        for (int i = 0; i < 1000; i++)
+        {
+
             uint64_t x = mutex_test_add();
             // putc('A');
             // putc('B');

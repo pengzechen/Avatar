@@ -36,7 +36,7 @@ void start_secondary_cpus()
         for (int j = 0; j < 10; j++)
             for (int k = 0; k < 0xfffff; k++)
                 ;
-        
+
         thread_info_init((struct thread_info *)(_stack_top_second - STACK_SIZE * i), 0, i);
         printf("core %d thread info addr: %llx\n", i, (void *)(_stack_top_second - STACK_SIZE * i));
     }

@@ -33,7 +33,7 @@ void uart_early_init()
 
 void uart_early_putc(char c)
 {
-    
+
     // 等待发送 FIFO 不为满
     while (UART0_FR & (1 << 5))
         ;

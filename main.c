@@ -58,41 +58,41 @@ void main_entry()
         schedule_init();
         task_manager_init();
         // ramfs_test();
-        
-        process_t * pro1 = alloc_process("system");
+
+        process_t *pro1 = alloc_process("system");
         process_init(pro1, __testapp_bin_start, 1); // 将来替换 add
         run_process(pro1);
 
         // process_t * pro2 = alloc_process("sub");
         // process_init(pro2, __sub_bin_start, 2);
         // run_process(pro2);
-        
+
         print_current_task_list();
     }
-    el1_idle_init();        // idle 任务每个核都有自己的el1栈， 代码公用
+    el1_idle_init(); // idle 任务每个核都有自己的el1栈， 代码公用
     spin_lock(&lock);
-    inited_cpu_num ++;
+    inited_cpu_num++;
     spin_unlock(&lock);
 
-    while(inited_cpu_num != SMP_NUM)
+    while (inited_cpu_num != SMP_NUM)
         wfi();
-    
+
     // uint64_t __sp = (uint64_t)app_el1_stack + 4096 - sizeof(trap_frame_t);
     // void * _sp = (void *)__sp;
     // schedule_init_local(task1, _sp);  // 任务管理器任务当前在跑第一个任务
-    
+
     // asm volatile("mov sp, %0" :: "r"(_sp));
     // extern void el0_tesk_entry();
     // el0_tesk_entry();
 
     uint64_t __sp = get_idle_sp_top() - sizeof(trap_frame_t);
-    void * _sp = (void *)__sp;
-    schedule_init_local(get_idle(), NULL);  // 任务管理器任务当前在跑idle任务
-    
-    asm volatile("mov sp, %0" :: "r"(_sp));
+    void *_sp = (void *)__sp;
+    schedule_init_local(get_idle(), NULL); // 任务管理器任务当前在跑idle任务
+
+    asm volatile("mov sp, %0" ::"r"(_sp));
     extern void el0_tesk_entry();
     el0_tesk_entry();
-    
+
     // int x;
     // while (1)
     // {

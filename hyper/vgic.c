@@ -78,7 +78,7 @@ void vgicd_read(ept_violation_info_t *info, trap_frame_t *el2_ctx, void *paddr)
     volatile unsigned long len;
     volatile unsigned long dat;
     // spin_lock(&vcpu.lock);
- 
+
     reg_num = info->hsr.dabt.reg;
     // r = (uint64_t *)select_user_reg(reg_num);
     // r = &vcpu.pctx->r[reg_num];

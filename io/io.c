@@ -61,7 +61,7 @@ void uart_putstr(const char *str)
         uart_op = &early_ops;
     while (*str)
     {
-        uart_op->uart_putc(*str++);  // putchar()
+        uart_op->uart_putc(*str++); // putchar()
     }
 }
 

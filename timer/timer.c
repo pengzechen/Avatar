@@ -12,7 +12,6 @@ static uint64_t test_num = 0;
 
 #define TIMER_VECTOR 30
 
-
 void handle_timer_interrupt(uint64_t *sp)
 {
     // 设置定时值
@@ -49,7 +48,6 @@ void timer_init_second()
     }
 }
 
-
 // 每个pe都要配置
 void timer_init()
 {
@@ -71,5 +69,4 @@ void timer_init()
     {
         printf("timer enabled successfully ...\n");
     }
-
 }

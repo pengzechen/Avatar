@@ -1,23 +1,22 @@
 
 #include "syscall.h"
 
-
 // void test_shell() {
 //     char c;
 //     while (1) {
 //         // 获取用户输入字符
 //         c = getc();
-        
+
 //         // 如果输入回车键，换行
 //         if (c == '\r') {
 //             putc('\r');
 //             putc('\n');
 //             continue;
 //         }
-        
+
 //         // 输出输入字符
 //         putc(c);
-        
+
 //         // 如果输入是 'a'，fork 一个子进程执行 execve("add", ...)
 //         if (c == 'a') {
 //             int pid = fork();
@@ -43,21 +42,23 @@ char *argv[] = {
     "argv1",
     "argv2",
     "argv3",
-    NULL
-};
+    NULL};
 
 char *envp[] = {
     "test envp1",
     "test envp2",
     "test envp3",
-    NULL
-};
+    NULL};
 
-int _start() {
+int _start()
+{
     int pid = fork();
-    if (pid == 0) {  // 子进程执行
+    if (pid == 0)
+    { // 子进程执行
         execve("add", argv, envp);
-    } else {
+    }
+    else
+    {
         execve("sub", argv, envp);
     }
     return 0;

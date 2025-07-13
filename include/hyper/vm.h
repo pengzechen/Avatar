@@ -7,7 +7,8 @@
 #include "vcpu.h"
 #include "vgic.h"
 
-struct vm_t {
+struct vm_t
+{
     uint32_t id;
 
     uint32_t vcpu_num;
@@ -16,6 +17,5 @@ struct vm_t {
 };
 
 void vm_init();
-
 
 #endif // __VM_H__

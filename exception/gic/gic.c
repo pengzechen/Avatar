@@ -38,7 +38,7 @@ void gicc_init()
     // 设置优先级 为 0xf8
     write32(0xff - 7, (void *)GICC_PMR);
     // EOImodeNS, bit [9] Controls the behavior of Non-secure accesses to GICC_EOIR GICC_AEOIR, and GICC_DIR
-    write32(GICC_CTRL_ENABLE_GROUP0 , (void *)GICC_CTLR);
+    write32(GICC_CTRL_ENABLE_GROUP0, (void *)GICC_CTLR);
 }
 
 // gicd g0, g1  gicc,  gich enable
@@ -120,7 +120,6 @@ void gic_enable_int(int vector, int pri)
     int m = vector & ((1 << 2) - 1);
     printf("set priority: n: %d, m: %d, pri: %d\n", n, m, pri);
     write8((pri << 3) | (1 << 7), (void *)(GICD_IPRIORITYR(n) + m));
-
 }
 
 // disables the given interrupt.
@@ -201,11 +200,13 @@ uint32_t gic_lr_read_vid(uint32_t lr_value)
     return lr_value & 0x1ff;
 }
 
-uint32_t gic_apr() {
+uint32_t gic_apr()
+{
     return read32((void *)GICH_APR);
 }
 
-uint32_t gic_elsr0() {
+uint32_t gic_elsr0()
+{
     return read32((void *)GICH_ELSR0);
 }
 

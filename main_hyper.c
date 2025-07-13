@@ -107,7 +107,6 @@ void copy_fs(void)
 
 extern void test_guest();
 
-
 extern size_t cacheline_bytes;
 
 void mmio_map_gicd()
@@ -132,9 +131,8 @@ void mmio_map_gicc()
     }
 }
 
-static uint8_t  guest1_el2_stack[8192] __attribute__((aligned(16384)));
-static uint8_t  guest2_el2_stack[8192] __attribute__((aligned(8192)));
-
+static uint8_t guest1_el2_stack[8192] __attribute__((aligned(16384)));
+static uint8_t guest2_el2_stack[8192] __attribute__((aligned(8192)));
 
 void hyper_main()
 {
@@ -172,29 +170,28 @@ void hyper_main()
     alloctor_init();
     task_manager_init();
     el1_idle_init();
-    
-    tcb_t * task1 = craete_vm_task(test_guest, (uint64_t)guest1_el2_stack + 8192, (1 << 0));
-    tcb_t * task2 = craete_vm_task((void *)GUEST_KERNEL_START, (uint64_t)guest2_el2_stack + 8192, (1 << 0));
-    
+
+    tcb_t *task1 = craete_vm_task(test_guest, (uint64_t)guest1_el2_stack + 8192, (1 << 0));
+    tcb_t *task2 = craete_vm_task((void *)GUEST_KERNEL_START, (uint64_t)guest2_el2_stack + 8192, (1 << 0));
+
     task_set_ready(task1);
     task_set_ready(task2);
-    
+
     print_current_task_list();
 
     // uint64_t __sp = (uint64_t)guest1_el2_stack + 8192 - sizeof(trap_frame_t);
     // void * _sp = (void *)__sp;
     // schedule_init_local(task1, _sp);  // 任务管理器任务当前在跑第一个任务
-    
+
     // asm volatile("mov sp, %0" :: "r"(_sp));
     // extern void guest_entry();
     // guest_entry();
 
     uint64_t __sp = get_idle_sp_top() - sizeof(trap_frame_t);
-    void * _sp = (void *)__sp;
-    schedule_init_local(get_idle(), NULL);  // 任务管理器任务当前在跑idle任务
-    
-    asm volatile("mov sp, %0" :: "r"(_sp));
+    void *_sp = (void *)__sp;
+    schedule_init_local(get_idle(), NULL); // 任务管理器任务当前在跑idle任务
+
+    asm volatile("mov sp, %0" ::"r"(_sp));
     extern void guest_entry();
     guest_entry();
-
 }

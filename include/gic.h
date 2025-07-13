@@ -91,8 +91,6 @@
 
 #define GICC_IAR_INT_ID_MASK 0x3ff
 
-
-
 typedef struct gic_t
 {
 	unsigned int irq_nr;

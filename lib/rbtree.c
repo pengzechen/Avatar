@@ -3,7 +3,6 @@
 #include <queue.h>
 #include <aj_types.h>
 
-
 #ifndef RBTREE_NODE_POOL_NUM
 #define RBTREE_NODE_POOL_NUM 1024
 #endif
@@ -14,7 +13,8 @@
 static rbtree_t tree_pool[16];
 static int tree_count = 0;
 
-typedef struct {
+typedef struct
+{
     queue_node_t que;
     rbnode_t node;
 } rb_queue_t;
@@ -24,23 +24,28 @@ static int pool_count = 0;
 
 queue_t ls;
 
-void rbtree_init(void){
+void rbtree_init(void)
+{
     queue_list_init(&ls);
     /* for(int i=0;i<sizeof(node_pool)/sizeof(node_pool[0]);i++){ */
     /*     queue_list_enque(&ls, (queue_node_t *)&(node_pool[i])); */
     /* } */
 }
 
-rbtree_t *rbtree_alloc(int (*comp)(void *,void *)){
+rbtree_t *rbtree_alloc(int (*comp)(void *, void *))
+{
     rbtree_t *ret = &(tree_pool[tree_count++]);
     ret->head = NULL;
     ret->comp = comp;
     return ret;
 }
 
-static rbnode_t *rbtree_node_alloc(void){
-    if(queue_list_is_empty(&ls)){
-        if(pool_count>=RBTREE_NODE_POOL_NUM){
+static rbnode_t *rbtree_node_alloc(void)
+{
+    if (queue_list_is_empty(&ls))
+    {
+        if (pool_count >= RBTREE_NODE_POOL_NUM)
+        {
             tv_abort("rbtree alloc failed\n");
             return NULL;
         }
@@ -51,34 +56,46 @@ static rbnode_t *rbtree_node_alloc(void){
     return &(((rb_queue_t *)queue_list_pop(&ls))->node);
 }
 
-static void rbtree_node_free(rbnode_t *node){
-    if(node->par!=NULL){
-        if(node->par->left==node) node->par->left = NULL;
-        else node->par->right = NULL;
+static void rbtree_node_free(rbnode_t *node)
+{
+    if (node->par != NULL)
+    {
+        if (node->par->left == node)
+            node->par->left = NULL;
+        else
+            node->par->right = NULL;
     }
-    queue_node_t *que = (queue_node_t *)(((void *)node)-sizeof(queue_node_t));
+    queue_node_t *que = (queue_node_t *)(((void *)node) - sizeof(queue_node_t));
     queue_list_enque(&ls, que);
 }
 
-static rbnode_t *rotate(rbnode_t *tar){
+static rbnode_t *rotate(rbnode_t *tar)
+{
     rbnode_t *par = tar->par;
     rbnode_t *gpar = par->par;
 
-
-    if(gpar->left==par){
-        if(par->left==tar){
+    if (gpar->left == par)
+    {
+        if (par->left == tar)
+        {
             par->par = gpar->par;
-            if(gpar->par) {
-                if(gpar->par->left==gpar) gpar->par->left = par;
-                else gpar->par->right = par;
+            if (gpar->par)
+            {
+                if (gpar->par->left == gpar)
+                    gpar->par->left = par;
+                else
+                    gpar->par->right = par;
             }
 
             gpar->par = par;
             gpar->left = par->right;
-            if(par->right) par->right->par = gpar;
+            if (par->right)
+                par->right->par = gpar;
             par->right = gpar;
             return par;
-        } else {
+        }
+        else
+        {
             tar->color = NODE_BLACK;
             void *gkey = gpar->key;
             void *gval = gpar->val;
@@ -87,16 +104,21 @@ static rbnode_t *rotate(rbnode_t *tar){
             tar->key = gkey;
             tar->val = gval;
             par->right = tar->left;
-            if(par->right) par->right->par = par;
+            if (par->right)
+                par->right->par = par;
             tar->left = tar->right;
             tar->right = gpar->right;
-            if(tar->right) tar->right->par = tar;
+            if (tar->right)
+                tar->right->par = tar;
             gpar->right = tar;
             gpar->right->par = gpar;
             return gpar;
         }
-    } else {
-        if(par->right==tar){
+    }
+    else
+    {
+        if (par->right == tar)
+        {
             void *gkey = gpar->key;
             void *gval = gpar->val;
             gpar->key = par->key;
@@ -106,19 +128,25 @@ static rbnode_t *rotate(rbnode_t *tar){
             tar->key = gkey;
             tar->val = gval;
             par->right = tar->right;
-            if(par->right) par->right->par = par;
+            if (par->right)
+                par->right->par = par;
             tar->right = par->left;
-            if(tar->right) tar->right->par = tar;
+            if (tar->right)
+                tar->right->par = tar;
             par->left = tar->left;
-            if(par->left) par->left->par = par;
+            if (par->left)
+                par->left->par = par;
             tar->left = gpar->left;
-            if(tar->left) tar->left->par = tar;
+            if (tar->left)
+                tar->left->par = tar;
             gpar->left = tar;
             gpar->left->par = gpar;
             gpar->color = NODE_BLACK;
             par->color = NODE_RED;
             return gpar;
-        } else {
+        }
+        else
+        {
             tar->color = NODE_BLACK;
             void *gkey = gpar->key;
             void *gval = gpar->val;
@@ -127,10 +155,12 @@ static rbnode_t *rotate(rbnode_t *tar){
             tar->key = gkey;
             tar->val = gval;
             par->left = tar->right;
-            if(par->left) par->left->par = par;
+            if (par->left)
+                par->left->par = par;
             tar->right = tar->left;
             tar->left = gpar->left;
-            if(tar->left) tar->left->par = tar;
+            if (tar->left)
+                tar->left->par = tar;
             gpar->left = tar;
             gpar->left->par = gpar;
             return gpar;
@@ -138,7 +168,8 @@ static rbnode_t *rotate(rbnode_t *tar){
     }
 }
 
-void rbtree_insert(rbtree_t *tree, void *key, void *val){
+void rbtree_insert(rbtree_t *tree, void *key, void *val)
+{
     rbnode_t *tar = rbtree_node_alloc();
     tar->key = key;
     tar->val = val;
@@ -146,26 +177,33 @@ void rbtree_insert(rbtree_t *tree, void *key, void *val){
     tar->right = NULL;
     tar->color = NODE_RED;
 
-    rbnode_t *tmp = tree->head; 
-    if(tmp==NULL) {
+    rbnode_t *tmp = tree->head;
+    if (tmp == NULL)
+    {
         tar->par = NULL;
         tar->color = NODE_BLACK;
         tree->head = tar;
         return;
     }
 
-    while(1){
+    while (1)
+    {
         rbnode_t *next;
-        if(tree->comp(tmp->key, tar->key) > 0){
+        if (tree->comp(tmp->key, tar->key) > 0)
+        {
             next = tmp->right;
-            if(next==NULL){
+            if (next == NULL)
+            {
                 tar->par = tmp;
                 tmp->right = tar;
                 break;
             }
-        } else {
+        }
+        else
+        {
             next = tmp->left;
-            if(next==NULL){
+            if (next == NULL)
+            {
                 tar->par = tmp;
                 tmp->left = tar;
                 break;
@@ -173,83 +211,114 @@ void rbtree_insert(rbtree_t *tree, void *key, void *val){
         }
         tmp = next;
     }
-    while(tar->color==NODE_RED&&tar->par->color==NODE_RED){
+    while (tar->color == NODE_RED && tar->par->color == NODE_RED)
+    {
         tar->par->color = NODE_BLACK;
         tar->par->par->color = NODE_RED;
-        if(tar->par->par->left==tar->par){
-            if(tar->par->par->right!=NULL && tar->par->par->right->color==NODE_RED){
+        if (tar->par->par->left == tar->par)
+        {
+            if (tar->par->par->right != NULL && tar->par->par->right->color == NODE_RED)
+            {
                 tar->par->par->right->color = NODE_BLACK;
                 tar = tar->par->par;
-            } else {
-                tar = rotate(tar);
             }
-        } else {
-            if(tar->par->par->left!=NULL && tar->par->par->left->color==NODE_RED){
-                tar->par->par->left->color = NODE_BLACK;
-                tar = tar->par->par;
-            } else {
+            else
+            {
                 tar = rotate(tar);
             }
         }
-        if(tar->par==NULL){
+        else
+        {
+            if (tar->par->par->left != NULL && tar->par->par->left->color == NODE_RED)
+            {
+                tar->par->par->left->color = NODE_BLACK;
+                tar = tar->par->par;
+            }
+            else
+            {
+                tar = rotate(tar);
+            }
+        }
+        if (tar->par == NULL)
+        {
             tree->head = tar;
             tar->color = NODE_BLACK;
             break;
         }
     }
-
 }
 
-rbnode_t *rbtree_search(rbtree_t *tree, void *val){
+rbnode_t *rbtree_search(rbtree_t *tree, void *val)
+{
     rbnode_t *tar = tree->head;
 
-    while(tar!=NULL){
+    while (tar != NULL)
+    {
         int cmp = tree->comp(tar->key, val);
-        if(cmp==0) return tar;
-        else if(cmp > 0){
+        if (cmp == 0)
+            return tar;
+        else if (cmp > 0)
+        {
             tar = tar->right;
-        } else {
+        }
+        else
+        {
             tar = tar->left;
         }
     }
     return NULL;
 }
 
-void rbtree_delete(rbtree_t *tree, void *val){
+void rbtree_delete(rbtree_t *tree, void *val)
+{
     rbnode_t *tar = rbtree_search(tree, val);
     rbnode_t *max_node = tar->left;
     rbnode_t *del_tar;
-    if(max_node==NULL){
-        if(tar->right==NULL) {
-            if(tar==tree->head) tree->head = NULL;
+    if (max_node == NULL)
+    {
+        if (tar->right == NULL)
+        {
+            if (tar == tree->head)
+                tree->head = NULL;
             del_tar = tar;
         }
-        else {
+        else
+        {
             tar->key = tar->right->key;
             tar->val = tar->right->val;
             del_tar = tar->right;
         }
-    } else {
-        while(max_node->right!=NULL){
+    }
+    else
+    {
+        while (max_node->right != NULL)
+        {
             max_node = max_node->right;
         }
         tar->key = max_node->key;
-        if(max_node->left!=NULL){
+        if (max_node->left != NULL)
+        {
             max_node->key = max_node->left->key;
             max_node->val = max_node->left->val;
             del_tar = max_node->left;
-        } else {
+        }
+        else
+        {
             del_tar = max_node;
         }
     }
-    bool flag = del_tar->color==NODE_BLACK;
+    bool flag = del_tar->color == NODE_BLACK;
     tar = del_tar;
-    while(flag&&tar->par!=NULL){
+    while (flag && tar->par != NULL)
+    {
         rbnode_t *tmp = tar->par;
-        if(tmp->left==tar){
+        if (tmp->left == tar)
+        {
             rbnode_t *v = tmp->right;
-            if(v->color==NODE_BLACK){
-                if(v->left!=NULL&&v->left->color==NODE_RED){
+            if (v->color == NODE_BLACK)
+            {
+                if (v->left != NULL && v->left->color == NODE_RED)
+                {
                     rbnode_t *w = v->left;
                     flag = false;
                     void *tkey = tmp->key;
@@ -257,7 +326,8 @@ void rbtree_delete(rbtree_t *tree, void *val){
                     tmp->key = w->key;
                     tmp->val = w->val;
                     v->left = w->right;
-                    if(w->right) w->right->par = v;
+                    if (w->right)
+                        w->right->par = v;
                     w->right = w->left;
                     w->left = tmp->left;
                     w->left->par = w;
@@ -267,7 +337,8 @@ void rbtree_delete(rbtree_t *tree, void *val){
                     w->val = tval;
                     w->color = NODE_BLACK;
                 }
-                else if(v->right!=NULL&&v->right->color==NODE_RED){
+                else if (v->right != NULL && v->right->color == NODE_RED)
+                {
                     rbnode_t *w = v->right;
                     flag = false;
                     void *tkey = tmp->key;
@@ -285,13 +356,16 @@ void rbtree_delete(rbtree_t *tree, void *val){
                     tmp->left->par = tmp;
                     w->color = NODE_BLACK;
                 }
-                else {
+                else
+                {
                     tmp->right->color = NODE_RED;
-                    flag = tmp->color==NODE_BLACK;
+                    flag = tmp->color == NODE_BLACK;
                     tmp->color = NODE_BLACK;
                 }
                 tar = tmp;
-            } else {
+            }
+            else
+            {
                 void *tkey = tmp->key;
                 void *tval = tmp->val;
                 tmp->key = v->key;
@@ -306,10 +380,14 @@ void rbtree_delete(rbtree_t *tree, void *val){
                 tmp->left = v;
                 tmp->left->par = tmp;
             }
-        } else {
+        }
+        else
+        {
             rbnode_t *v = tmp->left;
-            if(v->color==NODE_BLACK){
-                if(v->right!=NULL&&v->right->color==NODE_RED){
+            if (v->color == NODE_BLACK)
+            {
+                if (v->right != NULL && v->right->color == NODE_RED)
+                {
                     rbnode_t *w = v->right;
                     flag = false;
                     void *tkey = tmp->key;
@@ -317,7 +395,8 @@ void rbtree_delete(rbtree_t *tree, void *val){
                     tmp->key = w->key;
                     tmp->val = w->val;
                     v->right = w->left;
-                    if(v->right) v->right->par = v;
+                    if (v->right)
+                        v->right->par = v;
                     w->left = w->right;
                     w->right = tmp->right;
                     w->right->par = w;
@@ -327,7 +406,8 @@ void rbtree_delete(rbtree_t *tree, void *val){
                     w->val = tval;
                     w->color = NODE_BLACK;
                 }
-                else if(v->left!=NULL&&v->left->color==NODE_RED){
+                else if (v->left != NULL && v->left->color == NODE_RED)
+                {
                     rbnode_t *w = v->left;
                     flag = false;
                     void *tkey = tmp->key;
@@ -345,13 +425,16 @@ void rbtree_delete(rbtree_t *tree, void *val){
                     tmp->right->par = tmp;
                     w->color = NODE_BLACK;
                 }
-                else {
+                else
+                {
                     v->color = NODE_RED;
-                    flag = tmp->color==NODE_BLACK;
+                    flag = tmp->color == NODE_BLACK;
                     tmp->color = NODE_BLACK;
                 }
                 tar = tmp;
-            } else {
+            }
+            else
+            {
                 void *tkey = tmp->key;
                 void *tval = tmp->val;
                 tmp->key = v->key;

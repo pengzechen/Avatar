@@ -18,16 +18,16 @@ void handle_sync_exception(uint64_t *stack_pointer)
 
     int ec = ((el1_esr >> 26) & 0b111111);
 
-    save_cpu_ctx(el1_ctx);   // 保存 发生异常的那个任务的 处理器状态
-    
+    save_cpu_ctx(el1_ctx); // 保存 发生异常的那个任务的 处理器状态
+
     if (ec == 0x15)
     { // svc
         // enable_interrupts();
         // printf("This is svc call handler\n");
         // printf("svc number: %llx\n", el1_ctx->r[8]);
-        uint64_t (*func)(void*) = (uint64_t (*)(void*)) syscall_table[el1_ctx->r[8]];
+        uint64_t (*func)(void *) = (uint64_t (*)(void *))syscall_table[el1_ctx->r[8]];
         // 传进去的应该是一个指针，指针偏移 0-7 是参数。现在只支持最多 8 个参数
-        uint64_t ret = func((void*)el1_ctx);
+        uint64_t ret = func((void *)el1_ctx);
         // 返回值放在 x0
         el1_ctx->r[0] = ret;
         // disable_interrupts();
@@ -41,7 +41,8 @@ void handle_sync_exception(uint64_t *stack_pointer)
     }
 
     /* =============== UnDefined ================== */
-    if (get_current_cpu_id() == 0) {
+    if (get_current_cpu_id() == 0)
+    {
         printf("el1 esr: %llx\n", el1_esr);
         printf("ec: %llx\n", ec);
         printf("This is handle_sync_exception: \n");
@@ -78,7 +79,7 @@ void handle_irq_exception(uint64_t *stack_pointer)
 
     uint64_t x1_value = el1_ctx->r[1];
     uint64_t sp_el0_value = el1_ctx->usp;
-    save_cpu_ctx(el1_ctx);   // 保存 发生异常的那个任务的 处理器状态
+    save_cpu_ctx(el1_ctx); // 保存 发生异常的那个任务的 处理器状态
 
     int iar = gic_read_iar();
     int vector = gic_iar_irqnr(iar);

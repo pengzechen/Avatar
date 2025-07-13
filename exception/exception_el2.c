@@ -22,12 +22,13 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
 
     // printf("        el2 esr: %llx, ec: %llx\n", el2_esr, ec);
 
-    union hsr hsr = { .bits = el2_esr };
+    union hsr hsr = {.bits = el2_esr};
     save_cpu_ctx(ctx_el2);
-    if (ec == 0x1) {
+    if (ec == 0x1)
+    {
         // wfi
         ept_violation_info_t info;
-        //printf("Prefetch abort : %llx\n", hsr.bits);
+        // printf("Prefetch abort : %llx\n", hsr.bits);
         info.hsr.bits = hsr.bits;
         print_info("            This is wfi trap handler\n");
         advance_pc(&info, ctx_el2);
@@ -41,7 +42,7 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
     else if (ec == 0x17)
     { // smc
         ept_violation_info_t info;
-        //printf("Prefetch abort : %llx\n", hsr.bits);
+        // printf("Prefetch abort : %llx\n", hsr.bits);
         info.hsr.bits = hsr.bits;
         print_info("            This is smc call handler\n");
         advance_pc(&info, ctx_el2);
@@ -53,12 +54,12 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
     }
     else if (ec == 0x24)
     { // data abort
-        //print_info("            This is data abort handler\n");
+        // print_info("            This is data abort handler\n");
         ept_violation_info_t info;
-        //printf("Prefetch abort : %llx\n", hsr.bits);
+        // printf("Prefetch abort : %llx\n", hsr.bits);
         info.hsr.bits = hsr.bits;
         info.reason = PREFETCH;
-        uint64_t hpfar = read_hpfar_el2();  // 目前 hpfar 和 far 读到的内容不同，少了8位
+        uint64_t hpfar = read_hpfar_el2(); // 目前 hpfar 和 far 读到的内容不同，少了8位
         uint64_t far = read_far_el2();
         // printf("far: 0x%llx, hpfar: 0x%llx\n", far, hpfar);
         info.gpa = (far & 0xfff) | (hpfar << 8);
@@ -104,7 +105,7 @@ void handle_irq_exception_el2(uint64_t *stack_pointer)
 
     save_cpu_ctx(context);
 
-    get_g_handler_vec()[vector]((uint64_t*)context); // arg not use
+    get_g_handler_vec()[vector]((uint64_t *)context); // arg not use
 }
 
 // 示例使用方式：处理无效异常
@@ -136,8 +137,7 @@ void invalid_exception_el2(uint64_t *stack_pointer, uint64_t kind, uint64_t sour
 
     printf("usp: %llx, elr: %llx, spsr: %llx\n", usp_value, elr_el1_value, spsr_value);
 
-
-    while(1)
+    while (1)
         ;
 }
 
