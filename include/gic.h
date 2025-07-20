@@ -70,6 +70,7 @@
 #define GICH_APR (GICH_BASE_ADDR + 0x00f0)
 #define GICH_LR(x) (GICH_BASE_ADDR + 0x0100 + 0x4 * (x))
 #define GICH_LR_NUM 4
+#define GICH_LR_PID_SHIFT 10
 
 /*  GICD 操作掩码 */
 
@@ -160,5 +161,6 @@ void gic_clear_np_int(void);
 
 uint32_t gic_apr();
 uint32_t gic_elsr0();
+uint32_t gic_elsr1();
 
 #endif // __GIC_H__

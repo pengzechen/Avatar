@@ -27,6 +27,7 @@
         "xlocnum": "c",
         "mmu.h": "c",
         "pro.h": "c",
-        "list.h": "c"
+        "list.h": "c",
+        "type_traits": "c"
     }
 }

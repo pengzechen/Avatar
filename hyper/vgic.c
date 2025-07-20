@@ -282,41 +282,34 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 // vgic inject
 void vgic_inject(uint32_t vector)
 {
-
     // printf("vgic inject vector: %d\n", vector);
     uint32_t mask = gic_make_virtual_hardware_interrupt(vector, vector, 0, 0);
 
-    // 降低优先级，host将收不到timer
-    gic_set_ipriority(6, 0xf8000000);
-    gic_set_ipriority(8, 0x0000f800);
+    uint32_t elsr0 = gic_elsr0();
+    uint32_t elsr1 = gic_elsr1();
+    uint32_t elsr = ((uint32_t)elsr1 << 32) | elsr0;
 
-    uint32_t is_empty = gic_elsr0();
     uint32_t is_active = gic_apr();
     uint32_t pri = gic_lr_read_pri(mask);
     uint32_t irq_no = gic_lr_read_vid(mask);
+    int freelr = -1;
 
-    // printf("is_empty: 0x%llx, is_active: 0x%llx, pri: 0x%llx, irq_no: %d\n", is_empty, is_active, pri, irq_no);
-
-    for (int i = 0; i < GICH_LR_NUM; i++)
+    for (int i = 0; i < 4; i++)
     {
-        if (is_empty & (1 << i))
+        if ((elsr >> i) & 0x1)
         {
-            gic_write_lr(i, mask);
-            return;
-        }
-        uint32_t prev_lr = gic_read_lr(i);
-        uint8_t prev_pri = gic_lr_read_pri(prev_lr);
+            if (freelr < 0)
+                freelr = i;
 
-        if (prev_pri > pri)
+            continue;
+        }
+        if (((gic_read_lr(i) >> GICH_LR_PID_SHIFT) & 0x3ff) == vector)
         {
-            gic_write_lr(i, mask);
-            mask = prev_lr;
-            pri = prev_pri;
-            printf("!!! premeption !!!\n");
+            printf("vgic inject, vector %d already in lr%d\n", vector, i);
+            return; // busy
         }
     }
-    // gic_write_lr(0, mask);
 
-    // gic_disable_int(27);
-    // gic_set_np_int();
+    // printf("is_empty: 0x%llx, is_active: 0x%llx, pri: 0x%llx, irq_no: %d\n", elsr, is_active, pri, irq_no);
+    gic_write_lr(freelr, mask);
 }

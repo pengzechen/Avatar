@@ -210,6 +210,11 @@ uint32_t gic_elsr0()
     return read32((void *)GICH_ELSR0);
 }
 
+uint32_t gic_elsr1()
+{
+    return read32((void *)GICH_ELSR1);
+}
+
 void gic_write_lr(int n, uint32_t mask)
 {
     write32(mask, (void *)GICH_LR(n));

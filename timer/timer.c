@@ -23,10 +23,6 @@ void handle_timer_interrupt(uint64_t *sp)
     // printf("get daif: %llx\n", get_daif());
     timer_tick_schedule(sp);
     // schedule();
-
-    // 这里给其它的irq提高优先级
-    gic_set_ipriority(6, 0xf0000000);
-    gic_set_ipriority(8, 0x0000f000);
 }
 
 void timer_init_second()
