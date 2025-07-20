@@ -25,6 +25,8 @@
         "mem.h": "c",
         "charconv": "c",
         "xlocnum": "c",
-        "mmu.h": "c"
+        "mmu.h": "c",
+        "pro.h": "c",
+        "list.h": "c"
     }
 }

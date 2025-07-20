@@ -9,7 +9,7 @@
 #include "task/task.h"
 #include "spinlock.h"
 #include "uart_pl011.h"
-#include "mem/aj_string.h"
+#include "lib/aj_string.h"
 #include "mem/mem.h"
 #include "app/app.h"
 #include "pro.h"

@@ -1,7 +1,7 @@
 
 #include <aj_types.h>
 #include <mem/mmu.h>
-#include <mem/aj_string.h>
+#include <lib/aj_string.h>
 #include <mem/page.h>
 #include <os_cfg.h>
 #include <mem/barrier.h>

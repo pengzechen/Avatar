@@ -4,7 +4,7 @@
 #include "os_cfg.h"
 #include "io.h"
 #include "thread.h"
-#include "mem/aj_string.h"
+#include "lib/aj_string.h"
 
 extern void second_entry();
 extern void _stack_top();

@@ -7,7 +7,7 @@
 #include "mem/bitmap.h"
 #include "mem/page.h"
 #include "mem/mmu.h"
-#include "mem/aj_string.h"
+#include "lib/aj_string.h"
 
 #define GET_PGD_INDEX(addr) ((addr >> 39) & 0x1ff)
 #define GET_PUD_INDEX(addr) ((addr >> 30) & 0x1ff)

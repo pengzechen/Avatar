@@ -5,7 +5,7 @@
 #include "aj_types.h"
 #include "os_cfg.h"
 #include "task/task.h"
-#include "list.h"
+#include "lib/list.h"
 
 #define PRO_MAX_NAME_LEN 64
 

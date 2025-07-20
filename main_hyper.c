@@ -8,7 +8,7 @@
 #include "mem/ept.h"
 #include "mem/page.h"
 #include "task/task.h"
-#include "mem/aj_string.h"
+#include "lib/aj_string.h"
 #include "hyper/vm.h"
 #include "os_cfg.h"
 #include "thread.h"

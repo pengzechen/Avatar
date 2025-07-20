@@ -1,12 +1,12 @@
 
 #include <pro.h>
-#include <list.h>
-#include <mem/aj_string.h>
+#include "lib/list.h"
+#include <lib/aj_string.h>
 #include <os_cfg.h>
 #include <mem/mem.h>
 #include <task/task.h>
 #include <elf.h>
-#include <list.h>
+#include "lib/list.h"
 #include <thread.h>
 #include "../app/app.h"
 #include "sys/sys.h"

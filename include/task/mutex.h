@@ -2,7 +2,7 @@
 #define MUTEX_H
 
 #include "task/task.h"
-#include "list.h"
+#include "lib/list.h"
 #include "spinlock.h"
 
 /**

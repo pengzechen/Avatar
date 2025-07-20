@@ -1,7 +1,7 @@
 
 #include <io.h>
 #include <hyper/vcpu.h>
-#include <mem/aj_string.h>
+#include <lib/aj_string.h>
 #include "os_cfg.h"
 
 cpu_sysregs_t cpu_sysregs[MAX_TASKS];

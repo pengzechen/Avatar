@@ -1,7 +1,7 @@
 
 
 #include <mem/mem.h>
-#include <mem/aj_string.h>
+#include <lib/aj_string.h>
 #include <aj_types.h>
 #include <stdarg.h>
 #include <os_cfg.h>

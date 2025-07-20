@@ -4,7 +4,7 @@
 
 #include "aj_types.h"
 #include "hyper/vcpu.h"
-#include "list.h"
+#include "lib/list.h"
 #include "os_cfg.h"
 #include "pro.h"
 

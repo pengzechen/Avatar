@@ -95,8 +95,7 @@ $(BUILD_DIR)/mmu.s.o: mem/mmu.S
 	$(TOOL_PREFIX)gcc $(CFLAGS) mem/mmu.S $(INCLUDE) -o $(BUILD_DIR)/mmu.s.o
 $(BUILD_DIR)/page.o: mem/page.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) mem/page.c $(INCLUDE) -o $(BUILD_DIR)/page.o
-$(BUILD_DIR)/string.o: mem/string.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) mem/string.c $(INCLUDE) -o $(BUILD_DIR)/string.o
+
 $(BUILD_DIR)/ept.o: mem/ept.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) mem/ept.c $(INCLUDE) -o $(BUILD_DIR)/ept.o
 $(BUILD_DIR)/bitmap.o: mem/bitmap.c
@@ -140,7 +139,8 @@ $(BUILD_DIR)/vm.o: hyper/vm.c
 #  lib/list
 $(BUILD_DIR)/list.o: lib/list.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) lib/list.c $(INCLUDE) -o $(BUILD_DIR)/list.o
-
+$(BUILD_DIR)/string.o: lib/string.c
+	$(TOOL_PREFIX)gcc $(CFLAGS) lib/string.c $(INCLUDE) -o $(BUILD_DIR)/string.o
 
 #  ramfs
 $(BUILD_DIR)/ramfs.o: fs/ramfs.c
