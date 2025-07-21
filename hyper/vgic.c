@@ -287,7 +287,7 @@ void vgic_inject(uint32_t vector)
 
     uint32_t elsr0 = gic_elsr0();
     uint32_t elsr1 = gic_elsr1();
-    uint32_t elsr = ((uint32_t)elsr1 << 32) | elsr0;
+    uint64_t elsr = ((uint64_t)elsr1 << 32) | elsr0;
 
     uint32_t is_active = gic_apr();
     uint32_t pri = gic_lr_read_pri(mask);

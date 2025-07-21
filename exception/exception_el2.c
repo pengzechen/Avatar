@@ -100,7 +100,7 @@ void handle_irq_exception_el2(uint64_t *stack_pointer)
     int vector = gic_iar_irqnr(iar);
     gic_write_eoir(iar);
 
-    if (vector != 27)
+    if (vector != 27 && vector != 33)
     {
         /*
          * 你手动注入给 guest 的 virtual interrupt（虚拟硬件中断），不能在 EL2 写 DIR！
