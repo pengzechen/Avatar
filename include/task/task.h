@@ -113,6 +113,7 @@ void schedule();
 
 tcb_t *get_idle();
 void el1_idle_init(); // 初始化空闲任务
+void el2_idle_init(); // 初始化空闲任务
 uint64_t get_idle_sp_top();
 
 // 系统调用

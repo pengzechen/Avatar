@@ -13,6 +13,7 @@
 #include "os_cfg.h"
 #include "thread.h"
 #include "mem/mem.h"
+#include "smp.h"
 
 static inline uint64_t read_sctlr_el2()
 {
@@ -134,50 +135,62 @@ void mmio_map_gicc()
 static uint8_t guest1_el2_stack[8192] __attribute__((aligned(16384)));
 static uint8_t guest2_el2_stack[8192] __attribute__((aligned(8192)));
 
-void hyper_main()
+int inited_cpu_num_el2 = 0;
+spinlock_t lock_el2;
+
+void main_entry_el2()
 {
+    printf("main entry: get_current_cpu_id: %d\n", get_current_cpu_id());
 
-    io_early_init();
-    gic_virtual_init();
-    timer_init();
-    printf("io, gic, timer, init ok...\n\n");
-
-    // 准备启动 guest ...
     vtcr_init();
     guest_ept_init();
-    guest_trap_init();
-    copy_dtb();
-    copy_guest();
-    copy_fs();
-    mmio_map_gicd();
-    mmio_map_gicc();
-    vm_init();
 
-    printf("\nHello Hyper:\nthere's some hyper tests: \n");
-    printf("scrlr_el2: 0x%llx\n", read_sctlr_el2());
-    printf("hcr_el2: 0x%llx\n", read_hcr_el2());
-    printf("read_vttbr_el2: 0x%llx\n", read_vttbr_el2());
-    printf("cacheline_bytes: %d\n", cacheline_bytes);
-    printf("\n");
+    if (get_current_cpu_id() == 0)
+    {
 
-    lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_ARREA);
-    avr_entry->p2m.read = 0;
-    avr_entry->p2m.write = 0;
-    apply_ept(avr_entry);
-    *(uint64_t *)0x50000000 = 0x1234;
+        // 准备启动 guest ...
+        guest_trap_init();
+        copy_dtb();
+        copy_guest();
+        copy_fs();
+        mmio_map_gicd();
+        mmio_map_gicc();
+        vm_init();
 
-    schedule_init(); // 设置当前 task 为 task0（test_guest）
-    alloctor_init();
-    task_manager_init();
-    el1_idle_init();
+        printf("\nHello Hyper:\nthere's some hyper tests: \n");
+        printf("scrlr_el2: 0x%llx\n", read_sctlr_el2());
+        printf("hcr_el2: 0x%llx\n", read_hcr_el2());
+        printf("read_vttbr_el2: 0x%llx\n", read_vttbr_el2());
+        printf("\n");
 
-    tcb_t *task1 = craete_vm_task(test_guest, (uint64_t)guest1_el2_stack + 8192, (1 << 0));
-    tcb_t *task2 = craete_vm_task((void *)GUEST_KERNEL_START, (uint64_t)guest2_el2_stack + 8192, (1 << 0));
+        // lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_ARREA);
+        // avr_entry->p2m.read = 0;
+        // avr_entry->p2m.write = 0;
+        // apply_ept(avr_entry);
+        // *(uint64_t *)0x50000000 = 0x1234;
 
-    task_set_ready(task1);
-    task_set_ready(task2);
+        schedule_init(); // 设置当前 task 为 task0（test_guest）
+        alloctor_init();
+        task_manager_init();
 
-    print_current_task_list();
+        // tcb_t *task1 = craete_vm_task(test_guest, (uint64_t)guest1_el2_stack + 8192, (1 << 0));
+        tcb_t *task2 = craete_vm_task((void *)GUEST_KERNEL_START, (uint64_t)guest2_el2_stack + 8192, (1 << 0));
+
+        // task_set_ready(task1);
+        task_set_ready(task2);
+
+        print_current_task_list();
+    }
+
+    // *(uint64_t*)0x8040004 = 0x1; // 测试写入 MMIO 区域
+
+    el2_idle_init(); // idle 任务每个核都有自己的el1栈， 代码公用
+    spin_lock(&lock_el2);
+    inited_cpu_num_el2++;
+    spin_unlock(&lock_el2);
+
+    while (inited_cpu_num_el2 != SMP_NUM)
+        wfi();
 
     // uint64_t __sp = (uint64_t)guest1_el2_stack + 8192 - sizeof(trap_frame_t);
     // void * _sp = (void *)__sp;
@@ -194,4 +207,43 @@ void hyper_main()
     asm volatile("mov sp, %0" ::"r"(_sp));
     extern void guest_entry();
     guest_entry();
+}
+
+void hyper_main()
+{
+    print_info("starting primary core 0 ...\n");
+    io_early_init();
+    gic_virtual_init();
+    timer_init();
+    printf("cacheline_bytes: %d\n", cacheline_bytes);
+    print_info("core 0 starting is done.\n\n");
+
+    spinlock_init(&lock_el2);
+    // io_init();
+
+    start_secondary_cpus();
+
+    main_entry_el2();
+}
+
+void second_kernel_main_el2()
+{
+    // 在 EL2 中的第二个内核入口
+    print_info("starting core");
+    printf(" %d ", get_current_cpu_id());
+    print_info("...\n");
+
+    // 第二个核要初始化 gicc
+    gicc_el2_init();
+    // 输出当前 gic 初始化情况
+    gic_test_init();
+    // 第二个核要初始化 timer
+    timer_init_second();
+
+    print_info("core");
+    printf(" %d ", get_current_cpu_id());
+    print_info("starting is done.\n\n");
+
+    main_entry_el2();
+    // can't reach here !
 }

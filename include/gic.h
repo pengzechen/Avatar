@@ -130,6 +130,7 @@ static inline void disable_interrupts(void)
 
 void gic_init();
 void gicc_init();
+void gicc_el2_init();
 void gic_virtual_init(void);
 void gic_test_init();
 

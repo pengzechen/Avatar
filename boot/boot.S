@@ -14,7 +14,7 @@
 .extern exception_vector_base_el3
 
 .global second_entry
-
+.global second_entry_el2
 
 _start:
 
@@ -30,7 +30,7 @@ _start:
     b.eq from_el3_to_el1       // Branch if we are in EL3
 
     cmp x0, #2
-    b.eq from_el2              // Branch if we are in EL2
+    b.eq primary_entry_el2              // Branch if we are in EL2
 
     b primary_entry            // Branch if we are in EL1
 
@@ -105,12 +105,42 @@ primary_entry:
 	
     b .
 
+// 此时CPU已经工作在EL2状态
+second_entry_el2:
+    // 查看当前异常等级
+    //mrs x0, CurrentEL          // Read current exception level
+    //lsr x0, x0, #2             // 右移两位
+    
+    // 设置栈指针
+    mov sp, x0
 
+    msr daifset, #2   // 关闭所有中断
+
+    ldr x0, =SCTLR_VALUE_MMU_DISABLED
+    msr sctlr_el2, x0
+
+    ldr x0, =HCR_VALUE
+    msr hcr_el2, x0      // 写回HCR_EL2寄存器
+    
+    // 使用 cpu0 的页表
+    bl      enable_mmu_el2
+
+    adrp    x0, exception_vector_base_el2
+    add     x0, x0, :lo12:exception_vector_base_el2
+    msr     vbar_el2, x0
+    dsb     sy      // 确保所有内存访问完成
+    isb             // 确保所有指令都执行完成
+
+    adrp x0, second_kernel_main_el2
+    add  x0, x0, :lo12:second_kernel_main_el2
+    blr  x0
+
+    b .
 
 
 // qemu 开启 virtualization=on 时启动为 el2 模式。
 // 在非 qemu virt platform 需要具体考虑
-from_el2:
+primary_entry_el2:
     // disable cache and MMU
     ldr x0, =SCTLR_VALUE_MMU_DISABLED
     msr sctlr_el2, x0

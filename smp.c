@@ -7,8 +7,11 @@
 #include "lib/aj_string.h"
 
 extern void second_entry();
+extern void second_entry_el2();
 extern void _stack_top();
 extern void _stack_top_second();
+
+#define HV 1
 
 void thread_info_init(struct thread_info *ti, unsigned int flags, int id)
 {
@@ -25,11 +28,20 @@ void start_secondary_cpus()
     for (int i = 1; i < SMP_NUM; i++)
     {
         printf("\n");
-        int result = hvc_call(PSCI_0_2_FN64_CPU_ON, i, (uint64_t)(void *)second_entry,
+#if HV
+        int result = smc_call(PSCI_0_2_FN64_CPU_ON, i, (uint64_t)(void *)second_entry_el2,
                               (uint64_t)(_stack_top_second - STACK_SIZE * (i - 1)));
         if (result != 0)
         {
             printf("smc_call failed!\n");
+        }
+#else
+        int result = hvc_call(PSCI_0_2_FN64_CPU_ON, i, (uint64_t)(void *)second_entry,
+                              (uint64_t)(_stack_top_second - STACK_SIZE * (i - 1)));
+#endif
+        if (result != 0)
+        {
+            printf("hvc_call failed!\n");
         }
 
         // 做一点休眠 保证第二个核 初始化完成

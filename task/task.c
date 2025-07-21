@@ -350,6 +350,26 @@ void el1_idle_init()
     idel->ctx.tpidr_elx = (uint64_t)idel;
 }
 
+void el2_idle_init()
+{
+    uint64_t core_id = get_current_cpu_id();
+    tcb_t *idel = &task_manager.idle_task[core_id];
+    idel->id = -(core_id + 1);
+    idel->counter = 10;
+    idel->cpu_info = &task_manager.idle_cpu[core_id];
+    idel->cpu_info->ctx.elr = (uint64_t)idle_task_el1; // elr_el1
+    idel->cpu_info->ctx.spsr = SPSR_EL1_KERNEL;        // spsr_el1
+    idel->cpu_info->ctx.usp = 0;
+    idel->pgdir = get_kpgdir(); // pgdir
+
+    uint64_t stack_top = get_idle_sp_top();
+    memcpy((void *)(stack_top - sizeof(trap_frame_t)), &idel->cpu_info->ctx, sizeof(trap_frame_t));
+    extern void el1_tesk_entry();
+    idel->ctx.x30 = (uint64_t)el1_tesk_entry;
+    idel->ctx.sp_elx = stack_top - sizeof(trap_frame_t);
+    idel->ctx.tpidr_elx = (uint64_t)idel;
+}
+
 // 初始化任务管理器，初始化空闲任务
 void task_manager_init(void)
 {
