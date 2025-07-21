@@ -122,7 +122,7 @@ void invalid_exception_el2(uint64_t *stack_pointer, uint64_t kind, uint64_t sour
 
     uint64_t x2_value = context->r[2];
 
-    printf("invalid_exception_el2\n");
+    printf("invalid_exception_el2, kind: %d, source: %d\n", kind, source);
 
     int el2_esr = read_esr_el2();
 

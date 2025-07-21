@@ -20,17 +20,13 @@ size_t cacheline_bytes;
 // 定义一个函数来读取 CWG 字段的值
 uint32_t get_cache_line_size()
 {
-
     uint64_t ctr_el0;
-    uint32_t cwg;
-
-    // 读取 CTR_EL0 寄存器到 ctr_el0 变量
+    uint32_t dminline;
     __asm__ __volatile__("mrs %0, ctr_el0" : "=r"(ctr_el0));
-
-    // 提取 CWG 字段的值
-    cwg = (ctr_el0 >> 0) & CTR_EL0_CWG_MASK;
-
-    return cwg;
+    // DminLine is bits [19:16]
+    dminline = (ctr_el0 >> 16) & 0xF;
+    // Return size in bytes: 4 (word size) * 2^DminLine
+    return 4 << dminline;
 }
 
 void setup_cache(void)
