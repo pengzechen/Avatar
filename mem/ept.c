@@ -13,7 +13,7 @@ lpae_t *ept_L2_root;
 lpae_t *ept_L3_root;
 
 static int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx);
-static int handle_mmio2(ept_violation_info_t *info, trap_frame_t *el2_ctx);
+static int handle_mmio_hack(ept_violation_info_t *info, trap_frame_t *el2_ctx);
 
 /* Return the cache property of the input gpa */
 /* It is determined depending on whether the */
@@ -241,7 +241,8 @@ void data_abort_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 	// }
 }
 
-int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
+// 用这个函数可以在smp=1 hack的跑起linux
+int handle_mmio_hack(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 {
 	paddr_t gpa = info->gpa;
 	// printf("operation gpa: 0x%llx\n", gpa);
@@ -316,7 +317,7 @@ int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 	// return 0;
 }
 
-int handle_mmio2(ept_violation_info_t *info, trap_frame_t *el2_ctx)
+int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 {
 	paddr_t gpa = info->gpa;
 	// printf("operation gpa: 0x%llx\n", gpa);
