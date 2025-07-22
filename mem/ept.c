@@ -6,12 +6,14 @@
 #include <exception.h>
 #include <hyper/vcpu.h>
 #include <hyper/vgic.h>
+#include <lib/aj_string.h>
 
 extern lpae_t ept_L1[];
 lpae_t *ept_L2_root;
 lpae_t *ept_L3_root;
 
 static int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx);
+static int handle_mmio2(ept_violation_info_t *info, trap_frame_t *el2_ctx);
 
 /* Return the cache property of the input gpa */
 /* It is determined depending on whether the */
@@ -307,6 +309,96 @@ int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 		// printf("new data: 0x%llx\n", *r);
 
 		// spin_unlock(&vcpu.lock);
+	}
+	return 1;
+	// }
+
+	// return 0;
+}
+
+int handle_mmio2(ept_violation_info_t *info, trap_frame_t *el2_ctx)
+{
+	paddr_t gpa = info->gpa;
+	// printf("operation gpa: 0x%llx\n", gpa);
+	// if (MMIO_ARREA <= gpa && gpa <= (MMIO_ARREA + 4096))
+	// {
+	if (info->hsr.dabt.write)
+	{
+		unsigned long reg_num;
+		volatile uint64_t *r;
+		volatile void *buf;
+		volatile unsigned long len;
+		volatile unsigned long *dst;
+
+		// 获取寄存器编号和 MMIO 操作的大小
+		reg_num = info->hsr.dabt.reg;
+		len = 1UL << (info->hsr.dabt.size & 0x3); // size = 0(b) 1(h) 2(w) 3(x)
+
+		// 计算源缓冲区（从寄存器读取数据）
+		r = &el2_ctx->r[reg_num];
+		buf = (void *)r;
+
+		// 目标地址：Guest Physical Address
+		dst = (unsigned long *)(unsigned long)gpa;
+
+		// 安全写入
+		if (reg_num != 30)
+		{
+			if (((unsigned long)dst % len) == 0)
+			{
+				// 对齐，直接写入
+				memcpy((void *)dst, (void *)buf, len);
+			}
+			else
+			{
+				// 不对齐，安全写入
+				uint8_t tmp[8];
+				memcpy(tmp, buf, len);
+				memcpy((void *)dst, tmp, len);
+			}
+		}
+
+		// 确保所有更改都能被看到
+		dsb(sy);
+		isb();
+	}
+
+	else
+	{
+		unsigned long reg_num;
+		volatile uint64_t *r;
+		volatile void *buf;
+		volatile unsigned long *src;
+		volatile unsigned long len;
+		unsigned long dat = 0;
+
+		reg_num = info->hsr.dabt.reg;
+		r = &el2_ctx->r[reg_num];
+		len = 1UL << (info->hsr.dabt.size & 0x3); // 1, 2, 4, or 8
+		buf = (void *)r;
+
+		src = (unsigned long *)(unsigned long)gpa;
+
+		if (((unsigned long)src % len) == 0)
+		{
+			// 对齐访问，安全读取
+			memcpy(&dat, (const void *)src, len);
+		}
+		else
+		{
+			// 非对齐访问，使用 memcpy 避免崩溃
+			uint8_t tmp[8] = {0};
+			memcpy(tmp, (const void *)src, len);
+			memcpy(&dat, tmp, len);
+		}
+
+		if (reg_num != 30)
+		{
+			memcpy((void *)buf, &dat, len);
+		}
+
+		dsb(sy);
+		isb();
 	}
 	return 1;
 	// }

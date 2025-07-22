@@ -46,6 +46,7 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
         info.hsr.bits = hsr.bits;
         print_info("            This is smc call handler\n");
         advance_pc(&info, ctx_el2);
+        ctx_el2->r[0] = 0; // SMC 返回值
         return;
     }
     else if (ec == 0x18)

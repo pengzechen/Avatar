@@ -147,7 +147,7 @@ el1_tesk_entry:
     // sp 为el1的栈
     ldp     x10, x11, [sp, 32 * 8]
     ldp     x30, x9,  [sp, 30 * 8]
-    msr     sp_el1, x9
+    msr     sp_el2, x9
     msr     elr_el2, x10
     msr     spsr_el2, x11
 
