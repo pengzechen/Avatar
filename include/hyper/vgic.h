@@ -34,10 +34,13 @@ struct vgic_t
 
     vgic_core_state_t *core_state;
 
-    bool enable_g0;
-    bool enable_g1;
+    // ctrlr
+    uint32_t gicd_ctlr;
+    // typer
     uint32_t gicd_typer;
+    // iidr
     uint32_t gicd_iidr;
+    
     uint32_t gicd_igroupr[SPI_ID_MAX / 32];
     uint32_t gicd_isenabler[SPI_ID_MAX / 32];
 

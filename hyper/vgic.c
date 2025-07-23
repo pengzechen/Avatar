@@ -77,29 +77,22 @@ void vgicd_read(ept_violation_info_t *info, trap_frame_t *el2_ctx, void *paddr)
     volatile unsigned long *src;
     volatile unsigned long len;
     volatile unsigned long dat;
-    // spin_lock(&vcpu.lock);
 
     reg_num = info->hsr.dabt.reg;
-    // r = (uint64_t *)select_user_reg(reg_num);
-    // r = &vcpu.pctx->r[reg_num];
+    len = 1 << (info->hsr.dabt.size & 0x3);
+    
     r = &el2_ctx->r[reg_num];
-    len = 1 << (info->hsr.dabt.size & 0x00000003);
     buf = (void *)r;
 
     src = (unsigned long *)(unsigned long)paddr;
     dat = *src;
-    printf("(%d bytes) 0x%llx R%d\n", (unsigned long)len, *src, (unsigned long)reg_num);
 
-    printf("old data: 0x%llx\n", *r);
     if (reg_num != 30)
     {
         *(unsigned long *)buf = dat;
     }
     dsb(sy);
     isb();
-    printf("new data: 0x%llx\n", *r);
-
-    // spin_unlock(&vcpu.lock);
 }
 
 // handle gicd emu
@@ -107,52 +100,62 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 {
     struct vgic_t *vgic = get_vgic(0);
     paddr_t gpa = info->gpa;
-    if (GICD_BASE_ADDR <= gpa && gpa <= (GICD_BASE_ADDR + 0x0010000))
+    if (GICD_BASE_ADDR <= gpa && gpa < (GICD_BASE_ADDR + 0x0010000))
     {
         if (info->hsr.dabt.write)
         { // 寄存器写到内存
             if (gpa == GICD_CTLR)
             {
-                print_info("      <<< gicd emu write GICD_CTLR\n");
+                int reg_num = info->hsr.dabt.reg;
+                int r = el2_ctx->r[reg_num];
+                int len = 1 << (info->hsr.dabt.size & 0x00000003);
+                vgic->gicd_ctlr = r;
+                print_info("      <<< gicd emu write GICD_CTLR: ");
+                printf("gpa: 0x%llx, r: 0x%llx, len: %d\n", gpa, r, len);
             }
             /*  is enable reg*/
             else if (gpa == GICD_ISENABLER(0))
             {
                 int reg_num = info->hsr.dabt.reg;
-                // r = (uint64_t *)select_user_reg(reg_num);
-                // r = &vcpu.pctx->r[reg_num];
                 int r = el2_ctx->r[reg_num];
                 int len = 1 << (info->hsr.dabt.size & 0x00000003);
-                printf("gpa: %llx, r: %llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
-
-                // 给它最高优先级
-                gic_enable_int(HIGHEST_BIT_POSITION(r), 0);
-                print_info("      <<< gicd emu write GICD_ISENABLER(0)\n");
+                
+                gic_enable_int(HIGHEST_BIT_POSITION(r), 1);
+                print_info("      <<< gicd emu write GICD_ISENABLER(0): ");
+                printf("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
             }
             else if (GICD_ISENABLER(1) <= gpa && gpa < GICD_ICENABLER(0))
             {
                 int reg_num = info->hsr.dabt.reg;
-                // r = (uint64_t *)select_user_reg(reg_num);
-                // r = &vcpu.pctx->r[reg_num];
                 int r = el2_ctx->r[reg_num];
                 int len = 1 << (info->hsr.dabt.size & 0x00000003);
-
                 int id = ((gpa - GICD_ISENABLER(0)) / 0x4) * 32;
-                printf("gpa: %llx, r: %llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
-
-                // 给它最高优先级
-                gic_enable_int(HIGHEST_BIT_POSITION(r) + id, 0);
-
-                print_info("      <<< gicd emu write GICD_ISENABLER(i)\n");
+                
+                gic_enable_int(HIGHEST_BIT_POSITION(r) + id, 1);
+                print_info("      <<< gicd emu write GICD_ISENABLER(i): ");
+                printf("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
             }
             /* ic enable reg*/
             else if (gpa == GICD_ICENABLER(0))
             {
-                print_info("      <<< gicd emu write GICD_ICENABLER(0)\n");
+                int reg_num = info->hsr.dabt.reg;
+                int r = el2_ctx->r[reg_num];
+                int len = 1 << (info->hsr.dabt.size & 0x00000003);
+                
+                gic_enable_int(HIGHEST_BIT_POSITION(r), 0);
+                print_info("      <<< gicd emu write GICD_ICENABLER(0): ");
+                printf("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
             }
             else if (GICD_ICENABLER(1) <= gpa && gpa < GICD_ISPENDER(0))
             {
-                print_info("      <<< gicd emu write GICD_ICENABLER(i)\n");
+                int reg_num = info->hsr.dabt.reg;
+                int r = el2_ctx->r[reg_num];
+                int len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int id = ((gpa - GICD_ICENABLER(0)) / 0x4) * 32;
+
+                gic_enable_int(HIGHEST_BIT_POSITION(r) + id, 0);
+                print_info("      <<< gicd emu write GICD_ICENABLER(i): ");
+                printf("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
             }
             /* is pend reg*/
             else if (gpa == GICD_ISPENDER(0))
@@ -165,22 +168,70 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
             }
             /* ic pend reg*/
             else if (gpa == GICD_ICPENDER(0))
-            {
-                print_info("      <<< gicd emu write GICD_ICPENDER(0)\n");
+            {   
+                int reg_num = info->hsr.dabt.reg;
+                int r = el2_ctx->r[reg_num];
+                int len = 1 << (info->hsr.dabt.size & 0x00000003);
+                
+                gic_set_pending(HIGHEST_BIT_POSITION(r), 0, 0);
+                print_info("      <<< gicd emu write GICD_ICPENDER(0): ");
+                printf("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
             }
-            else if (GICD_ICPENDER(1) <= gpa && gpa < GICD_IPRIORITYR(0))
+            else if (GICD_ICPENDER(1) <= gpa && gpa < GICD_ISACTIVER(0))
             {
-                print_info("      <<< gicd emu write GICD_ICPENDER(i)\n");
+                int reg_num = info->hsr.dabt.reg;
+                int r = el2_ctx->r[reg_num];
+                int len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int id = ((gpa - GICD_ICPENDER(0)) / 0x4) * 32;
+
+                gic_set_pending(HIGHEST_BIT_POSITION(r) + id, 0, 0);
+                print_info("      <<< gicd emu write GICD_ICPENDER(i): ");
+                printf("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
             }
             /* I priority reg*/
             else if (GICD_IPRIORITYR(0) <= gpa && gpa < GICD_IPRIORITYR(GIC_FIRST_SPI / 4))
             {
-                print_info("      <<< gicd emu write GICD_IPRIORITYR(sgi-ppi)\n");
+                // SGI + PPI priority write
+                int reg_num = info->hsr.dabt.reg;
+                int len = 1 << (info->hsr.dabt.size & 0x3);
+                uint32_t val = el2_ctx->r[reg_num];
+
+                int offset = gpa - GICD_IPRIORITYR(0);
+                int int_id = offset;  // 每字节一个中断，直接用 offset
+
+                for (int i = 0; i < len; ++i) {
+                    uint32_t vector = int_id + i;
+                    uint8_t pri_raw = (val >> (8 * i)) & 0xFF;
+                    uint32_t pri = pri_raw >> 3;  // 还原 priority 值（只保留高 5 位）
+
+                    gic_set_ipriority(vector, pri);
+                }
+
+                print_info("      <<< gicd emu write GICD_IPRIORITYR(sgi-ppi): ");
+                printf("int_id=%d, len=%d, val=0x%llx\n", int_id, len, val);
             }
             else if (GICD_IPRIORITYR(GIC_FIRST_SPI / 4) <= gpa && gpa < GICD_IPRIORITYR(SPI_ID_MAX / 4))
             {
-                print_info("      <<< gicd emu write GICD_IPRIORITYR(spi)\n");
+                // SPI priority write
+                int reg_num = info->hsr.dabt.reg;
+                int len = 1 << (info->hsr.dabt.size & 0x3);
+                uint32_t val = el2_ctx->r[reg_num];
+
+                int offset = gpa - GICD_IPRIORITYR(0);
+                int int_id = offset;
+
+                for (int i = 0; i < len; ++i) {
+                    uint32_t vector = int_id + i;
+                    uint8_t pri_raw = (val >> (8 * i)) & 0xFF;
+                    uint32_t pri = pri_raw >> 3;
+
+                    gic_set_ipriority(vector, pri);
+                }
+
+                print_info("      <<< gicd emu write GICD_IPRIORITYR(spi):");
+                printf("int_id=%d, len=%d, val=0x%llx\n", int_id, len, val);
             }
+
             /* I cfg reg*/
             else if (GICD_ICFGR(GIC_FIRST_SPI / 16) <= gpa && gpa < GICD_ICFGR(SPI_ID_MAX / 16))
             {
@@ -198,23 +249,32 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
             }
             else
             {
-                print_info("# unsupported access\n");
-                printf("gpa: 0x%llx\n", gpa);
+                
             }
         }
         else
         { // 内存写到寄存器
             if (gpa == GICD_CTLR)
             {
-                print_warn("      >>> gicd emu read GICD_CTLR\n");
+                vgicd_read(info, el2_ctx, &vgic->gicd_ctlr);
+                
+                print_warn("      >>> gicd emu read GICD_CTLR: ");
+                printf("ctlr: 0x%x\n", vgic->gicd_ctlr);
             }
             else if (gpa == GICD_TYPER) // ro
             {
-                print_warn("      >>> gicd emu read GICD_TYPER\n");
+                uint32_t typer = gic_get_typer();
+                vgicd_read(info, el2_ctx, &typer);
+                
+                print_warn("      >>> gicd emu read GICD_TYPER: ");
+                printf("typer: 0x%x\n", typer);
             }
             else if (gpa == GICD_IIDR) // ro
             {
-                print_warn("      >>> gicd emu read GICD_IIDR\n");
+                uint32_t iidr = gic_get_iidr();
+                vgicd_read(info, el2_ctx, &iidr);
+                print_warn("      >>> gicd emu read GICD_IIDR: ");
+                printf("iidr: 0x%x\n", iidr);
             }
 
             /*  is enable reg*/
@@ -276,7 +336,8 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
         return;
     }
 
-    print_info("emu gicd error\n");
+    print_warn("[intc_handler]: unsupported access gpa: ");
+    printf("0x%llx\n", gpa);
 }
 
 // vgic inject
