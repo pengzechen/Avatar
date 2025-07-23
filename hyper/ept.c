@@ -203,13 +203,13 @@ void data_abort_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 	{
 	}
 	*/
-	if (GICD_BASE_ADDR <= info->gpa && info->gpa <= (GICD_BASE_ADDR + 0x0010000))
+	if (GICD_BASE_ADDR <= info->gpa && info->gpa < (GICD_BASE_ADDR + 0x0010000))
 	{
 		intc_handler(info, el2_ctx);
 		return;
 	}
 
-	if (GICC_BASE_ADDR <= info->gpa && info->gpa <= (GICC_BASE_ADDR + 0x0010000))
+	if (GICC_BASE_ADDR <= info->gpa && info->gpa < (GICC_BASE_ADDR + 0x0010000))
 	{
 		info->gpa = info->gpa + 0x30000;
 		handle_mmio(info, el2_ctx);

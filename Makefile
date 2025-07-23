@@ -95,9 +95,6 @@ $(BUILD_DIR)/mmu.s.o: mem/mmu.S
 	$(TOOL_PREFIX)gcc $(CFLAGS) mem/mmu.S $(INCLUDE) -o $(BUILD_DIR)/mmu.s.o
 $(BUILD_DIR)/page.o: mem/page.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) mem/page.c $(INCLUDE) -o $(BUILD_DIR)/page.o
-
-$(BUILD_DIR)/ept.o: mem/ept.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) mem/ept.c $(INCLUDE) -o $(BUILD_DIR)/ept.o
 $(BUILD_DIR)/bitmap.o: mem/bitmap.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) mem/bitmap.c $(INCLUDE) -o $(BUILD_DIR)/bitmap.o
 $(BUILD_DIR)/mem.o: mem/mem.c
@@ -134,7 +131,8 @@ $(BUILD_DIR)/vgic.o: hyper/vgic.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/vgic.c $(INCLUDE) -o $(BUILD_DIR)/vgic.o
 $(BUILD_DIR)/vm.o: hyper/vm.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/vm.c $(INCLUDE) -o $(BUILD_DIR)/vm.o
-
+$(BUILD_DIR)/ept.o: hyper/ept.c
+	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/ept.c $(INCLUDE) -o $(BUILD_DIR)/ept.o
 
 #  lib/list
 $(BUILD_DIR)/list.o: lib/list.c
