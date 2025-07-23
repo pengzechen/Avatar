@@ -16,7 +16,33 @@ void gic_test_init(void)
     printf("    cpu num: %d\n", cpu_num());
 }
 
-// gicd g0, g1  gicc enable
+// ===========================================
+// 下面是gic的初始化函数，包括el1kernel的初始化和hypervisor的初始化
+// ===========================================
+
+// el1 kernel gicc的初始化。smp启动副核执行
+void gicc_init()
+{
+    // 设置优先级 为 0xf8
+    write32(0xff - 7, (void *)GICC_PMR);
+    // EOImodeNS, bit [9] Controls the behavior of Non-secure accesses to GICC_EOIR GICC_AEOIR, and GICC_DIR
+    write32(GICC_CTRL_ENABLE_GROUP0, (void *)GICC_CTLR);
+}
+
+// el2 hypervisor gicc的初始化。smp启动副核执行
+void gicc_el2_init()
+{
+    // 设置优先级 为 0xf8
+    write32(0xff - 7, (void *)GICC_PMR);
+    // EOImodeNS, bit [9] Controls the behavior of Non-secure accesses to GICC_EOIR GICC_AEOIR, and GICC_DIR
+    write32(GICC_CTRL_ENABLE_GROUP0 | (1 << 9), (void *)GICC_CTLR);
+
+    // bit [2] 当虚拟中断列表寄存器中没有条目时，会产生中断。
+    write32((1 << 0), (void *)GICH_HCR);
+    write32((1 << 0), (void *)GICH_VMCR);
+}
+
+// gicd g0, g1  gicc enable。smp启动首核执行
 void gic_init(void)
 {
     _gicv2.irq_nr = GICD_TYPER_IRQS(read32((void *)GICD_TYPER));
@@ -33,27 +59,7 @@ void gic_init(void)
     gic_test_init();
 }
 
-void gicc_init()
-{
-    // 设置优先级 为 0xf8
-    write32(0xff - 7, (void *)GICC_PMR);
-    // EOImodeNS, bit [9] Controls the behavior of Non-secure accesses to GICC_EOIR GICC_AEOIR, and GICC_DIR
-    write32(GICC_CTRL_ENABLE_GROUP0, (void *)GICC_CTLR);
-}
-
-void gicc_el2_init()
-{
-    // 设置优先级 为 0xf8
-    write32(0xff - 7, (void *)GICC_PMR);
-    // EOImodeNS, bit [9] Controls the behavior of Non-secure accesses to GICC_EOIR GICC_AEOIR, and GICC_DIR
-    write32(GICC_CTRL_ENABLE_GROUP0 | (1 << 9), (void *)GICC_CTLR);
-
-    // bit [2] 当虚拟中断列表寄存器中没有条目时，会产生中断。
-    write32((1 << 0), (void *)GICH_HCR);
-    write32((1 << 0), (void *)GICH_VMCR);
-}
-
-// gicd g0, g1  gicc,  gich enable
+// gicd g0, g1  gicc,  gich enable。 smp启动首核执行
 void gic_virtual_init(void)
 {
     // 获得 gicd irq numbers
@@ -66,14 +72,7 @@ void gic_virtual_init(void)
     // GICD 启用组0中断、组1中断转发，服从优先级规则
     write32(GICD_CTRL_ENABLE_GROUP0 | GICD_CTRL_ENABLE_GROUP1, (void *)GICD_CTLR);
 
-    // 设置优先级 为 0xf8
-    write32(0xff - 7, (void *)GICC_PMR);
-    // EOImodeNS, bit [9] Controls the behavior of Non-secure accesses to GICC_EOIR GICC_AEOIR, and GICC_DIR
-    write32(GICC_CTRL_ENABLE_GROUP0 | (1 << 9), (void *)GICC_CTLR);
-
-    // bit [2] 当虚拟中断列表寄存器中没有条目时，会产生中断。
-    write32((1 << 0), (void *)GICH_HCR);
-    write32((1 << 0), (void *)GICH_VMCR);
+    gicc_el2_init();
 
     for (int i = 0; i < GIC_NR_PRIVATE_IRQS; i++)
         gic_enable_int(i, 0);
@@ -83,13 +82,25 @@ void gic_virtual_init(void)
     printf("    gich enable %s\n", read32((void *)GICH_HCR) ? "ok" : "error");
 }
 
-// get iar
+// ===========================================
+// 下面是一些get、set函数。 读取寄存器值
+// ===========================================
+
+uint32_t gic_get_typer(void)
+{
+    return read32((void *)GICD_TYPER);
+}
+
+uint32_t gic_get_iidr(void)
+{
+    return read32((void *)GICD_IIDR);
+}
+
 uint32_t gic_read_iar(void)
 {
     return read32((void *)GICC_IAR);
 }
 
-// iar to vector
 uint32_t gic_iar_irqnr(uint32_t iar)
 {
     return iar & GICC_IAR_INT_ID_MASK;
@@ -120,60 +131,142 @@ uint32_t cpu_num(void)
 }
 
 // Enables the given interrupt.
-void gic_enable_int(int vector, int pri)
+// W1S	Write-1-to-Set	写入 1 会**置位（set）**对应位，写 0 不影响
+// W1C	Write-1-to-Clear	写入 1 会**清零（clear）**对应位，写 0 不影响
+void gic_enable_int(int vector, int enabled)
 {
     int reg = vector >> 5;                     //  vec / 32
     int mask = 1 << (vector & ((1 << 5) - 1)); //  vec % 32
+    if (enabled)
+        write32(mask, (void *)GICD_ISENABLER(reg));
+    else
+        write32(mask, (void *)GICD_ICENABLER(reg));
     printf("set enable: reg: %d, mask: 0x%llx\n", reg, mask);
-
-    write32(mask, (void *)GICD_ISENABLER(reg));
-
-    int n = vector >> 2;
-    int m = vector & ((1 << 2) - 1);
-    printf("set priority: n: %d, m: %d, pri: %d\n", n, m, pri);
-    write8((pri << 3) | (1 << 7), (void *)(GICD_IPRIORITYR(n) + m));
 }
 
-// disables the given interrupt.
-void gic_disable_int(int vector)
-{
-    int reg = vector >> 5;                     //  vec / 32
-    int mask = 1 << (vector & ((1 << 5) - 1)); //  vec % 32
-    printf("disable: reg: %d, mask: 0x%llx\n", reg, mask);
-
-    write32(mask, (void *)GICD_ICENABLER(reg));
-}
-
-// check the given interrupt.
+// Check the given interrupt.
 int gic_get_enable(int vector)
 {
     int reg = vector >> 5;                     //  vec / 32
     int mask = 1 << (vector & ((1 << 5) - 1)); //  vec % 32
-
     uint32_t val = read32((void *)GICD_ISENABLER(reg));
 
     printf("get enable: reg: %llx, mask: %llx, value: %llx\n", reg, mask, val);
     return val & mask != 0;
 }
 
-void gic_set_isenabler(uint32_t n, uint32_t value)
-{
-    write32(value, (void *)GICD_ISENABLER(n));
+// An auxiliary function for determining whether it is SGI, returning 1 indicates it is SGI and 0 indicates it is not
+static int gic_is_sgi(int int_id) {
+    return int_id >= 0 && int_id <= 15;  // SGI 一般是0-15号中断
 }
 
-//  0  1  2  3 -   4  5  6  7
-//  8  9 10 11 -  12 13 14 15
-// 16 17 18 19 -  20 21 22 23
-// 24 25 26 27 -  28 29 30 31
-// 32 33 34 35
-void gic_set_ipriority(uint32_t n, uint32_t value)
+// Set the Active status of the interrupt. act=1 activates, act=0 clears the activation
+void gic_set_active(int int_id, int act)
 {
-    write32(value, (void *)GICD_IPRIORITYR(n));
+    int reg = int_id / 32;
+    int mask = 1 << (int_id % 32);
+
+    if (act) {
+        write32(mask, (void *)GICD_ISACTIVER(reg));
+    } else {
+        write32(mask, (void *)GICD_ICACTIVER(reg));
+    }
+    printf("set active: reg: %d, mask: 0x%x, act: %d\n", reg, mask, act);
 }
 
-void gic_set_icenabler(uint32_t n, uint32_t value)
+// Set the Pending status of the interrupt. pend=1 sets Pending, pend=0 clears Pending
+void gic_set_pending(int int_id, int pend, int target_cpu)
 {
-    write32(value, (void *)GICD_ICENABLER(n));
+    if (gic_is_sgi(int_id)) {
+        int reg = int_id / 4;             // 每个 GICD_SPENDSGIR 管 4 个 SGI
+        int off = (int_id % 4) * 8;       // 每个 SGI 占 8 bit（一个字节，每个 bit 表示一个 CPU）
+
+        if (target_cpu < 0 || target_cpu >= 8) {
+            printf("Invalid CPU ID: %d\n", target_cpu);
+            return;
+        }
+
+        if (pend) {
+            // 设置指定 CPU 的 SGI pending 位
+            write32(1 << (off + target_cpu), (void *)GICD_SPENDSGIR(reg));
+        } else {
+            // 清除该 SGI 在所有 CPU 上的 pending（你也可以只清除指定 CPU 的位）
+            write32(1 << (off + target_cpu), (void *)GICD_CPENDSGIR(reg));
+        }
+
+        printf("set SGI pending: int_id: %d, reg: %d, off: %d, cpu: %d, pend: %d\n", int_id, reg, off, target_cpu, pend);
+    } else {
+        int reg = int_id / 32;
+        int mask = 1 << (int_id % 32);
+
+        if (pend) {
+            write32(mask, (void *)GICD_ISPENDER(reg));
+        } else {
+            write32(mask, (void *)GICD_ICPENDER(reg));
+        }
+
+        printf("set pending: int_id: %d, reg: %d, mask: 0x%x, pend: %d\n", int_id, reg, mask, pend);
+    }
+}
+
+
+// Set the interrupt priority
+void gic_set_ipriority(uint32_t vector, uint32_t pri)
+{
+    uint32_t n = vector >> 2;        // 哪个寄存器
+    uint32_t m = vector & 3;         // 寄存器内的哪个字节
+    uint32_t addr = GICD_IPRIORITYR(n);
+    uint32_t val = read32((void *)addr);
+
+    // 设置第 m 字节的优先级
+    uint8_t priority = (pri << 3) | (1 << 7);  // GICv2: [7]=1 表示 Group1 (非 secure)
+    val &= ~(0xFF << (8 * m));
+    val |= (priority << (8 * m));
+
+    write32(val, (void *)addr);
+    printf("set priority: n: %u, m: %u, pri: %u\n", n, m, pri);
+}
+
+// Get the interrupt priority
+int gic_get_ipriority(int vector) {
+    int n = vector >> 2;                      // 每个 IPRIORITYR 寄存器存储 4 个中断（每个占 8 bit）
+    int m = vector & 0x3;                     // 当前中断在该寄存器中的偏移（0~3）
+    uint32_t reg_val = read32((void *)GICD_IPRIORITYR(n));  // 读取整个 32-bit 寄存器
+    int priority = (reg_val >> (m * 8)) & 0xFF;              // 提取目标中断的 8-bit 优先级
+    return priority;
+}
+
+// Get the target CPU for a specific interrupt
+int gic_get_target(int int_id) {
+    int idx = (int_id * 8) / 32;
+    int off = (int_id * 8) % 32;
+    uint32_t val = read32((void *)(GICD_ITARGETSR(idx)));
+    return (val >> off) & 0xFF;
+}
+
+// Set the target CPU for a specific interrupt
+void gic_set_target(int int_id, uint8_t target) {
+    int idx = (int_id * 8) / 32;
+    int off = (int_id * 8) % 32;
+    uint32_t mask = 0xFF << off;
+
+    uint32_t old_val = read32((void *)(GICD_ITARGETSR(idx)));
+    uint32_t new_val = (old_val & ~mask) | ((target << off) & mask);
+    write32(new_val, (void *)(GICD_ITARGETSR(idx)));
+}
+
+// Set the interrupt configuration (edge/level)
+void gic_set_icfgr(uint32_t int_id, uint8_t cfg)
+{
+    uint32_t reg_index = (int_id * 2) / 32;
+    uint32_t bit_offset = (int_id * 2) % 32;
+    uint32_t mask = 0b11 << bit_offset;
+
+    volatile uint32_t *reg = (volatile uint32_t *)GICD_ICFGR(reg_index);
+    uint32_t val = *reg;
+
+    val = (val & ~mask) | (((uint32_t)(cfg & 0x3) << bit_offset) & mask);
+    *reg = val;
 }
 
 uint32_t gic_make_virtual_hardware_interrupt(uint32_t vector, uint32_t pintvec, int pri, bool grp1)
@@ -196,6 +289,10 @@ uint32_t gic_make_virtual_software_sgi(uint32_t vector, int cpu_id, int pri, boo
     mask |= ((uint32_t)(pri & 0xf8) << 20) | (vector & (0x1ff)) | ((uint32_t)grp1 << 30) | ((uint32_t)cpu_id << 10);
     return mask;
 }
+
+// ===================================
+// 下面是关于 GICH 的函数
+// ===================================
 
 uint32_t gic_read_lr(int n)
 {

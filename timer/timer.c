@@ -36,7 +36,7 @@ void timer_init_second()
     // 启用定时器
     write_cntp_ctl_el0(0b1);
 
-    gic_enable_int(TIMER_VECTOR, 0);
+    gic_enable_int(TIMER_VECTOR, 1);
 
     if (gic_get_enable(TIMER_VECTOR))
     {
@@ -59,7 +59,7 @@ void timer_init()
 
     irq_install(TIMER_VECTOR, handle_timer_interrupt);
 
-    gic_enable_int(TIMER_VECTOR, 0);
+    gic_enable_int(TIMER_VECTOR, 1);
 
     if (gic_get_enable(TIMER_VECTOR))
     {

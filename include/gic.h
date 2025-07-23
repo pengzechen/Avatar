@@ -13,25 +13,37 @@
 #include "os_cfg.h"
 
 /* Distributor registers */
-#define GICD_CTLR (GICD_BASE_ADDR + 0x000)
-#define GICD_TYPER (GICD_BASE_ADDR + 0x004)
-#define GICD_IIDR (GICD_BASE_ADDR + 0x008)
+#define GICD_CTLR (GICD_BASE_ADDR + 0x000)   // rw
+#define GICD_TYPER (GICD_BASE_ADDR + 0x004)  // ro
+#define GICD_IIDR (GICD_BASE_ADDR + 0x008)   // ro
+
 #define GICD_IGROUPR(x) (GICD_BASE_ADDR + (0x080 + 0x004 * (x)))
-#define GICD_ISENABLER(x) (GICD_BASE_ADDR + (0x100 + 0x004 * (x)))
-#define GICD_ICENABLER(x) (GICD_BASE_ADDR + (0x180 + 0x004 * (x)))
+
+#define GICD_ISENABLER(x) (GICD_BASE_ADDR + (0x100 + 0x004 * (x)))  // enable
+#define GICD_ICENABLER(x) (GICD_BASE_ADDR + (0x180 + 0x004 * (x)))  // disable
+
 #define GICD_ISPENDER(x) (GICD_BASE_ADDR + (0x200 + 0x004 * (x)))
 #define GICD_ICPENDER(x) (GICD_BASE_ADDR + (0x280 + 0x004 * (x)))
+
 #define GICD_ISACTIVER(x) (GICD_BASE_ADDR + (0x300 + 0x004 * (x)))
 #define GICD_ICACTIVER(x) (GICD_BASE_ADDR + (0x380 + 0x004 * (x)))
+
 #define GICD_IPRIORITYR(x) (GICD_BASE_ADDR + (0x400 + 0x004 * (x)))
 #define GICD_ITARGETSR(x) (GICD_BASE_ADDR + (0x800 + 0x004 * (x)))
-#define GICD_ICFGR(x) (GICD_BASE_ADDR + (0xc00 + 0x004 * (x)))
-#define GICD_PPISR (GICD_BASE_ADDR + 0xd00)
-#define GICD_SPISR(x) (GICD_BASE_ADDR + (0xd04 + 0x004 * (x)))
-#define GICD_NSACR(x) (GICD_BASE_ADDR + (0xe00 + 0x004 * (x)))
+#define GICD_ICFGR(x) (GICD_BASE_ADDR + (0xc00 + 0x004 * (x)))   // 00	边沿触发（Edge-triggered） 10	电平触发（Level-triggered）
+
 #define GICD_SGIR (GICD_BASE_ADDR + 0xf00)
-#define GICD_CPENDSGIR(x) (GICD_BASE_ADDR + (0xf10 + 0x004 * (x)))
+
+// ro 查看当前 CPU 的中断 pending 状态。 通常用于调试，实际系统里使用 GICC 的 IAR（Interrupt Acknowledge Register）来拿中断号更常见。
+#define GICD_PPISR (GICD_BASE_ADDR + 0xd00)                            
+// ro 查看中断的 Pending 状态，主要是 SGI 和 PPI（中断号 0–31）部分。
+#define GICD_SPISR(x) (GICD_BASE_ADDR + (0xd04 + 0x004 * (x)))
+
+// SGI 挂起寄存器 GICD_SPENDSGIR 和 GICD_CPENDSGIR 每个 SGI 用8个位，每个位对应一个 CPU。
+#define GICD_CPENDSGIR(x) (GICD_BASE_ADDR + (0xf10 + 0x004 * (x)))  
 #define GICD_SPENDSGIR(x) (GICD_BASE_ADDR + (0xf20 + 0x004 * (x)))
+
+#define GICD_NSACR(x) (GICD_BASE_ADDR + (0xe00 + 0x004 * (x)))
 
 #define GICD_TYPER_IRQS(typer) ((((typer) & 0x1f) + 1) * 32)
 #define GICD_TYPER_CPU_NUM(typer) ((((typer) >> 5) & 0b111) + 1)
@@ -134,20 +146,28 @@ void gicc_el2_init();
 void gic_virtual_init(void);
 void gic_test_init();
 
+uint32_t cpu_num();
+uint32_t gic_get_typer(void);
+uint32_t gic_get_iidr(void);
 uint32_t gic_read_iar(void);
 uint32_t gic_iar_irqnr(uint32_t iar);
 
 void gic_write_eoir(uint32_t irqstat);
 void gic_write_dir(uint32_t irqstat);
-void gic_ipi_send_single(int irq, int cpu);
-void gic_enable_int(int vector, int enable);
-void gic_disable_int(int vector);
-int gic_get_enable(int vector);
-uint32_t cpu_num();
 
-void gic_set_isenabler(uint32_t n, uint32_t value);
+void gic_ipi_send_single(int irq, int cpu);
+
+void gic_enable_int(int vector, int enabled);
+int gic_get_enable(int vector);
+void gic_set_active(int int_id, int act);
+void gic_set_pending(int int_id, int pend, int target_cpu);
+
 void gic_set_ipriority(uint32_t n, uint32_t value);
-void gic_set_icenabler(uint32_t n, uint32_t value);
+int gic_get_ipriority(int vector);
+void gic_set_target(int int_id, uint8_t target);
+int gic_get_target(int int_id);
+void gic_set_icfgr(uint32_t int_id, uint8_t cfg);
+
 
 uint32_t gic_make_virtual_hardware_interrupt(uint32_t vector, uint32_t pintvec, int pri, bool grp1);
 uint32_t gic_make_virtual_software_interrupt(uint32_t vector, int pri, bool grp1);

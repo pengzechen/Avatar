@@ -34,7 +34,7 @@ void io_init()
 {
     extern void uart_interrupt_handler(uint64_t *);
     irq_install(33, uart_interrupt_handler);
-    gic_enable_int(33, 0);
+    gic_enable_int(33, 1);
 
     if (gic_get_enable(33))
     {
@@ -68,13 +68,13 @@ void uart_putstr(const char *str)
 void print_info(const char *info)
 {
     // ANSI 转义序列: "\033[32m" 设置绿色前景色, "\033[0m" 重置颜色
-    // printf("\033[32m%s\033[0m", info);
-    printf("%s", info);
+    printf("\033[32m%s\033[0m", info);
+    // printf("%s", info);
 }
 
 void print_warn(const char *info)
 {
     // ANSI 转义序列: "\033[32m" 设置绿色前景色, "\033[0m" 重置颜色
-    // printf("\033[33m%s\033[0m", info);
-    printf("%s", info);
+    printf("\033[33m%s\033[0m", info);
+    // printf("%s", info);
 }
