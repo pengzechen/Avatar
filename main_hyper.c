@@ -15,6 +15,15 @@
 #include "mem/mem.h"
 #include "smp.h"
 
+void test_mem_hypervisor()
+{
+    lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_ARREA);
+    avr_entry->p2m.read = 0;
+    avr_entry->p2m.write = 0;
+    apply_ept(avr_entry);
+    *(uint64_t *)0x50000000 = 0x1234;
+}
+
 static inline uint64_t read_sctlr_el2()
 {
     uint64_t value;
@@ -44,25 +53,25 @@ static inline uint64_t read_vttbr_el2()
 
 void vtcr_init(void)
 {
-    print_info("    Initialize vtcr...\n");
+    logger_info("    Initialize vtcr...\n");
     uint64_t vtcr_val = VTCR_VS_8BIT | VTCR_PS_MASK_36_BITS |
                         VTCR_TG0_4K | VTCR_SH0_IS | VTCR_ORGN0_WBWA | VTCR_IRGN0_WBWA;
 
     vtcr_val |= VTCR_T0SZ(64 - 32); /* 32 bit IPA */
     vtcr_val |= VTCR_SL0(0x1);      /* P2M starts at first level */
 
-    printf("vtcr val: 0x%llx\n", vtcr_val);
+    logger("vtcr val: 0x%llx\n", vtcr_val);
     write_vtcr_el2(vtcr_val);
 }
 
 static void guest_trap_init(void)
 {
-    print_info("    Initialize trap...\n");
+    logger_info("    Initialize trap...\n");
     unsigned long hcr;
     hcr = read_hcr_el2();
     // WRITE_SYSREG(hcr | HCR_TGE, HCR_EL2);
     // hcr = READ_SYSREG(HCR_EL2);
-    printf("HCR : 0x%llx\n", hcr);
+    logger("HCR : 0x%llx\n", hcr);
     isb();
 }
 
@@ -73,15 +82,24 @@ extern void __guset_dtb_end();
 extern void __guset_fs_start();
 extern void __guset_fs_end();
 
+extern void test_guest();
+
+extern size_t cacheline_bytes;
+int inited_cpu_num_el2 = 0;
+spinlock_t lock_el2;
+
+static uint8_t guest1_el2_stack[8192] __attribute__((aligned(16384)));
+static uint8_t guest2_el2_stack[8192] __attribute__((aligned(8192)));
+
 void copy_guest(void)
 {
     size_t size = (size_t)(__guset_bin_end - __guset_bin_start);
     unsigned long *from = (unsigned long *)__guset_bin_start;
     unsigned long *to = (unsigned long *)GUEST_KERNEL_START;
-    printf("Copy guest kernel image from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
+    logger("Copy guest kernel image from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
            from, to, size, from[0], from[1]);
     memcpy(to, from, size);
-    printf("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
+    logger("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
 }
 
 void copy_dtb(void)
@@ -89,10 +107,10 @@ void copy_dtb(void)
     size_t size = (size_t)(__guset_dtb_end - __guset_dtb_start);
     unsigned long *from = (unsigned long *)__guset_dtb_start;
     unsigned long *to = (unsigned long *)GUEST_DTB_START;
-    printf("Copy guest dtb from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
+    logger("Copy guest dtb from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
            from, to, size, from[0], from[1]);
     memcpy(to, from, size);
-    printf("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
+    logger("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
 }
 
 void copy_fs(void)
@@ -100,15 +118,11 @@ void copy_fs(void)
     size_t size = (size_t)(__guset_fs_end - __guset_fs_start);
     unsigned long *from = (unsigned long *)__guset_fs_start;
     unsigned long *to = (unsigned long *)GUEST_FS_START;
-    printf("Copy guest fs from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
+    logger("Copy guest fs from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
            from, to, size, from[0], from[1]);
     memcpy(to, from, size);
-    printf("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
+    logger("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
 }
-
-extern void test_guest();
-
-extern size_t cacheline_bytes;
 
 void mmio_map_gicd()
 {
@@ -132,15 +146,10 @@ void mmio_map_gicc()
     }
 }
 
-static uint8_t guest1_el2_stack[8192] __attribute__((aligned(16384)));
-static uint8_t guest2_el2_stack[8192] __attribute__((aligned(8192)));
-
-int inited_cpu_num_el2 = 0;
-spinlock_t lock_el2;
 
 void main_entry_el2()
 {
-    printf("main entry: get_current_cpu_id: %d\n", get_current_cpu_id());
+    logger("main entry: get_current_cpu_id: %d\n", get_current_cpu_id());
 
     vtcr_init();
     guest_ept_init();
@@ -157,26 +166,20 @@ void main_entry_el2()
         mmio_map_gicc();
         vm_init();
 
-        printf("\nHello Hyper:\nthere's some hyper tests: \n");
-        printf("scrlr_el2: 0x%llx\n", read_sctlr_el2());
-        printf("hcr_el2: 0x%llx\n", read_hcr_el2());
-        printf("read_vttbr_el2: 0x%llx\n", read_vttbr_el2());
-        printf("\n");
-
-        // lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_ARREA);
-        // avr_entry->p2m.read = 0;
-        // avr_entry->p2m.write = 0;
-        // apply_ept(avr_entry);
-        // *(uint64_t *)0x50000000 = 0x1234;
+        logger("\nHello Hyper:\nthere's some hyper tests: \n");
+        logger("scrlr_el2: 0x%llx\n", read_sctlr_el2());
+        logger("hcr_el2: 0x%llx\n", read_hcr_el2());
+        logger("read_vttbr_el2: 0x%llx\n", read_vttbr_el2());
+        logger("\n");
 
         schedule_init(); // 设置当前 task 为 task0（test_guest）
         alloctor_init();
         task_manager_init();
 
-        // tcb_t *task1 = craete_vm_task(test_guest, (uint64_t)guest1_el2_stack + 8192, (1 << 0));
+        tcb_t *task1 = craete_vm_task(test_guest, (uint64_t)guest1_el2_stack + 8192, (1 << 0));
         tcb_t *task2 = craete_vm_task((void *)GUEST_KERNEL_START, (uint64_t)guest2_el2_stack + 8192, (1 << 0));
 
-        // task_set_ready(task1);
+        task_set_ready(task1);
         task_set_ready(task2);
 
         print_current_task_list();
@@ -211,12 +214,13 @@ void main_entry_el2()
 
 void hyper_main()
 {
-    print_info("starting primary core 0 ...\n");
+    run_printf_tests();
+    logger_info("starting primary core 0 ...\n");
     io_early_init();
     gic_virtual_init();
     timer_init();
-    printf("cacheline_bytes: %d\n", cacheline_bytes);
-    print_info("core 0 starting is done.\n\n");
+    logger("cacheline_bytes: %d\n", cacheline_bytes);
+    logger_info("core 0 starting is done.\n\n");
 
     spinlock_init(&lock_el2);
     // io_init();
@@ -229,9 +233,9 @@ void hyper_main()
 void second_kernel_main_el2()
 {
     // 在 EL2 中的第二个内核入口
-    print_info("starting core");
-    printf(" %d ", get_current_cpu_id());
-    print_info("...\n");
+    logger_info("starting core");
+    logger(" %d ", get_current_cpu_id());
+    logger_info("...\n");
 
     // 第二个核要初始化 gicc
     gicc_el2_init();
@@ -240,9 +244,9 @@ void second_kernel_main_el2()
     // 第二个核要初始化 timer
     timer_init_second();
 
-    print_info("core");
-    printf(" %d ", get_current_cpu_id());
-    print_info("starting is done.\n\n");
+    logger_info("core");
+    logger(" %d ", get_current_cpu_id());
+    logger_info("starting is done.\n\n");
 
     main_entry_el2();
     // can't reach here !

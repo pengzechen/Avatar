@@ -5,7 +5,6 @@
  * under the terms of the GNU Library General Public License version 2.
  */
 
-#define BUFSZ 1024
 
 #include <stdarg.h>
 #include <aj_types.h>
@@ -14,7 +13,12 @@
 
 #define BINSTR_SZ (sizeof(uint32_t) * 8 + sizeof(uint32_t) * 2)
 
-#define BUFSZ 1024
+#define BUFSZ 512
+
+#define ANSI_RED     "\x1b[31m"
+#define ANSI_YELLOW  "\x1b[33m"
+#define ANSI_GREEN   "\x1b[32m"
+#define ANSI_RESET   "\x1b[0m"
 
 static char digits[16] = "0123456789abcdef";
 
@@ -167,7 +171,7 @@ static int fmtnum(const char **fmt)
     return num;
 }
 
-int vsnprintf(char *buf, int size, const char *fmt, va_list va)
+int my_vsnprintf(char *buf, int size, const char *fmt, va_list va)
 {
     pstream_t s;
     s.buffer = buf;
@@ -282,68 +286,89 @@ int vsnprintf(char *buf, int size, const char *fmt, va_list va)
     return s.added;
 }
 
-int snprintf(char *buf, int size, const char *fmt, ...)
+int my_snprintf(char *buf, int size, const char *fmt, ...)
 {
     va_list va;
     int r;
 
     va_start(va, fmt);
-    r = vsnprintf(buf, size, fmt, va);
+    r = my_vsnprintf(buf, size, fmt, va);
     va_end(va);
     return r;
 }
 
-int vprintf(const char *fmt, va_list va)
+int my_vprintf(const char *fmt, va_list va)
 {
     char buf[BUFSZ];
     int r;
 
-    r = vsnprintf(buf, sizeof(buf), fmt, va);
-    puts(buf);
+    r = my_vsnprintf(buf, sizeof(buf), fmt, va);
+    uart_putstr(buf);
     return r;
 }
 
-int printf(const char *fmt, ...)
-{
-    va_list va;
-    char buf[BUFSZ];
-    int r;
-
-    va_start(va, fmt);
-    r = vsnprintf(buf, sizeof buf, fmt, va);
-    va_end(va);
-
-    puts(buf);
-
-    return r;
-}
-
-int warning(const char *fmt, ...)
+int logger(const char *fmt, ...)
 {
     va_list va;
     char buf[BUFSZ];
     int r;
 
     va_start(va, fmt);
-    r = vsnprintf(buf, sizeof buf, fmt, va);
+    r = my_vsnprintf(buf, sizeof buf, fmt, va);
     va_end(va);
 
-    puts(buf);
+    uart_putstr(buf);
 
     return r;
 }
 
-int error(const char *fmt, ...)
+int logger_warn(const char *fmt, ...)
 {
     va_list va;
     char buf[BUFSZ];
     int r;
 
     va_start(va, fmt);
-    r = vsnprintf(buf, sizeof buf, fmt, va);
+    r = my_vsnprintf(buf, sizeof buf, fmt, va);
     va_end(va);
 
-    puts(buf);
+    uart_putstr(ANSI_YELLOW);
+    uart_putstr(buf);
+    uart_putstr(ANSI_RESET);
+
+    return r;
+}
+
+int logger_error(const char *fmt, ...)
+{
+    va_list va;
+    char buf[BUFSZ];
+    int r;
+
+    va_start(va, fmt);
+    r = my_vsnprintf(buf, sizeof buf, fmt, va);
+    va_end(va);
+
+    uart_putstr(ANSI_RED);
+    uart_putstr(buf);
+    uart_putstr(ANSI_RESET);
+
+    return r;
+}
+
+int logger_info(const char *fmt, ...)
+{
+    va_list va;
+    char buf[BUFSZ];
+    int r;
+
+    va_start(va, fmt);
+    r = my_vsnprintf(buf, sizeof buf, fmt, va);
+    va_end(va);
+
+    uart_putstr(ANSI_GREEN);
+    uart_putstr(buf);
+    uart_putstr(ANSI_RESET);
 
     return r;
 }
@@ -377,5 +402,46 @@ void print_binstr(uint32_t x)
 {
     char out[BINSTR_SZ];
     binstr(x, out);
-    printf("%s", out);
+    logger("%s", out);
+}
+
+void run_printf_tests(void)
+{
+    char buf[64];
+
+    // T1: print_int(0, ...) => 应该输出 "0"
+    my_snprintf(buf, sizeof(buf), "%d", 0);
+    uart_putstr("T1: expect [0] got [");
+    uart_putstr(buf);
+    uart_putstr("]\n");
+
+    // T2: %#x 应该输出 "0x1a2b" 形式
+    my_snprintf(buf, sizeof(buf), "%#x", 0x1a2b);
+    uart_putstr("T2: expect [0x1a2b] got [");
+    uart_putstr(buf);
+    uart_putstr("]\n");
+
+    // T3: 负数打印
+    my_snprintf(buf, sizeof(buf), "%d", -12345);
+    uart_putstr("T3: expect [-12345] got [");
+    uart_putstr(buf);
+    uart_putstr("]\n");
+
+    // T4: %-10s 左对齐字符串
+    my_snprintf(buf, sizeof(buf), "|%-10s|", "abc");
+    uart_putstr("T4: expect [|abc       |] got [");
+    uart_putstr(buf);
+    uart_putstr("]\n");
+
+    // T5: %% 测试
+    my_snprintf(buf, sizeof(buf), "rate: 100%%");
+    uart_putstr("T5: expect [rate: 100%] got [");
+    uart_putstr(buf);
+    uart_putstr("]\n");
+
+    // T6: %08x 测试，检查是否前导 0 填充
+    my_snprintf(buf, sizeof(buf), "%08x", 0x123);
+    uart_putstr("T6: expect [00000123] got [");
+    uart_putstr(buf);
+    uart_putstr("]\n");
 }

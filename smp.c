@@ -22,17 +22,17 @@ void thread_info_init(struct thread_info *ti, unsigned int flags, int id)
 void start_secondary_cpus()
 {
     thread_info_init((struct thread_info *)(_stack_top - STACK_SIZE), 0, 0);
-    printf("core 0 thread info addr: %llx\n", (struct thread_into *)(void *)(_stack_top - STACK_SIZE));
+    logger("core 0 thread info addr: %llx\n", (struct thread_into *)(void *)(_stack_top - STACK_SIZE));
 
     for (int i = 1; i < SMP_NUM; i++)
     {
-        printf("\n");
+        logger("\n");
 #if HV
         int result = smc_call(PSCI_0_2_FN64_CPU_ON, i, (uint64_t)(void *)second_entry_el2,
                               (uint64_t)(_stack_top_second - STACK_SIZE * (i - 1)));
         if (result != 0)
         {
-            printf("smc_call failed!\n");
+            logger("smc_call failed!\n");
         }
 #else
         int result = hvc_call(PSCI_0_2_FN64_CPU_ON, i, (uint64_t)(void *)second_entry,
@@ -40,7 +40,7 @@ void start_secondary_cpus()
 #endif
         if (result != 0)
         {
-            printf("hvc_call failed!\n");
+            logger("hvc_call failed!\n");
         }
 
         // 做一点休眠 保证第二个核 初始化完成
@@ -49,6 +49,6 @@ void start_secondary_cpus()
                 ;
 
         thread_info_init((struct thread_info *)(_stack_top_second - STACK_SIZE * i), 0, i);
-        printf("core %d thread info addr: %llx\n", i, (void *)(_stack_top_second - STACK_SIZE * i));
+        logger("core %d thread info addr: %llx\n", i, (void *)(_stack_top_second - STACK_SIZE * i));
     }
 }

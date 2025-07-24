@@ -55,9 +55,9 @@ void vgicd_write(ept_violation_info_t *info, trap_frame_t *el2_ctx, void *paddr)
 
     // 从 MMIO 地址读取数据
     dst = (unsigned long *)(unsigned long)paddr;
-    printf("(%d bytes) 0x%llx  R%d\n", (unsigned long)len, *dst, (unsigned long)reg_num);
+    logger("(%d bytes) 0x%llx  R%d\n", (unsigned long)len, *dst, (unsigned long)reg_num);
 
-    printf("old data: 0x%llx\n", *dst);
+    logger("old data: 0x%llx\n", *dst);
     // 将数据写入寄存器或进行其他必要的操作
     if (reg_num != 30)
     {
@@ -66,7 +66,7 @@ void vgicd_write(ept_violation_info_t *info, trap_frame_t *el2_ctx, void *paddr)
     // 确保所有更改都能被看到
     dsb(sy);
     isb();
-    printf("new data: 0x%llx\n", *dst);
+    logger("new data: 0x%llx\n", *dst);
 }
 
 void vgicd_read(ept_violation_info_t *info, trap_frame_t *el2_ctx, void *paddr)
@@ -110,8 +110,8 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
                 int r = el2_ctx->r[reg_num];
                 int len = 1 << (info->hsr.dabt.size & 0x00000003);
                 vgic->gicd_ctlr = r;
-                print_info("      <<< gicd emu write GICD_CTLR: ");
-                printf("gpa: 0x%llx, r: 0x%llx, len: %d\n", gpa, r, len);
+                logger_info("      <<< gicd emu write GICD_CTLR: ");
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d\n", gpa, r, len);
             }
             /*  is enable reg*/
             else if (gpa == GICD_ISENABLER(0))
@@ -121,8 +121,8 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
                 int len = 1 << (info->hsr.dabt.size & 0x00000003);
                 
                 gic_enable_int(HIGHEST_BIT_POSITION(r), 1);
-                print_info("      <<< gicd emu write GICD_ISENABLER(0): ");
-                printf("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
+                logger_info("      <<< gicd emu write GICD_ISENABLER(0): ");
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
             }
             else if (GICD_ISENABLER(1) <= gpa && gpa < GICD_ICENABLER(0))
             {
@@ -132,8 +132,8 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
                 int id = ((gpa - GICD_ISENABLER(0)) / 0x4) * 32;
                 
                 gic_enable_int(HIGHEST_BIT_POSITION(r) + id, 1);
-                print_info("      <<< gicd emu write GICD_ISENABLER(i): ");
-                printf("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
+                logger_info("      <<< gicd emu write GICD_ISENABLER(i): ");
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
             }
             /* ic enable reg*/
             else if (gpa == GICD_ICENABLER(0))
@@ -143,8 +143,8 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
                 int len = 1 << (info->hsr.dabt.size & 0x00000003);
                 
                 gic_enable_int(HIGHEST_BIT_POSITION(r), 0);
-                print_info("      <<< gicd emu write GICD_ICENABLER(0): ");
-                printf("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
+                logger_info("      <<< gicd emu write GICD_ICENABLER(0): ");
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
             }
             else if (GICD_ICENABLER(1) <= gpa && gpa < GICD_ISPENDER(0))
             {
@@ -154,17 +154,17 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
                 int id = ((gpa - GICD_ICENABLER(0)) / 0x4) * 32;
 
                 gic_enable_int(HIGHEST_BIT_POSITION(r) + id, 0);
-                print_info("      <<< gicd emu write GICD_ICENABLER(i): ");
-                printf("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
+                logger_info("      <<< gicd emu write GICD_ICENABLER(i): ");
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
             }
             /* is pend reg*/
             else if (gpa == GICD_ISPENDER(0))
             {
-                print_info("      <<< gicd emu write GICD_ISPENDER(0)\n");
+                logger_info("      <<< gicd emu write GICD_ISPENDER(0)\n");
             }
             else if (GICD_ISPENDER(1) <= gpa && gpa < GICD_ICPENDER(0))
             {
-                print_info("      <<< gicd emu write GICD_ISPENDER(i)\n");
+                logger_info("      <<< gicd emu write GICD_ISPENDER(i)\n");
             }
             /* ic pend reg*/
             else if (gpa == GICD_ICPENDER(0))
@@ -174,8 +174,8 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
                 int len = 1 << (info->hsr.dabt.size & 0x00000003);
                 
                 gic_set_pending(HIGHEST_BIT_POSITION(r), 0, 0);
-                print_info("      <<< gicd emu write GICD_ICPENDER(0): ");
-                printf("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
+                logger_info("      <<< gicd emu write GICD_ICPENDER(0): ");
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
             }
             else if (GICD_ICPENDER(1) <= gpa && gpa < GICD_ISACTIVER(0))
             {
@@ -185,8 +185,8 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
                 int id = ((gpa - GICD_ICPENDER(0)) / 0x4) * 32;
 
                 gic_set_pending(HIGHEST_BIT_POSITION(r) + id, 0, 0);
-                print_info("      <<< gicd emu write GICD_ICPENDER(i): ");
-                printf("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
+                logger_info("      <<< gicd emu write GICD_ICPENDER(i): ");
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
             }
             /* I priority reg*/
             else if (GICD_IPRIORITYR(0) <= gpa && gpa < GICD_IPRIORITYR(GIC_FIRST_SPI / 4))
@@ -207,8 +207,8 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
                     gic_set_ipriority(vector, pri);
                 }
 
-                print_info("      <<< gicd emu write GICD_IPRIORITYR(sgi-ppi): ");
-                printf("int_id=%d, len=%d, val=0x%llx\n", int_id, len, val);
+                logger_info("      <<< gicd emu write GICD_IPRIORITYR(sgi-ppi): ");
+                logger("int_id=%d, len=%d, val=0x%llx\n", int_id, len, val);
             }
             else if (GICD_IPRIORITYR(GIC_FIRST_SPI / 4) <= gpa && gpa < GICD_IPRIORITYR(SPI_ID_MAX / 4))
             {
@@ -228,24 +228,24 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
                     gic_set_ipriority(vector, pri);
                 }
 
-                print_info("      <<< gicd emu write GICD_IPRIORITYR(spi):");
-                printf("int_id=%d, len=%d, val=0x%llx\n", int_id, len, val);
+                logger_info("      <<< gicd emu write GICD_IPRIORITYR(spi):");
+                logger("int_id=%d, len=%d, val=0x%llx\n", int_id, len, val);
             }
 
             /* I cfg reg*/
             else if (GICD_ICFGR(GIC_FIRST_SPI / 16) <= gpa && gpa < GICD_ICFGR(SPI_ID_MAX / 16))
             {
-                print_info("      <<< gicd emu write GICD_ICFGR(i)\n");
+                logger_info("      <<< gicd emu write GICD_ICFGR(i)\n");
             }
             /* I target reg*/
             else if (GICD_ITARGETSR(GIC_FIRST_SPI / 4) <= gpa && gpa < GICD_ITARGETSR(SPI_ID_MAX / 4))
             {
-                print_info("      <<< gicd emu write GICD_ITARGETSR(i)\n");
+                logger_info("      <<< gicd emu write GICD_ITARGETSR(i)\n");
             }
             /* sgi reg*/
             else if (gpa == GICD_SGIR) // wo
             {
-                print_info("      <<< gicd emu write GICD_SGIR(i)\n");
+                logger_info("      <<< gicd emu write GICD_SGIR(i)\n");
             }
             else
             {
@@ -258,92 +258,92 @@ void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
             {
                 vgicd_read(info, el2_ctx, &vgic->gicd_ctlr);
                 
-                print_warn("      >>> gicd emu read GICD_CTLR: ");
-                printf("ctlr: 0x%x\n", vgic->gicd_ctlr);
+                logger_warn("      >>> gicd emu read GICD_CTLR: ");
+                logger("ctlr: 0x%x\n", vgic->gicd_ctlr);
             }
             else if (gpa == GICD_TYPER) // ro
             {
                 uint32_t typer = gic_get_typer();
                 vgicd_read(info, el2_ctx, &typer);
                 
-                print_warn("      >>> gicd emu read GICD_TYPER: ");
-                printf("typer: 0x%x\n", typer);
+                logger_warn("      >>> gicd emu read GICD_TYPER: ");
+                logger("typer: 0x%x\n", typer);
             }
             else if (gpa == GICD_IIDR) // ro
             {
                 uint32_t iidr = gic_get_iidr();
                 vgicd_read(info, el2_ctx, &iidr);
-                print_warn("      >>> gicd emu read GICD_IIDR: ");
-                printf("iidr: 0x%x\n", iidr);
+                logger_warn("      >>> gicd emu read GICD_IIDR: ");
+                logger("iidr: 0x%x\n", iidr);
             }
 
             /*  is enable reg*/
             else if (gpa == GICD_ISENABLER(0))
             {
-                print_warn("      >>> gicd emu read GICD_ISENABLER(0)\n");
+                logger_warn("      >>> gicd emu read GICD_ISENABLER(0)\n");
             }
             else if (GICD_ISENABLER(1) <= gpa && gpa < GICD_ICENABLER(0))
             {
-                print_warn("      >>> gicd emu read GICD_ISENABLER(i)\n");
+                logger_warn("      >>> gicd emu read GICD_ISENABLER(i)\n");
             }
             /* ic enable reg*/
             else if (gpa == GICD_ICENABLER(0))
             {
-                print_warn("      >>> gicd emu read GICD_ICENABLER(0)\n");
+                logger_warn("      >>> gicd emu read GICD_ICENABLER(0)\n");
             }
             else if (GICD_ICENABLER(1) <= gpa && gpa < GICD_ISPENDER(0))
             {
-                print_warn("      >>> gicd emu read GICD_ICENABLER(i)\n");
+                logger_warn("      >>> gicd emu read GICD_ICENABLER(i)\n");
             }
             /* is pend reg*/
             else if (gpa == GICD_ISPENDER(0))
             {
-                print_warn("      >>> gicd emu read GICD_ISPENDER(0)\n");
+                logger_warn("      >>> gicd emu read GICD_ISPENDER(0)\n");
             }
             else if (GICD_ISPENDER(1) <= gpa && gpa < GICD_ICPENDER(0))
             {
-                print_warn("      >>> gicd emu read GICD_ISPENDER(i)\n");
+                logger_warn("      >>> gicd emu read GICD_ISPENDER(i)\n");
             }
             /* ic pend reg*/
             else if (gpa == GICD_ICPENDER(0))
             {
-                print_warn("      >>> gicd emu read GICD_ICPENDER(0)\n");
+                logger_warn("      >>> gicd emu read GICD_ICPENDER(0)\n");
             }
             else if (GICD_ICPENDER(1) <= gpa && gpa < GICD_IPRIORITYR(0))
             {
-                print_warn("      >>> gicd emu read GICD_ICPENDER(i)\n");
+                logger_warn("      >>> gicd emu read GICD_ICPENDER(i)\n");
             }
             /* I priority reg*/
             else if (GICD_IPRIORITYR(0) <= gpa && gpa < GICD_IPRIORITYR(GIC_FIRST_SPI / 4))
             {
-                print_warn("      >>> gicd emu read GICD_IPRIORITYR(sgi-ppi)\n");
+                logger_warn("      >>> gicd emu read GICD_IPRIORITYR(sgi-ppi)\n");
             }
             else if (GICD_IPRIORITYR(GIC_FIRST_SPI / 4) <= gpa && gpa < GICD_IPRIORITYR(SPI_ID_MAX / 4))
             {
-                print_warn("      >>> gicd emu read GICD_IPRIORITYR(spi)\n");
+                logger_warn("      >>> gicd emu read GICD_IPRIORITYR(spi)\n");
             }
             /* I cfg reg*/
             else if (GICD_ICFGR(GIC_FIRST_SPI / 16) <= gpa && gpa < GICD_ICFGR(SPI_ID_MAX / 16))
             {
-                print_warn("      >>> gicd emu read GICD_ICFGR(i)\n");
+                logger_warn("      >>> gicd emu read GICD_ICFGR(i)\n");
             }
             /* I target reg*/
             else if (GICD_ITARGETSR(GIC_FIRST_SPI / 4) <= gpa && gpa < GICD_ITARGETSR(SPI_ID_MAX / 4))
             {
-                print_warn("      >>> gicd emu read GICD_ITARGETSR(i)\n");
+                logger_warn("      >>> gicd emu read GICD_ITARGETSR(i)\n");
             }
         }
         return;
     }
 
-    print_warn("[intc_handler]: unsupported access gpa: ");
-    printf("0x%llx\n", gpa);
+    logger_warn("[intc_handler]: unsupported access gpa: ");
+    logger("0x%llx\n", gpa);
 }
 
 // vgic inject
 void vgic_inject(uint32_t vector)
 {
-    // printf("vgic inject vector: %d\n", vector);
+    // logger("vgic inject vector: %d\n", vector);
     uint32_t mask = gic_make_virtual_hardware_interrupt(vector, vector, 0, 0);
 
     uint32_t elsr0 = gic_elsr0();
@@ -366,11 +366,11 @@ void vgic_inject(uint32_t vector)
         }
         if (((gic_read_lr(i) >> GICH_LR_PID_SHIFT) & 0x3ff) == vector)
         {
-            printf("vgic inject, vector %d already in lr%d\n", vector, i);
+            logger("vgic inject, vector %d already in lr%d\n", vector, i);
             return; // busy
         }
     }
 
-    // printf("is_empty: 0x%llx, is_active: 0x%llx, pri: 0x%llx, irq_no: %d\n", elsr, is_active, pri, irq_no);
+    // logger("is_empty: 0x%llx, is_active: 0x%llx, pri: 0x%llx, irq_no: %d\n", elsr, is_active, pri, irq_no);
     gic_write_lr(freelr, mask);
 }

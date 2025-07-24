@@ -23,7 +23,7 @@ void ramfs_init()
     fs_data_ptr = RAM_FS_MEM_START + sizeof(Head) + MAX_FILES * sizeof(File);
     fs_data_ptr = (fs_data_ptr + BLOCK_SIZE - 1) & ~(BLOCK_SIZE - 1); // 保证 fs_data_ptr 按照 BLOCK_SIZE 对齐
     uint32_t pages = (fs_data_ptr - RAM_FS_MEM_START) / BLOCK_SIZE;
-    printf("alloc %d pages memory for ramfs basic data\n", pages);
+    logger("alloc %d pages memory for ramfs basic data\n", pages);
     // 进行内存分配，确保我们为文件系统的数据区域分配足够的内存
     fs_malloc_pages(pages);
 
@@ -502,21 +502,21 @@ uint8_t test_buf[70 * 1024];
 void basic_test()
 {
     int fd = ramfs_open("/home/ajax/1.txt");
-    printf("fd: %d\n", fd);
+    logger("fd: %d\n", fd);
 
     int size = (uint64_t)__add_bin_end - (uint64_t)__add_bin_start;
     int w = ramfs_write(fd, __add_bin_start, size);
-    printf("write %d bytes\n", w);
+    logger("write %d bytes\n", w);
 
     int seek = ramfs_lseek(fd, 0, SEEK_SET);
-    printf("seek set 0: %d\n", seek);
+    logger("seek set 0: %d\n", seek);
 
     int r = ramfs_read(fd, test_buf, size);
-    printf("read %d\n", r);
+    logger("read %d\n", r);
 
     if (memcmp(test_buf, __add_bin_start, size) == 0)
     {
-        printf("write read ok!\n");
+        logger("write read ok!\n");
     }
 }
 

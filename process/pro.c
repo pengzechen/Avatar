@@ -42,9 +42,9 @@ void free_process(process_t *pro)
 //     size_t size = (size_t)(__testapp_bin_end - __testapp_bin_start);
 //     unsigned long *from = (unsigned long *)__testapp_bin_start;
 //     unsigned long *to = (unsigned long *)0x90000000;
-//     printf("Copy app image from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n", from, to, size, from[0], from[1]);
+//     logger("Copy app image from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n", from, to, size, from[0], from[1]);
 //     memcpy(to, from, size);
-//     printf("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
+//     logger("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
 // }
 
 static int load_phdr(const char *elf_file_addr, Elf64_Phdr *phdr, pte_t *page_dir)
@@ -56,7 +56,7 @@ static int load_phdr(const char *elf_file_addr, Elf64_Phdr *phdr, pte_t *page_di
     int err = memory_alloc_page(page_dir, phdr->p_vaddr, phdr->p_memsz, 0);
     if (err < 0)
     {
-        printf("no memory");
+        logger("no memory");
         return -1;
     }
 
@@ -92,21 +92,21 @@ static uint64_t load_elf_file(process_t *pro, const char *elf_file_addr, pte_t *
     // ELF头部校验
     if ((elf_hdr->e_ident[0] != 0x7f) || (elf_hdr->e_ident[1] != 'E') || (elf_hdr->e_ident[2] != 'L') || (elf_hdr->e_ident[3] != 'F'))
     {
-        printf("check elf indent failed.");
+        logger("check elf indent failed.");
         return 0;
     }
 
     // 确保是可执行文件并且是AArch64架构
     if ((elf_hdr->e_type != 2) || (elf_hdr->e_machine != EM_AARCH64) || (elf_hdr->e_entry == 0))
     {
-        printf("check elf type or entry failed.");
+        logger("check elf type or entry failed.");
         return 0;
     }
 
     // 必须有程序头
     if ((elf_hdr->e_phentsize == 0) || (elf_hdr->e_phoff == 0))
     {
-        printf("no program header");
+        logger("no program header");
         return 0;
     }
 
@@ -127,7 +127,7 @@ static uint64_t load_elf_file(process_t *pro, const char *elf_file_addr, pte_t *
         int err = load_phdr(elf_file_addr, &elf_phdr, page_dir);
         if (err < 0)
         {
-            printf("load program header failed");
+            logger("load program header failed");
             return 0;
         }
 
@@ -146,25 +146,25 @@ void prepare_vm(process_t **process, void *elf_addr)
     pro->pg_base = (void *)create_uvm();
 
     pro->entry = load_elf_file(pro, elf_addr, (pte_t *)pro->pg_base); // map data 区的一块内存 将来优化这里
-    printf("process entry: 0x%llx\n", pro->entry);
+    logger("process entry: 0x%llx\n", pro->entry);
 
     // 处理 EL1 的栈
     pro->el1_stack = kalloc_pages(2);
     // list_node_t * iter = list_first(&get_task_manager()->task_list);
     // while (iter) {
     //     tcb_t *task = list_node_parent(iter, tcb_t, all_node);
-    //     printf("map other task(%d) el1 stack: 0x%llx\n", task->id, task->sp);
+    //     logger("map other task(%d) el1 stack: 0x%llx\n", task->id, task->sp);
     //     memory_create_map(pro->pg_base, task->sp, virt_to_phys(task->sp), 1, 1);  // 要把所有的task的el1栈都映射一下，不然 task_switch 结束的时候会page fault
-    //     printf("map this task's el1 stack for task(%d), 0x%llx\n", task->id, (uint64_t)pro->el1_stack);
+    //     logger("map this task's el1 stack for task(%d), 0x%llx\n", task->id, (uint64_t)pro->el1_stack);
     //     memory_create_map((pte_t*)task->pgdir, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 1, 1);  // 帮另一个任务映射一下这个任务的栈
     //     iter = list_node_next(iter);
     // }
-    // printf("map this task's el1 stack, 0x%llx\n", (uint64_t)pro->el1_stack);
+    // logger("map this task's el1 stack, 0x%llx\n", (uint64_t)pro->el1_stack);
     // memory_create_map(pro->pg_base, (uint64_t)pro->el1_stack, virt_to_phys(pro->el1_stack), 1, 1);
 
     // 处理 EL0 的栈
     pro->el0_stack = kalloc_pages(1);
-    printf("map this task's el0 stack, 0x%llx\n", (uint64_t)pro->el0_stack);
+    logger("map this task's el0 stack, 0x%llx\n", (uint64_t)pro->el0_stack);
     memory_create_map(pro->pg_base, (uint64_t)pro->entry + 0x3000, virt_to_phys(pro->el0_stack), 1, 0);
 }
 
@@ -187,7 +187,7 @@ void run_process(process_t *pro)
     while (iter)
     {
         tcb_t *task = list_node_parent(iter, tcb_t, process);
-        printf("run processs: task: 0x%x\n", task);
+        logger("run processs: task: 0x%x\n", task);
         run_task_oncore(task, task->priority - 1);
         // task_set_ready(task);
         iter = list_node_next(iter);
@@ -212,11 +212,11 @@ int pro_execve(char *name, char **__argv, char **__envp)
 
     for (int i = 0; __argv[i] != NULL; i++)
     {
-        printf("argv[%d]: %s\n", i, __argv[i]);
+        logger("argv[%d]: %s\n", i, __argv[i]);
     }
     for (int i = 0; __envp[i] != NULL; i++)
     {
-        printf("argv[%d]: %s\n", i, __envp[i]);
+        logger("argv[%d]: %s\n", i, __envp[i]);
     }
 
     void *elf_addr = NULL;
@@ -231,7 +231,7 @@ int pro_execve(char *name, char **__argv, char **__envp)
     }
     else
     {
-        printf("[warning]: app not support\n");
+        logger("[warning]: app not support\n");
         return -1;
     }
 
@@ -273,7 +273,7 @@ int pro_fork(void)
     int ret = memory_copy_uvm_4level(child_pro->pg_base, pro->pg_base);
     if (ret < 0)
     {
-        printf("copy uvm error!\n");
+        logger("copy uvm error!\n");
     }
 
     child_pro->el1_stack = kalloc_pages(2);

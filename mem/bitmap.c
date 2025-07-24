@@ -50,7 +50,7 @@ void bitmap_clear(bitmap_t *bitmap, size_t index)
     // assert((bitmap->bits[index / 8] & (1 << (index % 8))) != 0);
     if ((bitmap->bits[index / 8] & (1 << (index % 8))) == 0)
     {
-        // printf("warnning: free a already freed page!, index: %d\n", index);
+        // logger("warnning: free a already freed page!, index: %d\n", index);
     }
 
     // 清除该位为 0

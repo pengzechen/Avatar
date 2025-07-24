@@ -38,7 +38,7 @@ void io_init()
 
     if (gic_get_enable(33))
     {
-        printf("uart enabled successfully ...\n");
+        logger("uart enabled successfully ...\n");
     }
 
     uart_advance_init();
@@ -65,16 +65,3 @@ void uart_putstr(const char *str)
     }
 }
 
-void print_info(const char *info)
-{
-    // ANSI 转义序列: "\033[32m" 设置绿色前景色, "\033[0m" 重置颜色
-    printf("\033[32m%s\033[0m", info);
-    // printf("%s", info);
-}
-
-void print_warn(const char *info)
-{
-    // ANSI 转义序列: "\033[32m" 设置绿色前景色, "\033[0m" 重置颜色
-    printf("\033[33m%s\033[0m", info);
-    // printf("%s", info);
-}

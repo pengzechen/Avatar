@@ -17,10 +17,10 @@ void handle_timer_interrupt(uint64_t *sp)
     // 设置定时值
     write_cntp_tval_el0(625000);
     // if (test_num++ % 1000 == 0) {
-    //     printf("timer: 10s\n");
+    //     logger("timer: 10s\n");
     // }
-    // printf("core: %d, handle irq exception\n", get_current_cpu_id());
-    // printf("get daif: %llx\n", get_daif());
+    // logger("core: %d, handle irq exception\n", get_current_cpu_id());
+    // logger("get daif: %llx\n", get_daif());
     timer_tick_schedule(sp);
     // schedule();
 }
@@ -29,7 +29,7 @@ void timer_init_second()
 {
     uint64_t frq = read_cntfrq_el0();
 
-    printf("timer frq: %d\n", frq);
+    logger("timer frq: %d\n", frq);
 
     // 设置定时值
     write_cntp_tval_el0(625000);
@@ -40,7 +40,7 @@ void timer_init_second()
 
     if (gic_get_enable(TIMER_VECTOR))
     {
-        printf("timer enabled successfully ...\n");
+        logger("timer enabled successfully ...\n");
     }
 }
 
@@ -50,7 +50,7 @@ void timer_init()
 
     uint64_t frq = read_cntfrq_el0();
 
-    printf("timer frq: %d\n", frq);
+    logger("timer frq: %d\n", frq);
 
     // 设置定时值
     write_cntp_tval_el0(625000);
@@ -63,6 +63,6 @@ void timer_init()
 
     if (gic_get_enable(TIMER_VECTOR))
     {
-        printf("timer enabled successfully ...\n");
+        logger("timer enabled successfully ...\n");
     }
 }

@@ -145,22 +145,22 @@ void schedule_init_local(tcb_t *task, void *new_sp)
         task->state = TASK_STATE_RUNNING;
         write_tpidr_el0((uint64_t)task);
     }
-    printf("core %d current task %d\n", get_current_cpu_id(), task->id);
+    logger("core %d current task %d\n", get_current_cpu_id(), task->id);
     spin_unlock(&print_lock);
 }
 
 void print_current_task_list()
 {
-    printf("\n    task all list:\n");
+    logger("\n    task all list:\n");
     list_node_t *curr = list_first(&task_manager.task_list);
     while (curr)
     {
         list_node_t *next = list_node_next(curr);
         tcb_t *task = list_node_parent(curr, tcb_t, all_node);
-        printf("id: %llx, elr: 0x%llx, priority: %d\n", task->id, task->cpu_info->ctx.elr, task->priority);
+        logger("id: %llx, elr: 0x%llx, priority: %d\n", task->id, task->cpu_info->ctx.elr, task->priority);
         curr = next;
     }
-    printf("\n");
+    logger("\n");
 }
 
 static inline void flush(void)
@@ -192,25 +192,25 @@ void schedule()
     if (next_task == curr)
     {
         spin_lock(&print_lock);
-        // printf("[warning]: core: %d, n = c task 0x%llx, id: %d, => ", get_current_cpu_id(), curr, curr->id);
+        // logger("[warning]: core: %d, n = c task 0x%llx, id: %d, => ", get_current_cpu_id(), curr, curr->id);
         list_node_t *iter = list_first(&task_manager.ready_list[core_id]);
         while (iter)
         {
             tcb_t *task = list_node_parent(iter, tcb_t, run_node);
-            // printf("(id :%d, state: %d), ", task->id, task->state);
+            // logger("(id :%d, state: %d), ", task->id, task->state);
             iter = list_node_next(iter);
         }
-        // printf("\n");
+        // logger("\n");
         spin_unlock(&print_lock);
         return;
     }
 
     spin_lock(&print_lock);
-    // printf("core %d switch prev_task %d to next_task %d\n",
+    // logger("core %d switch prev_task %d to next_task %d\n",
     //     get_current_cpu_id(), prev_task->id, next_task->id);
     spin_unlock(&print_lock);
 
-    // printf("next_task page dir: 0x%llx\n", next_task->pgdir);
+    // logger("next_task page dir: 0x%llx\n", next_task->pgdir);
 
     if (get_el() == 1)
     {
@@ -248,7 +248,7 @@ void timer_tick_schedule(uint64_t *sp)
         tcb_t *task = list_node_parent(curr, tcb_t, run_node);
         if (--task->sleep_ticks == 0)
         {
-            // printf("task %d sleep time arrive\n", task->id);
+            // logger("task %d sleep time arrive\n", task->id);
             task_set_wakeup(task);
             task_set_ready(task);
         }
@@ -314,7 +314,7 @@ void idle_task_el1()
         wfi();
         // __asm__ __volatile__("msr daifclr, #2" : : : "memory");
         // for (int i = 0; i < 100000000; i++);
-        // printf("current el: %d, idle task\n", get_el());
+        // logger("current el: %d, idle task\n", get_el());
     }
 }
 
@@ -392,8 +392,8 @@ task_manager_t *get_task_manager()
 int run_task_oncore(tcb_t *task, uint32_t core_id)
 {
     if (core_id >= SMP_NUM)
-        printf("error: wrong core id\n");
-    // printf("core id: %d\n", core_id);
+        logger("error: wrong core id\n");
+    // logger("core id: %d\n", core_id);
     spin_lock(&task_manager.lock);
     if (task != &task_manager.idle_task[core_id])
     {
@@ -502,7 +502,7 @@ void sys_sleep_tick(uint64_t ms)
     tcb_t *curr = (tcb_t *)(void *)read_tpidr_el0();
     task_set_block(curr);
     task_set_sleep(curr, ms / 10);
-    // printf("sleep %d ms, tick: %d\n", ms, curr->sleep_ticks);
+    // logger("sleep %d ms, tick: %d\n", ms, curr->sleep_ticks);
 
     // 进行一次调度
     schedule();

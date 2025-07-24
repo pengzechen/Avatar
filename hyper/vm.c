@@ -17,13 +17,13 @@ static uint32_t _state_num = 0;
 
 void v_timer_handler()
 {
-    // printf("v_timer_handler\n");
+    // logger("v_timer_handler\n");
     vgic_inject(HV_TIMER_VECTOR);
 }
 
 void fake_console()
 {
-    // printf("fake console\n");
+    // logger("fake console\n");
     vgic_inject(PL011_INT);
 }
 

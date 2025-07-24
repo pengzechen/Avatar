@@ -10,10 +10,10 @@ struct gic_t _gicv2;
 
 void gic_test_init(void)
 {
-    printf("    gicd enable %s\n", read32((void *)GICD_CTLR) ? "ok" : "error");
-    printf("    gicc enable %s\n", read32((void *)GICC_CTLR) ? "ok" : "error");
-    printf("    irq numbers: %d\n", _gicv2.irq_nr);
-    printf("    cpu num: %d\n", cpu_num());
+    logger("    gicd enable %s\n", read32((void *)GICD_CTLR) ? "ok" : "error");
+    logger("    gicc enable %s\n", read32((void *)GICC_CTLR) ? "ok" : "error");
+    logger("    irq numbers: %d\n", _gicv2.irq_nr);
+    logger("    cpu num: %d\n", cpu_num());
 }
 
 // ===========================================
@@ -79,7 +79,7 @@ void gic_virtual_init(void)
 
     gic_test_init();
 
-    printf("    gich enable %s\n", read32((void *)GICH_HCR) ? "ok" : "error");
+    logger("    gich enable %s\n", read32((void *)GICH_HCR) ? "ok" : "error");
 }
 
 // ===========================================
@@ -141,7 +141,7 @@ void gic_enable_int(int vector, int enabled)
         write32(mask, (void *)GICD_ISENABLER(reg));
     else
         write32(mask, (void *)GICD_ICENABLER(reg));
-    printf("set enable: reg: %d, mask: 0x%llx\n", reg, mask);
+    logger("set enable: reg: %d, mask: 0x%llx\n", reg, mask);
 }
 
 // Check the given interrupt.
@@ -151,7 +151,7 @@ int gic_get_enable(int vector)
     int mask = 1 << (vector & ((1 << 5) - 1)); //  vec % 32
     uint32_t val = read32((void *)GICD_ISENABLER(reg));
 
-    printf("get enable: reg: %llx, mask: %llx, value: %llx\n", reg, mask, val);
+    logger("get enable: reg: %llx, mask: %llx, value: %llx\n", reg, mask, val);
     return val & mask != 0;
 }
 
@@ -171,7 +171,7 @@ void gic_set_active(int int_id, int act)
     } else {
         write32(mask, (void *)GICD_ICACTIVER(reg));
     }
-    printf("set active: reg: %d, mask: 0x%x, act: %d\n", reg, mask, act);
+    logger("set active: reg: %d, mask: 0x%x, act: %d\n", reg, mask, act);
 }
 
 // Set the Pending status of the interrupt. pend=1 sets Pending, pend=0 clears Pending
@@ -182,7 +182,7 @@ void gic_set_pending(int int_id, int pend, int target_cpu)
         int off = (int_id % 4) * 8;       // 每个 SGI 占 8 bit（一个字节，每个 bit 表示一个 CPU）
 
         if (target_cpu < 0 || target_cpu >= 8) {
-            printf("Invalid CPU ID: %d\n", target_cpu);
+            logger("Invalid CPU ID: %d\n", target_cpu);
             return;
         }
 
@@ -194,7 +194,7 @@ void gic_set_pending(int int_id, int pend, int target_cpu)
             write32(1 << (off + target_cpu), (void *)GICD_CPENDSGIR(reg));
         }
 
-        printf("set SGI pending: int_id: %d, reg: %d, off: %d, cpu: %d, pend: %d\n", int_id, reg, off, target_cpu, pend);
+        logger("set SGI pending: int_id: %d, reg: %d, off: %d, cpu: %d, pend: %d\n", int_id, reg, off, target_cpu, pend);
     } else {
         int reg = int_id / 32;
         int mask = 1 << (int_id % 32);
@@ -205,7 +205,7 @@ void gic_set_pending(int int_id, int pend, int target_cpu)
             write32(mask, (void *)GICD_ICPENDER(reg));
         }
 
-        printf("set pending: int_id: %d, reg: %d, mask: 0x%x, pend: %d\n", int_id, reg, mask, pend);
+        logger("set pending: int_id: %d, reg: %d, mask: 0x%x, pend: %d\n", int_id, reg, mask, pend);
     }
 }
 
@@ -224,7 +224,7 @@ void gic_set_ipriority(uint32_t vector, uint32_t pri)
     val |= (priority << (8 * m));
 
     write32(val, (void *)(uint64_t)addr);
-    printf("set priority: n: %u, m: %u, pri: %u\n", n, m, pri);
+    logger("set priority: n: %u, m: %u, pri: %u\n", n, m, pri);
 }
 
 // Get the interrupt priority

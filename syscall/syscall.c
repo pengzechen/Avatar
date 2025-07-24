@@ -8,7 +8,7 @@
 
 uint64_t _debug(void *args)
 {
-	printf("[syscall] sys_debug: %c, %c\n", *(uint64_t *)args, *((uint64_t *)args + 1));
+	logger("[syscall] sys_debug: %c, %c\n", *(uint64_t *)args, *((uint64_t *)args + 1));
 	return 0;
 }
 

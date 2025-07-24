@@ -8,13 +8,13 @@ BUILD_DIR=build
 
 INCLUDE = -I $(realpath ./include)
 
-n = -nostdlib -nostdinc -fno-stack-protector
+n = -nostdlib -nostdinc -fno-stack-protector -fno-builtin-vsnprintf -fno-builtin-snprintf -fno-builtin-printf
 
 SMP = 1
 HV  = 0
 
-CFLAGS = -g -c -O0 -fno-pie  -mgeneral-regs-only -fno-builtin-getc -fno-builtin-putc -fexec-charset=GBK\
-	 -fno-builtin-vsnprintf -fno-builtin-snprintf -fno-builtin-printf -fno-builtin-execve -DSMP_NUM=$(SMP) -DHV=$(HV)
+CFLAGS = -g -c -O0 -fno-pie  -mgeneral-regs-only -fno-builtin-getc -fno-builtin-putc -fexec-charset=GBK \
+	  -fno-builtin-execve -DSMP_NUM=$(SMP) -DHV=$(HV)
 
 QEMU_ARGS = -m 4G -smp $(SMP) -cpu cortex-a72 -nographic 
 

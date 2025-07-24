@@ -58,13 +58,13 @@ void guest_ept_init(void)
 	/* Level 3 */
 	ept_L3_root = &ept_L2_root[LPAE_L2_SIZE];
 
-	printf("Initialize EPT...\n");
-	printf("EPT root address : 0x%llx\n", ept_L1);
-	printf("ept_L2_root : 0x%llx\n", ept_L2_root);
-	printf("ept_L3_root : 0x%llx\n", ept_L3_root);
-	printf("LPAE_L1_SIZE : %d\n", LPAE_L1_SIZE);
-	printf("LPAE_L2_SIZE : %d\n", LPAE_L2_SIZE);
-	printf("LPAE_L3_SIZE : %d\n", LPAE_L3_SIZE);
+	logger("Initialize EPT...\n");
+	logger("EPT root address : 0x%llx\n", ept_L1);
+	logger("ept_L2_root : 0x%llx\n", ept_L2_root);
+	logger("ept_L3_root : 0x%llx\n", ept_L3_root);
+	logger("LPAE_L1_SIZE : %d\n", LPAE_L1_SIZE);
+	logger("LPAE_L2_SIZE : %d\n", LPAE_L2_SIZE);
+	logger("LPAE_L3_SIZE : %d\n", LPAE_L3_SIZE);
 
 	for (index_l1 = 0; index_l1 < LPAE_L1_SIZE; index_l1++)
 	{
@@ -81,7 +81,7 @@ void guest_ept_init(void)
 		{
 			lpae_t entry_l2;
 			lpae_t *ept_l3 = &ept_L3_root[LPAE_ENTRIES * LPAE_ENTRIES * index_l1 + LPAE_ENTRIES * index_l2];
-			// printf("(EPT_L3)0x%llx - %d/%d (%d)\n",ept_l3, index_l1,index_l2, LPAE_L2_SIZE * LPAE_ENTRIES * index_l1  + LPAE_ENTRIES * index_l2);
+			// logger("(EPT_L3)0x%llx - %d/%d (%d)\n",ept_l3, index_l1,index_l2, LPAE_L2_SIZE * LPAE_ENTRIES * index_l1  + LPAE_ENTRIES * index_l2);
 
 			/* Set second level page table entries */
 			entry_l2.bits = 0;
@@ -126,16 +126,16 @@ void guest_ept_init(void)
 				//   pept = get_ept_entry(gpa);
 				//   if(pept != &ept_l3[index_l3])
 				//   {
-				//     printf("(Index)%d/%d/%d - ", index_l1,index_l2,index_l3);
-				//     printf("(L1)0x%llx - ",(unsigned long)entry_l1.bits);
-				//     printf("(L2Adr)0x%llx - ",(unsigned long)&ept_l2[index_l2]);
-				//     printf("(L2)0x%llx - ",(unsigned long)entry_l2.bits);
-				//     printf("(L3Adr)0x%llx - ",(unsigned long)&ept_l3[index_l3]);
-				//     printf("(L3)0x%llx - ",(unsigned long)entry_l3.bits);
-				//     printf("(GPA)0x%llx - ",(unsigned long)gpa);
-				//     printf("Error - ");
-				//     printf("(EPT)0x%llx - ",ept_l3);
-				//     printf("(PAddr)0x%llx - (PVAL)0x%llx\n",pept,(unsigned long)pept->bits);
+				//     logger("(Index)%d/%d/%d - ", index_l1,index_l2,index_l3);
+				//     logger("(L1)0x%llx - ",(unsigned long)entry_l1.bits);
+				//     logger("(L2Adr)0x%llx - ",(unsigned long)&ept_l2[index_l2]);
+				//     logger("(L2)0x%llx - ",(unsigned long)entry_l2.bits);
+				//     logger("(L3Adr)0x%llx - ",(unsigned long)&ept_l3[index_l3]);
+				//     logger("(L3)0x%llx - ",(unsigned long)entry_l3.bits);
+				//     logger("(GPA)0x%llx - ",(unsigned long)gpa);
+				//     logger("Error - ");
+				//     logger("(EPT)0x%llx - ",ept_l3);
+				//     logger("(PAddr)0x%llx - (PVAL)0x%llx\n",pept,(unsigned long)pept->bits);
 				//   }
 				// }
 				gpa += (4 * 1024); /* 4KB page frame */
@@ -189,15 +189,15 @@ void data_abort_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 	lpae_t *ept;
 	unsigned long tmp;
 
-	// printf("EPT Violation : %s\n", info->reason == PREFETCH ? "prefetch" : "data");
-	// printf("PC : %llx\n", el2_ctx->elr);
-	// printf("GVA : 0x%llx\n", info->gva);
-	// printf("GPA : 0x%llx\n", (unsigned long)info->gpa);
-	// printf("Register : R%d\n", info->hsr.dabt.reg);
+	// logger("EPT Violation : %s\n", info->reason == PREFETCH ? "prefetch" : "data");
+	// logger("PC : %llx\n", el2_ctx->elr);
+	// logger("GVA : 0x%llx\n", info->gva);
+	// logger("GPA : 0x%llx\n", (unsigned long)info->gpa);
+	// logger("Register : R%d\n", info->hsr.dabt.reg);
 
 	ept = get_ept_entry(info->gpa);
 	tmp = ept->bits & 0xFFFFFFFF;
-	// printf("EPT Entry : 0x%llx(0x%llx)\n", ept, tmp);
+	// logger("EPT Entry : 0x%llx(0x%llx)\n", ept, tmp);
 	/*
 	if (handle_mmio(info, el2_ctx))
 	{
@@ -228,8 +228,8 @@ void data_abort_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 	//   // dsb();
 	//   // ept = get_ept_entry(info.gpa);
 	//   // tmp = ept->bits & 0xFFFFFFFF;
-	//   // printf("EPT Entry : 0x%llx(0x%llx)\n",ept,tmp);
-	//   // printf("Enable EPT Access\n");
+	//   // logger("EPT Entry : 0x%llx(0x%llx)\n",ept,tmp);
+	//   // logger("Enable EPT Access\n");
 	//   // ept->p2m.read = 1;
 	//   // ept->p2m.write = 1;
 	//   // isb();
@@ -251,7 +251,7 @@ int handle_mmio_hack(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 	
 	// 防止霸屏，eoir 和 iar 不输出
 	if (gpa != 0x8040010 && gpa != 0x804000c)
-		printf("====> [vgicc: ]operation gpa: 0x%llx\n", gpa);
+		logger("====> [vgicc: ]operation gpa: 0x%llx\n", gpa);
 
 	if (info->hsr.dabt.write)
 	{
@@ -271,9 +271,9 @@ int handle_mmio_hack(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 
 		// 从 MMIO 地址读取数据
 		dst = (unsigned long *)(unsigned long)gpa;
-		// printf("(%d bytes) 0x%llx  R%d\n", (unsigned long)len, *dst, (unsigned long)reg_num);
+		// logger("(%d bytes) 0x%llx  R%d\n", (unsigned long)len, *dst, (unsigned long)reg_num);
 
-		// printf("old data: 0x%llx\n", *dst);
+		// logger("old data: 0x%llx\n", *dst);
 		//  将数据写入寄存器或进行其他必要的操作
 		if (reg_num != 30)
 		{
@@ -282,7 +282,7 @@ int handle_mmio_hack(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 		// 确保所有更改都能被看到
 		dsb(sy);
 		isb();
-		// printf("new data: 0x%llx\n", *dst);
+		// logger("new data: 0x%llx\n", *dst);
 	}
 	else
 	{
@@ -303,16 +303,16 @@ int handle_mmio_hack(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 
 		src = (unsigned long *)(unsigned long)gpa;
 		dat = *src;
-		// printf("(%d bytes) 0x%llx R%d\n", (unsigned long)len, *src, (unsigned long)reg_num);
+		// logger("(%d bytes) 0x%llx R%d\n", (unsigned long)len, *src, (unsigned long)reg_num);
 
-		// printf("old data: 0x%llx\n", *r);
+		// logger("old data: 0x%llx\n", *r);
 		if (reg_num != 30)
 		{
 			*(unsigned long *)buf = dat;
 		}
 		dsb(sy);
 		isb();
-		// printf("new data: 0x%llx\n", *r);
+		// logger("new data: 0x%llx\n", *r);
 
 		// spin_unlock(&vcpu.lock);
 	}
@@ -328,7 +328,7 @@ int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 	
 	// 防止霸屏，eoir 和 iar 和 dir 不输出
 	if (gpa != 0x8040010 && gpa != 0x804000c && gpa != 0x8041000)
-		printf("====> [vgicc: ]operation gpa: 0x%llx\n", gpa);
+		logger("====> [vgicc: ]operation gpa: 0x%llx\n", gpa);
 	
 	if (info->hsr.dabt.write)
 	{

@@ -29,7 +29,7 @@ extern uint8_t bitmap_buffer[OS_CFG_BITMAP_SIZE / 8] __attribute__((section(".bs
     {                                                                       \
         if (!(condition))                                                   \
         {                                                                   \
-            printf("Assertion failed: %s, function %s, file %s, line %d\n", \
+            logger("Assertion failed: %s, function %s, file %s, line %d\n", \
                    #condition, __func__, __FILE__, __LINE__);               \
             while (1)                                                       \
                 ;                                                           \

@@ -20,7 +20,7 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
 
     int ec = ((el2_esr >> 26) & 0b111111);
 
-    // printf("        el2 esr: %llx, ec: %llx\n", el2_esr, ec);
+    // logger("        el2 esr: %llx, ec: %llx\n", el2_esr, ec);
 
     union hsr hsr = {.bits = el2_esr};
     save_cpu_ctx(ctx_el2);
@@ -28,41 +28,41 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
     {
         // wfi
         ept_violation_info_t info;
-        // printf("Prefetch abort : %llx\n", hsr.bits);
+        // logger("Prefetch abort : %llx\n", hsr.bits);
         info.hsr.bits = hsr.bits;
-        print_info("            This is wfi trap handler\n");
+        logger_info("            This is wfi trap handler\n");
         advance_pc(&info, ctx_el2);
         return;
     }
     else if (ec == 0x16)
     { // hvc
-        print_info("            This is hvc call handler\n");
+        logger_info("            This is hvc call handler\n");
         return;
     }
     else if (ec == 0x17)
     { // smc
         ept_violation_info_t info;
-        // printf("Prefetch abort : %llx\n", hsr.bits);
+        // logger("Prefetch abort : %llx\n", hsr.bits);
         info.hsr.bits = hsr.bits;
-        print_info("            This is smc call handler\n");
+        logger_info("            This is smc call handler\n");
         advance_pc(&info, ctx_el2);
         ctx_el2->r[0] = 0; // SMC 返回值
         return;
     }
     else if (ec == 0x18)
     {
-        print_info("            This is sys instr handler\n");
+        logger_info("            This is sys instr handler\n");
     }
     else if (ec == 0x24)
     { // data abort
-        // print_info("            This is data abort handler\n");
+        // logger_info("            This is data abort handler\n");
         ept_violation_info_t info;
-        // printf("Prefetch abort : %llx\n", hsr.bits);
+        // logger("Prefetch abort : %llx\n", hsr.bits);
         info.hsr.bits = hsr.bits;
         info.reason = PREFETCH;
         uint64_t hpfar = read_hpfar_el2(); // 目前 hpfar 和 far 读到的内容不同，少了8位
         uint64_t far = read_far_el2();
-        // printf("far: 0x%llx, hpfar: 0x%llx\n", far, hpfar);
+        // logger("far: 0x%llx, hpfar: 0x%llx\n", far, hpfar);
         info.gpa = (far & 0xfff) | (hpfar << 8);
         info.gva = far;
 
@@ -76,14 +76,14 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
     for (int i = 0; i < 31; i++)
     {
         uint64_t value = ctx_el2->r[i];
-        printf("General-purpose register: %d, value: %llx\n", i, value);
+        logger("General-purpose register: %d, value: %llx\n", i, value);
     }
 
     uint64_t elr_el1_value = ctx_el2->elr;
     uint64_t usp_value = ctx_el2->usp;
     uint64_t spsr_value = ctx_el2->spsr;
 
-    printf("usp: %llx, elr: %llx, spsr: %llx\n", usp_value, elr_el1_value, spsr_value);
+    logger("usp: %llx, elr: %llx, spsr: %llx\n", usp_value, elr_el1_value, spsr_value);
 
     while (1)
         ;
@@ -123,26 +123,26 @@ void invalid_exception_el2(uint64_t *stack_pointer, uint64_t kind, uint64_t sour
 
     uint64_t x2_value = context->r[2];
 
-    printf("invalid_exception_el2, kind: %d, source: %d\n", kind, source);
+    logger("invalid_exception_el2, kind: %d, source: %d\n", kind, source);
 
     int el2_esr = read_esr_el2();
 
     int ec = ((el2_esr >> 26) & 0b111111);
 
-    printf("        el2 esr: %llx\n", el2_esr);
-    printf("        ec: %llx\n", ec);
+    logger("        el2 esr: %llx\n", el2_esr);
+    logger("        ec: %llx\n", ec);
 
     for (int i = 0; i < 31; i++)
     {
         uint64_t value = context->r[i];
-        printf("General-purpose register: %d, value: %llx\n", i, value);
+        logger("General-purpose register: %d, value: %llx\n", i, value);
     }
 
     uint64_t elr_el1_value = context->elr;
     uint64_t usp_value = context->usp;
     uint64_t spsr_value = context->spsr;
 
-    printf("usp: %llx, elr: %llx, spsr: %llx\n", usp_value, elr_el1_value, spsr_value);
+    logger("usp: %llx, elr: %llx, spsr: %llx\n", usp_value, elr_el1_value, spsr_value);
 
     while (1)
         ;
@@ -151,6 +151,6 @@ void invalid_exception_el2(uint64_t *stack_pointer, uint64_t kind, uint64_t sour
 // 调用 handle_irq_exception_el2
 void current_spxel_irq(uint64_t *stack_pointer)
 {
-    printf("irq stay in same el\n");
+    logger("irq stay in same el\n");
     handle_irq_exception_el2(stack_pointer);
 }

@@ -19,10 +19,10 @@ void test_mem()
 {
     uint32_t mask = 97;
     void *addr = (void *)0x9000000;
-    printf("addr: 0x%llx\n", addr);
-    printf("before value: 0x%llx\n", *(const volatile uint32_t *)((addr)));
+    logger("addr: 0x%llx\n", addr);
+    logger("before value: 0x%llx\n", *(const volatile uint32_t *)((addr)));
     *(volatile uint32_t *)addr = mask;
-    printf("after  value: 0x%llx\n", *(const volatile uint32_t *)((addr)));
+    logger("after  value: 0x%llx\n", *(const volatile uint32_t *)((addr)));
 
     while (1)
         ;
@@ -30,16 +30,16 @@ void test_mem()
 
 void test_types()
 {
-    printf("sizeof (uint32_t): %d\n", sizeof(uint32_t));
-    printf("sizeof (uint64_t): %d\n", sizeof(uint64_t));
-    printf("sizeof int: %d\n", sizeof(int));
+    logger("sizeof (uint32_t): %d\n", sizeof(uint32_t));
+    logger("sizeof (uint64_t): %d\n", sizeof(uint64_t));
+    logger("sizeof int: %d\n", sizeof(int));
 
-    printf("sizeof char: %d\n", sizeof(char));
-    printf("sizeof short: %d\n", sizeof(short));
-    printf("sizeof long: %d\n", sizeof(long));
+    logger("sizeof char: %d\n", sizeof(char));
+    logger("sizeof short: %d\n", sizeof(short));
+    logger("sizeof long: %d\n", sizeof(long));
 
-    printf("sizeof void: %d\n", sizeof(void));
-    printf("sizeof void * %d\n", sizeof(void *));
+    logger("sizeof void: %d\n", sizeof(void));
+    logger("sizeof void * %d\n", sizeof(void *));
 
     while (1)
         ;
@@ -50,7 +50,7 @@ spinlock_t lock;
 
 void main_entry()
 {
-    printf("main entry: get_current_cpu_id: %d\n", get_current_cpu_id());
+    logger("main entry: get_current_cpu_id: %d\n", get_current_cpu_id());
     if (get_current_cpu_id() == 0)
     {
         alloctor_init();
@@ -99,18 +99,18 @@ void main_entry()
     //     for(int i = 0; i < 100000000; i++);
     //     x++;
     //     int y = get_current_cpu_id();
-    //     printf("cpu %d running %d\n", y, x);
+    //     logger("cpu %d running %d\n", y, x);
     // }
 }
 
 void kernel_main(void)
 {
-    print_info("starting primary core 0 ...\n");
+    logger_info("starting primary core 0 ...\n");
     io_early_init();
     gic_init();
 
     timer_init();
-    print_info("core 0 starting is done.\n\n");
+    logger_info("core 0 starting is done.\n\n");
     spinlock_init(&lock);
     // io_init();
 
@@ -122,9 +122,9 @@ void kernel_main(void)
 
 void second_kernel_main()
 {
-    print_info("starting core");
-    printf(" %d ", get_current_cpu_id());
-    print_info("...\n");
+    logger_info("starting core");
+    logger(" %d ", get_current_cpu_id());
+    logger_info("...\n");
 
     // 第二个核要初始化 gicc
     gicc_init();
@@ -133,9 +133,9 @@ void second_kernel_main()
     // 第二个核要初始化 timer
     timer_init_second();
 
-    print_info("core");
-    printf(" %d ", get_current_cpu_id());
-    print_info("starting is done.\n\n");
+    logger_info("core");
+    logger(" %d ", get_current_cpu_id());
+    logger_info("starting is done.\n\n");
 
     main_entry();
     // can't reach here !

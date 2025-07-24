@@ -51,7 +51,7 @@ void mutex_lock(mutex_t *mutex)
         // 将当前线程控制块插入互斥锁的等待列表中
         list_insert_last(&mutex->wait_list, &curr->wait_node);
         spin_unlock(&mutex->lock);
-        // printf("mutex lock by other task, current(task %d) yield!\n", curr->id);
+        // logger("mutex lock by other task, current(task %d) yield!\n", curr->id);
         // 调度其他线程
         schedule();
     }
@@ -91,7 +91,7 @@ void mutex_unlock(mutex_t *mutex)
                 // 将互斥锁的拥有者置为该线程
                 mutex->owner = task;
                 spin_unlock(&mutex->lock);
-                // printf("mutex unlock, task %d\n", task->id);
+                // logger("mutex unlock, task %d\n", task->id);
                 // 调度
                 schedule();
             }
