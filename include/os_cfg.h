@@ -33,6 +33,11 @@
 #define SMP_NUM 1
 #endif
 
+/* HV */
+#ifndef HV
+#define HV 0
+#endif
+
 /* guest内存定义区 */
 #define GUEST_RAM_START ((unsigned long long)0x40000000)
 #define GUEST_RAM_END (GUEST_RAM_START + 0x40000000)

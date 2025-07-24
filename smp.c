@@ -11,7 +11,6 @@ extern void second_entry_el2();
 extern void _stack_top();
 extern void _stack_top_second();
 
-#define HV 1
 
 void thread_info_init(struct thread_info *ti, unsigned int flags, int id)
 {

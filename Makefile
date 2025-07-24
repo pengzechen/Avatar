@@ -11,10 +11,10 @@ INCLUDE = -I $(realpath ./include)
 n = -nostdlib -nostdinc -fno-stack-protector
 
 SMP = 1
-HV  = n
+HV  = 0
 
 CFLAGS = -g -c -O0 -fno-pie  -mgeneral-regs-only -fno-builtin-getc -fno-builtin-putc -fexec-charset=GBK\
-	 -fno-builtin-vsnprintf -fno-builtin-snprintf -fno-builtin-printf -fno-builtin-execve -DSMP_NUM=$(SMP)
+	 -fno-builtin-vsnprintf -fno-builtin-snprintf -fno-builtin-printf -fno-builtin-execve -DSMP_NUM=$(SMP) -DHV=$(HV)
 
 QEMU_ARGS = -m 4G -smp $(SMP) -cpu cortex-a72 -nographic 
 
@@ -24,7 +24,7 @@ QEMU_ARGS += -M gic_version=2
 
 # QEMU_ARGS += -M secure=on
 
-ifeq ($(HV),y)
+ifeq ($(HV),1)
 QEMU_ARGS += -M virtualization=on
 LD = link_hyper.lds
 else

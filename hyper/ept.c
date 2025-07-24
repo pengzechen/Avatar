@@ -213,6 +213,7 @@ void data_abort_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 	{
 		info->gpa = info->gpa + 0x30000;
 		handle_mmio(info, el2_ctx);
+		// handle_mmio_hack(info, el2_ctx);
 		return;
 	}
 
@@ -245,9 +246,13 @@ void data_abort_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 int handle_mmio_hack(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 {
 	paddr_t gpa = info->gpa;
-	// printf("operation gpa: 0x%llx\n", gpa);
-	// if (MMIO_ARREA <= gpa && gpa <= (MMIO_ARREA + 4096))
-	// {
+	if (gpa == 0x8040000)
+		return 0;
+	
+	// 防止霸屏，eoir 和 iar 不输出
+	if (gpa != 0x8040010 && gpa != 0x804000c)
+		printf("====> [vgicc: ]operation gpa: 0x%llx\n", gpa);
+
 	if (info->hsr.dabt.write)
 	{
 		unsigned long reg_num;
@@ -320,9 +325,11 @@ int handle_mmio_hack(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 {
 	paddr_t gpa = info->gpa;
-	// printf("operation gpa: 0x%llx\n", gpa);
-	// if (MMIO_ARREA <= gpa && gpa <= (MMIO_ARREA + 4096))
-	// {
+	
+	// 防止霸屏，eoir 和 iar 和 dir 不输出
+	if (gpa != 0x8040010 && gpa != 0x804000c && gpa != 0x8041000)
+		printf("====> [vgicc: ]operation gpa: 0x%llx\n", gpa);
+	
 	if (info->hsr.dabt.write)
 	{
 		unsigned long reg_num;
