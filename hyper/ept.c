@@ -361,8 +361,8 @@ int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 			{
 				// 不对齐，安全写入
 				uint8_t tmp[8];
-				memcpy(tmp, buf, len);
-				memcpy((void *)dst, tmp, len);
+				memcpy(tmp, (const void *)buf, len);
+				memcpy((void *)dst, (const void *)tmp, len);
 			}
 		}
 
@@ -409,7 +409,4 @@ int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 		isb();
 	}
 	return 1;
-	// }
-
-	// return 0;
 }

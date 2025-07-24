@@ -215,15 +215,15 @@ void gic_set_ipriority(uint32_t vector, uint32_t pri)
 {
     uint32_t n = vector >> 2;        // 哪个寄存器
     uint32_t m = vector & 3;         // 寄存器内的哪个字节
-    uint32_t addr = GICD_IPRIORITYR(n);
-    uint32_t val = read32((void *)addr);
+    uint64_t addr = GICD_IPRIORITYR(n);
+    uint32_t val = read32((void *)(uint64_t)addr);
 
     // 设置第 m 字节的优先级
     uint8_t priority = (pri << 3) | (1 << 7);  // GICv2: [7]=1 表示 Group1 (非 secure)
     val &= ~(0xFF << (8 * m));
     val |= (priority << (8 * m));
 
-    write32(val, (void *)addr);
+    write32(val, (void *)(uint64_t)addr);
     printf("set priority: n: %u, m: %u, pri: %u\n", n, m, pri);
 }
 
