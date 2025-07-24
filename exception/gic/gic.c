@@ -5,6 +5,7 @@
 #include <gic.h>
 #include <aj_types.h>
 #include <io.h>
+#include <mmio.h>
 
 struct gic_t _gicv2;
 
