@@ -1,0 +1,12 @@
+start_kernel () at init/main.c:1045
+1045		init_IRQ();
+(gdb) si
+init_IRQ () at arch/arm64/kernel/irq.c:59
+59		for_each_possible_cpu(cpu) {
+(gdb) n
+124		init_irq_stacks();
+(gdb) n
+126		irqchip_init();
+
+
+kmem_cache_init_late

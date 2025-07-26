@@ -2,7 +2,9 @@
 
 # 第二层 Makefile：扫描子目录或构建指定 app
 
-TOOL_PREFIX ?= aarch64-none-elf-
+# TOOL_PREFIX ?= aarch64-none-elf-
+TOOL_PREFIX ?= aarch64-linux-musl-
+
 CFLAGS ?= -c -nostdlib -nostartfiles -ffreestanding -O2
 INCLUDE ?=
 APP_NAME ?=

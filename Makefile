@@ -1,19 +1,19 @@
 
 APP_NAME ?=
 
-# TOOL_PREFIX=aarch64-linux-musl-
-TOOL_PREFIX=aarch64-none-elf-
+TOOL_PREFIX=aarch64-linux-musl-
+# TOOL_PREFIX=aarch64-none-elf-
 
 BUILD_DIR=build
 
 INCLUDE = -I $(realpath ./include)
 
-n = -nostdlib -nostdinc -fno-stack-protector -fno-builtin-vsnprintf -fno-builtin-snprintf -fno-builtin-printf
+n = -nostdlib -nostdinc -fno-stack-protector -fno-builtin-vsnprintf -fno-builtin-snprintf -fno-builtin-printf -fexec-charset=GBK 
 
 SMP = 1
 HV  = 0
 
-CFLAGS = -g -c -O0 -fno-pie  -mgeneral-regs-only -fno-builtin-getc -fno-builtin-putc -fexec-charset=GBK \
+CFLAGS = -g -c -O0 -fno-pie  -mgeneral-regs-only -fno-builtin-getc -fno-builtin-putc \
 	  -fno-builtin-execve -DSMP_NUM=$(SMP) -DHV=$(HV)
 
 QEMU_ARGS = -m 4G -smp $(SMP) -cpu cortex-a72 -nographic 

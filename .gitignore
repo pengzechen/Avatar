@@ -1,10 +1,14 @@
 
 
-*.txt
-*.elf
-*.bin
-*.o
-/build/*.txt
-/guest/linux/initrd
+build/**/*.txt
+build/**/*.elf
+build/**/*.bin
+build/**/*.o
+
+# this file is too big.
+/guest/linux/vmlinux
+
 /app/app.S
 /app/info.lds
+/app/app.h
+/app/**/build
