@@ -186,6 +186,22 @@ void vm_init(struct vm_t *vm, int vcpu_num)
         }
         list_insert_last(&vm->vpus, &task->vm_node);
         task->vm = vm; // 设置当前虚拟机
+
+        task->cpu_info->sys_reg->mpidr_el1 = i;
+
+        // dev use
+        // task_set_ready(task);
+    }
+
+    // test
+    list_node_t *iter = list_first(&vm->vpus);
+    tcb_t *taskt = NULL;
+    while (iter)
+    {
+        taskt = list_node_parent(iter, tcb_t, vm_node);
+        logger_info("vcpu task id: %d, mpidr_el1: %x\n", taskt->id, taskt->cpu_info->sys_reg->mpidr_el1);
+        
+        iter = list_node_next(iter);
     }
 
     // 拷贝guest镜像

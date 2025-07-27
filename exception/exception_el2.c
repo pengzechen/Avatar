@@ -5,6 +5,9 @@
 #include <gic.h>
 #include <mem/ept.h>
 #include <hyper/vcpu.h>
+#include <psci.h>
+#include "task/task.h"
+#include "thread.h"
 
 void advance_pc(ept_violation_info_t *info, trap_frame_t *context)
 {
@@ -36,7 +39,39 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
     }
     else if (ec == 0x16)
     { // hvc
+        ept_violation_info_t info;
+        info.hsr.bits = hsr.bits;
         logger_info("            This is hvc call handler\n");
+        logger_warn("           function id: %lx\n", ctx_el2->r[0]);
+        if (ctx_el2->r[0] == PSCI_0_2_FN64_CPU_ON)
+        {   
+            logger_info("           This is cpu on handler\n");
+            uint64_t cpu_id = ctx_el2->r[1];
+            uint64_t entry = ctx_el2->r[2];
+            uint64_t context = ctx_el2->r[3];
+            logger_info("           cpu_id: %d, entry: 0x%llx, sp: 0x%llx\n", cpu_id, entry, context);
+            
+
+            tcb_t *curr = (tcb_t *)read_tpidr_el2();
+            struct vm_t *vm = curr->vm;
+            
+            list_node_t *iter = list_first(&vm->vpus);
+            tcb_t *task = NULL;
+            while (iter)
+            {
+                task = list_node_parent(iter, tcb_t, vm_node);
+                if (task->cpu_info->sys_reg->mpidr_el1 == cpu_id) {
+                    logger_info("           found a vcpu, task id: %d\n", task->id);
+                    trap_frame_t * frame = (trap_frame_t *)task->ctx.sp_elx;
+                    frame->elr = entry; // 设置 elr
+                    task_set_ready(task); // 设置为就绪状态
+                }
+                iter = list_node_next(iter);
+            }
+            logger("\n");
+        }
+        advance_pc(&info, ctx_el2);
+        ctx_el2->r[0] = 0; // SMC 返回值
         return;
     }
     else if (ec == 0x17)
