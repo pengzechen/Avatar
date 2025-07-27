@@ -49,7 +49,12 @@
 #define MMIO_AREA_GICD 0x8000000UL
 #define MMIO_AREA_GICC 0x8010000UL
 
+#ifdef HV
+// 这里是因为vmm需要申请内存
+#define KERNEL_VMA 0ULL
+#else
 #define KERNEL_VMA 0xffff000000000000ULL
+#endif
 
 extern char __kernal_start[];
 extern char __heap_flag[];

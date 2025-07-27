@@ -7,6 +7,7 @@
 #include "lib/list.h"
 #include "os_cfg.h"
 #include "pro.h"
+#include "hyper/vm.h"
 
 #pragma pack(1)
 typedef struct _contex_t
@@ -47,7 +48,7 @@ typedef enum _task_state_t
 } task_state_t;
 
 #pragma pack(1)
-typedef struct
+typedef struct _tcb_t
 {
     contex_t ctx;
     cpu_t *cpu_info;
@@ -66,6 +67,9 @@ typedef struct
 
     list_node_t process;         // 属于哪个进程
     struct _process_t *curr_pro; // 当前进程
+
+    list_node_t vm_node; // 属于哪个虚拟机
+    struct vm_t *vm;     // 当前虚拟机
 } tcb_t;
 #pragma pack()
 

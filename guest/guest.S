@@ -4,6 +4,7 @@
 .global guest_start
 .global test_guest
 
+.align 12
 test_guest:
 	mov x0, 100
 	mrs x0, CurrentEL          // Read current exception level

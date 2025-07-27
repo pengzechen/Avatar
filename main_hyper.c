@@ -15,41 +15,6 @@
 #include "mem/mem.h"
 #include "smp.h"
 
-void test_mem_hypervisor()
-{
-    lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_ARREA);
-    avr_entry->p2m.read = 0;
-    avr_entry->p2m.write = 0;
-    apply_ept(avr_entry);
-    *(uint64_t *)0x50000000 = 0x1234;
-}
-
-static inline uint64_t read_sctlr_el2()
-{
-    uint64_t value;
-    asm volatile(
-        "mrs %0, sctlr_el2"
-        : "=r"(value));
-    return value;
-}
-
-static inline uint64_t read_hcr_el2()
-{
-    uint64_t value;
-    asm volatile(
-        "mrs %0, hcr_el2"
-        : "=r"(value));
-    return value;
-}
-
-static inline uint64_t read_vttbr_el2()
-{
-    uint64_t value;
-    asm volatile(
-        "mrs %0, vttbr_el2"
-        : "=r"(value));
-    return value;
-}
 
 void vtcr_init(void)
 {
@@ -64,87 +29,11 @@ void vtcr_init(void)
     write_vtcr_el2(vtcr_val);
 }
 
-static void guest_trap_init(void)
-{
-    logger_info("    Initialize trap...\n");
-    unsigned long hcr;
-    hcr = read_hcr_el2();
-    // WRITE_SYSREG(hcr | HCR_TGE, HCR_EL2);
-    // hcr = READ_SYSREG(HCR_EL2);
-    logger("HCR : 0x%llx\n", hcr);
-    isb();
-}
-
-extern void __guset_bin_start();
-extern void __guset_bin_end();
-extern void __guset_dtb_start();
-extern void __guset_dtb_end();
-extern void __guset_fs_start();
-extern void __guset_fs_end();
-
-extern void test_guest();
 
 extern size_t cacheline_bytes;
 int inited_cpu_num_el2 = 0;
 spinlock_t lock_el2;
 
-static uint8_t guest1_el2_stack[8192] __attribute__((aligned(16384)));
-static uint8_t guest2_el2_stack[8192] __attribute__((aligned(8192)));
-
-void copy_guest(void)
-{
-    size_t size = (size_t)(__guset_bin_end - __guset_bin_start);
-    unsigned long *from = (unsigned long *)__guset_bin_start;
-    unsigned long *to = (unsigned long *)GUEST_KERNEL_START;
-    logger("Copy guest kernel image from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
-           from, to, size, from[0], from[1]);
-    memcpy(to, from, size);
-    logger("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
-}
-
-void copy_dtb(void)
-{
-    size_t size = (size_t)(__guset_dtb_end - __guset_dtb_start);
-    unsigned long *from = (unsigned long *)__guset_dtb_start;
-    unsigned long *to = (unsigned long *)GUEST_DTB_START;
-    logger("Copy guest dtb from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
-           from, to, size, from[0], from[1]);
-    memcpy(to, from, size);
-    logger("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
-}
-
-void copy_fs(void)
-{
-    size_t size = (size_t)(__guset_fs_end - __guset_fs_start);
-    unsigned long *from = (unsigned long *)__guset_fs_start;
-    unsigned long *to = (unsigned long *)GUEST_FS_START;
-    logger("Copy guest fs from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
-           from, to, size, from[0], from[1]);
-    memcpy(to, from, size);
-    logger("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
-}
-
-void mmio_map_gicd()
-{
-    for (int i = 0; i < 16; i++)
-    {
-        lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_AREA_GICD + 0x1000 * i); // 0800 0000 - 0801 0000  gicd
-        avr_entry->p2m.read = 0;
-        avr_entry->p2m.write = 0;
-        apply_ept(avr_entry);
-    }
-}
-
-void mmio_map_gicc()
-{
-    for (int i = 0; i < 16; i++)
-    {
-        lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_AREA_GICC + 0x1000 * i); // 0800 0000 - 0801 0000  gicd
-        avr_entry->p2m.read = 0;
-        avr_entry->p2m.write = 0;
-        apply_ept(avr_entry);
-    }
-}
 
 
 void main_entry_el2()
@@ -156,15 +45,18 @@ void main_entry_el2()
 
     if (get_current_cpu_id() == 0)
     {
+        schedule_init();
+        alloctor_init();
+        task_manager_init();
 
-        // 准备启动 guest ...
-        guest_trap_init();
-        copy_dtb();
-        copy_guest();
-        copy_fs();
-        mmio_map_gicd();
-        mmio_map_gicc();
-        vm_init();
+        struct vm_t *vm = alloc_vm();
+        if (vm == NULL)
+        {
+            logger_error("Failed to allocate vm\n");
+            return;
+        }
+        vm_init(vm, 2); // 初始化一个虚拟机，包含两个 vcpu
+        run_vm(vm);
 
         logger("\nHello Hyper:\nthere's some hyper tests: \n");
         logger("scrlr_el2: 0x%llx\n", read_sctlr_el2());
@@ -172,15 +64,6 @@ void main_entry_el2()
         logger("read_vttbr_el2: 0x%llx\n", read_vttbr_el2());
         logger("\n");
 
-        schedule_init(); // 设置当前 task 为 task0（test_guest）
-        alloctor_init();
-        task_manager_init();
-
-        tcb_t *task1 = craete_vm_task(test_guest, (uint64_t)guest1_el2_stack + 8192, (1 << 0));
-        tcb_t *task2 = craete_vm_task((void *)GUEST_KERNEL_START, (uint64_t)guest2_el2_stack + 8192, (1 << 0));
-
-        task_set_ready(task1);
-        task_set_ready(task2);
 
         print_current_task_list();
     }

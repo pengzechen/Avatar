@@ -2,9 +2,9 @@
 #include <io.h>
 #include <hyper/vcpu.h>
 #include <lib/aj_string.h>
-#include "os_cfg.h"
+#include "hyper/hyper_cfg.h"
 
-cpu_sysregs_t cpu_sysregs[MAX_TASKS];
+cpu_sysregs_t cpu_sysregs[VCPU_NUM_MAX];
 
 // void print_vcpu(int id)
 // {
