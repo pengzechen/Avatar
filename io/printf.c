@@ -78,7 +78,7 @@ static void print_str(pstream_t *p, const char *s, strprops_t props)
 
 static void print_int(pstream_t *ps, long long n, int base, strprops_t props)
 {
-    char buf[sizeof(long long) * 3 + 2], *p = buf;
+    char buf[sizeof(long) * 3 + 2], *p = buf;
     int s = 0, i;
 
     if (n < 0)
@@ -114,7 +114,7 @@ static void print_int(pstream_t *ps, long long n, int base, strprops_t props)
 
 static void print_unsigned(pstream_t *ps, uint64_t n, int base, strprops_t props)
 {
-    char buf[sizeof(uint64_t) * 3 + 3], *p = buf;
+    char buf[sizeof(long) * 3 + 3], *p = buf;
     int i;
 
     while (n)
@@ -200,6 +200,9 @@ int my_vsnprintf(char *buf, int size, const char *fmt, va_list va)
         case 'c':
             addchar(&s, va_arg(va, int));
             break;
+        case '\0':
+            --fmt;
+            break;
         case '#':
             props.alternate = true;
             goto morefmt;
@@ -217,6 +220,11 @@ int my_vsnprintf(char *buf, int size, const char *fmt, va_list va)
             goto morefmt;
         case 't':
         case 'z':
+            /* Here we only care that sizeof(size_t) == sizeof(long).
+             * On a 32-bit platform it doesn't matter that size_t is
+             * typedef'ed to int or long; va_arg will work either way.
+             * Same for ptrdiff_t (%td).
+             */
             nlong = 1;
             goto morefmt;
         case 'd':
@@ -227,9 +235,6 @@ int my_vsnprintf(char *buf, int size, const char *fmt, va_list va)
                 break;
             case 1:
                 print_int(&s, va_arg(va, long), 10, props);
-                break;
-            case 2:
-                print_int(&s, va_arg(va, long long), 10, props); // Handle long long
                 break;
             default:
                 print_int(&s, va_arg(va, long long), 10, props);
@@ -243,13 +248,10 @@ int my_vsnprintf(char *buf, int size, const char *fmt, va_list va)
                 print_unsigned(&s, va_arg(va, unsigned), 10, props);
                 break;
             case 1:
-                print_unsigned(&s, va_arg(va, uint32_t), 10, props);
-                break;
-            case 2:
-                print_unsigned(&s, va_arg(va, uint64_t), 10, props); // Handle uint64_t
+                print_unsigned(&s, va_arg(va, unsigned long), 10, props);
                 break;
             default:
-                print_unsigned(&s, va_arg(va, uint64_t), 10, props);
+                print_unsigned(&s, va_arg(va, unsigned long long), 10, props);
                 break;
             }
             break;
@@ -260,19 +262,16 @@ int my_vsnprintf(char *buf, int size, const char *fmt, va_list va)
                 print_unsigned(&s, va_arg(va, unsigned), 16, props);
                 break;
             case 1:
-                print_unsigned(&s, va_arg(va, uint32_t), 16, props);
-                break;
-            case 2:
-                print_unsigned(&s, va_arg(va, uint64_t), 16, props); // Handle uint64_t
+                print_unsigned(&s, va_arg(va, unsigned long), 16, props);
                 break;
             default:
-                print_unsigned(&s, va_arg(va, uint64_t), 16, props);
+                print_unsigned(&s, va_arg(va, unsigned long long), 16, props);
                 break;
             }
             break;
         case 'p':
             props.alternate = true;
-            print_unsigned(&s, (uint64_t)va_arg(va, void *), 16, props);
+            print_unsigned(&s, (unsigned long)va_arg(va, void *), 16, props);
             break;
         case 's':
             print_str(&s, va_arg(va, const char *), props);
