@@ -44,6 +44,7 @@ tcb_t *alloc_tcb()
             list_node_init(&task->all_node);
             list_node_init(&task->run_node);
             list_node_init(&task->wait_node);
+            list_node_init(&task->vm_node);
             return task;
         }
     }

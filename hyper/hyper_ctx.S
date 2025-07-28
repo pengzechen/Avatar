@@ -82,12 +82,21 @@ save_sysregs:
 	mrs x1, elr_el1
 	mrs x2, fpcr
 	stp x1, x2, [x0], #16
+
+	//mrs x1, fpsr
+	//mrs x2, midr_el1
+	//stp x1, x2, [x0], #16
 	mrs x1, fpsr
-	mrs x2, midr_el1
-	stp x1, x2, [x0], #16
-	mrs x1, mpidr_el1
+	str x1, [x0]        // 写入 fpsr 到 [x0]
+	add x0, x0, #16     // 跳过 16 字节（包括未写的 midr_el1 空位）
+
+	//mrs x1, mpidr_el1
+	//mrs x2, par_el1
+	//stp x1, x2, [x0], #16
 	mrs x2, par_el1
-	stp x1, x2, [x0], #16
+	str x2, [x0, #8]
+	add x0, x0, #16
+	
 	mrs x1, sp_el0
 	mrs x2, sp_el1
 	stp x1, x2, [x0], #16

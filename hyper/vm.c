@@ -167,6 +167,7 @@ void vm_init(struct vm_t *vm, int vcpu_num)
     }
     list_insert_last(&vm->vpus, &task->vm_node);
     task->vm = vm;           // 设置当前虚拟机
+    task->cpu_info->sys_reg->mpidr_el1 = (1ULL << 31) | (uint64_t)(0 & 0xff);
     vm->primary_vcpu = task; // 设置主 vcpu
 
     //(3.2) 其它核
@@ -187,7 +188,7 @@ void vm_init(struct vm_t *vm, int vcpu_num)
         list_insert_last(&vm->vpus, &task->vm_node);
         task->vm = vm; // 设置当前虚拟机
 
-        task->cpu_info->sys_reg->mpidr_el1 = i;
+        task->cpu_info->sys_reg->mpidr_el1 = (1ULL << 31) | (uint64_t)(i & 0xff);
 
         // dev use
         // task_set_ready(task);
@@ -199,7 +200,7 @@ void vm_init(struct vm_t *vm, int vcpu_num)
     while (iter)
     {
         taskt = list_node_parent(iter, tcb_t, vm_node);
-        logger_info("vcpu task id: %d, mpidr_el1: %x\n", taskt->id, taskt->cpu_info->sys_reg->mpidr_el1);
+        logger_info("vcpu task id: %d, mpidr_el1: 0x%x\n", taskt->id, taskt->cpu_info->sys_reg->mpidr_el1);
         
         iter = list_node_next(iter);
     }
