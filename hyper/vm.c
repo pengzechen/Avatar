@@ -5,7 +5,7 @@
 #include "gic.h"
 #include "mem/page.h"
 #include "lib/aj_string.h"
-#include "mem/ept.h"
+#include <mem/stage2page.h>
 #include "io.h"
 #include "hyper/vm.h"
 #include "mem/mem.h"

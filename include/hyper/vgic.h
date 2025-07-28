@@ -55,7 +55,7 @@ void virtual_gic_register_int(struct vgic_t *vgic, uint32_t pintvec, uint32_t vi
 
 void v_timer_handler();
 
-void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx);
+void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx);
 
 void vgic_inject(uint32_t vector);
 

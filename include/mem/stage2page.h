@@ -1,7 +1,7 @@
 
 
-#ifndef __EPT_H__
-#define __EPT_H__
+#ifndef __STAGE2PAGE_H__
+#define __STAGE2PAGE_H__
 
 #define LPAE_SHIFT 9
 #define LPAE_ENTRIES (1 << LPAE_SHIFT)
@@ -23,7 +23,7 @@ lpae_t *get_ept_entry(paddr_t gpa);
 
 void apply_ept(void *ept);
 
-void data_abort_handler(ept_violation_info_t *info, trap_frame_t *);
+void data_abort_handler(stage2_fault_info_t *info, trap_frame_t *);
 
 int gva_to_ipa(uint64_t va, uint64_t *paddr);
 
@@ -44,4 +44,4 @@ static inline void write_ats1cpr(uint64_t va)
   asm volatile("at s1e1r, %0" : : "r"(va));
 }
 
-#endif // __EPT_H__
+#endif // __STAGE2PAGE_H__

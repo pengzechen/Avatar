@@ -1,6 +1,6 @@
 
 #include <mem/page.h>
-#include <mem/ept.h>
+#include <mem/stage2page.h>
 #include <os_cfg.h>
 #include <io.h>
 #include <exception.h>
@@ -12,8 +12,8 @@ extern lpae_t ept_L1[];
 lpae_t *ept_L2_root;
 lpae_t *ept_L3_root;
 
-static int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx);
-static int handle_mmio_hack(ept_violation_info_t *info, trap_frame_t *el2_ctx);
+static int handle_mmio(stage2_fault_info_t *info, trap_frame_t *el2_ctx);
+static int handle_mmio_hack(stage2_fault_info_t *info, trap_frame_t *el2_ctx);
 
 /* Return the cache property of the input gpa */
 /* It is determined depending on whether the */
@@ -184,7 +184,7 @@ int gva_to_ipa(uint64_t va, uint64_t *paddr)
 	return 0; // 转换成功
 }
 
-void data_abort_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
+void data_abort_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 {
 	lpae_t *ept;
 	unsigned long tmp;
@@ -243,7 +243,7 @@ void data_abort_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 }
 
 // 用这个函数可以在smp=1 hack的跑起linux
-int handle_mmio_hack(ept_violation_info_t *info, trap_frame_t *el2_ctx)
+int handle_mmio_hack(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 {
 	paddr_t gpa = info->gpa;
 	if (gpa == 0x8040000)
@@ -322,7 +322,7 @@ int handle_mmio_hack(ept_violation_info_t *info, trap_frame_t *el2_ctx)
 	// return 0;
 }
 
-int handle_mmio(ept_violation_info_t *info, trap_frame_t *el2_ctx)
+int handle_mmio(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 {
 	paddr_t gpa = info->gpa;
 	

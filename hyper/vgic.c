@@ -41,7 +41,7 @@ void virtual_gic_register_int(struct vgic_t *vgic, uint32_t pintvec, uint32_t vi
     // vgic->use_irq[pintvec/32] |= 1 << (pintvec % 32);
 }
 
-void vgicd_write(ept_violation_info_t *info, trap_frame_t *el2_ctx, void *paddr)
+void vgicd_write(stage2_fault_info_t *info, trap_frame_t *el2_ctx, void *paddr)
 {
     unsigned long reg_num;
     volatile uint64_t *r;
@@ -73,7 +73,7 @@ void vgicd_write(ept_violation_info_t *info, trap_frame_t *el2_ctx, void *paddr)
     logger("new data: 0x%llx\n", *dst);
 }
 
-void vgicd_read(ept_violation_info_t *info, trap_frame_t *el2_ctx, void *paddr)
+void vgicd_read(stage2_fault_info_t *info, trap_frame_t *el2_ctx, void *paddr)
 {
     unsigned long reg_num;
     volatile uint64_t *r;
@@ -100,7 +100,7 @@ void vgicd_read(ept_violation_info_t *info, trap_frame_t *el2_ctx, void *paddr)
 }
 
 // handle gicd emu
-void intc_handler(ept_violation_info_t *info, trap_frame_t *el2_ctx)
+void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 {
     struct vgic_t *vgic = get_vgic(0);
     paddr_t gpa = info->gpa;

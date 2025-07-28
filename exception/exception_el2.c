@@ -3,14 +3,14 @@
 #include <io.h>
 #include <exception.h>
 #include <gic.h>
-#include <mem/ept.h>
+#include <mem/stage2page.h>
 #include <hyper/vcpu.h>
 #include <psci.h>
 #include <hyper/vpsci.h>
 #include "task/task.h"
 #include "thread.h"
 
-void advance_pc(ept_violation_info_t *info, trap_frame_t *context)
+void advance_pc(stage2_fault_info_t *info, trap_frame_t *context)
 {
     context->elr += info->hsr.len ? 4 : 2;
 }
@@ -31,7 +31,7 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
     if (ec == 0x1)
     {
         // wfi
-        ept_violation_info_t info;
+        stage2_fault_info_t info;
         // logger("Prefetch abort : %llx\n", hsr.bits);
         info.hsr.bits = hsr.bits;
         logger_info("            This is wfi trap handler\n");
@@ -40,7 +40,7 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
     }
     else if (ec == 0x16)
     { // hvc
-        ept_violation_info_t info;
+        stage2_fault_info_t info;
         info.hsr.bits = hsr.bits;
         logger_info("           This is hvc call handler\n");
         logger_warn("           function id: %lx\n", ctx_el2->r[0]);
@@ -55,7 +55,7 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
     }
     else if (ec == 0x17)
     { // smc
-        ept_violation_info_t info;
+        stage2_fault_info_t info;
         // logger("Prefetch abort : %llx\n", hsr.bits);
         info.hsr.bits = hsr.bits;
         logger_info("            This is smc call handler\n");
@@ -70,7 +70,7 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
     else if (ec == 0x24)
     { // data abort
         // logger_info("            This is data abort handler\n");
-        ept_violation_info_t info;
+        stage2_fault_info_t info;
         // logger("Prefetch abort : %llx\n", hsr.bits);
         info.hsr.bits = hsr.bits;
         info.reason = PREFETCH;

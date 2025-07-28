@@ -104,19 +104,19 @@ union hsr
     } dabt;                      /* HSR_EC_DATA_ABORT_* */
 };
 
-enum EPT_VIOLATION_REASON
+enum stage2_fault_reson_t
 {
     PREFETCH = 0,
     DABT
 };
 
-typedef struct _ept_violation_info_t
+typedef struct _stage2_fault_info_t
 {
     union hsr hsr;
-    enum EPT_VIOLATION_REASON reason;
+    enum stage2_fault_reson_t reason;
     vaddr_t gva;
     paddr_t gpa;
-} ept_violation_info_t;
+} stage2_fault_info_t;
 
 static inline uint32_t read_esr_el1(void)
 {
