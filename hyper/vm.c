@@ -166,7 +166,7 @@ void vm_init(struct vm_t *vm, int vcpu_num)
         return;
     }
     list_insert_last(&vm->vpus, &task->vm_node);
-    task->vm = vm;           // 设置当前虚拟机
+    task->vm = vm; // 设置当前虚拟机
     task->cpu_info->sys_reg->mpidr_el1 = (1ULL << 31) | (uint64_t)(0 & 0xff);
     vm->primary_vcpu = task; // 设置主 vcpu
 
@@ -179,7 +179,7 @@ void vm_init(struct vm_t *vm, int vcpu_num)
             logger_error("Failed to allocate stack for vcpu %d\n", i);
             return;
         }
-        tcb_t *task = craete_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 1));
+        tcb_t *task = craete_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 0));
         if (task == NULL)
         {
             logger_error("Failed to create vcpu task %d\n", i);
@@ -201,7 +201,7 @@ void vm_init(struct vm_t *vm, int vcpu_num)
     {
         taskt = list_node_parent(iter, tcb_t, vm_node);
         logger_info("vcpu task id: %d, mpidr_el1: 0x%x\n", taskt->id, taskt->cpu_info->sys_reg->mpidr_el1);
-        
+
         iter = list_node_next(iter);
     }
 

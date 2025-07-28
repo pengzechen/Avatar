@@ -133,6 +133,8 @@ $(BUILD_DIR)/vm.o: hyper/vm.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/vm.c $(INCLUDE) -o $(BUILD_DIR)/vm.o
 $(BUILD_DIR)/ept.o: hyper/ept.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/ept.c $(INCLUDE) -o $(BUILD_DIR)/ept.o
+$(BUILD_DIR)/vpsci.o: hyper/vpsci.c
+	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/vpsci.c $(INCLUDE) -o $(BUILD_DIR)/vpsci.o
 
 #  lib/list
 $(BUILD_DIR)/list.o: lib/list.c
@@ -162,7 +164,7 @@ $(BUILD_DIR)/io.o $(BUILD_DIR)/uart_pl011.o $(BUILD_DIR)/uart_pl011_early.o $(BU
 $(BUILD_DIR)/page.o $(BUILD_DIR)/ept.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o $(BUILD_DIR)/exception_el3.s.o \
 $(BUILD_DIR)/exception_el3.o $(BUILD_DIR)/exception_el2.o $(BUILD_DIR)/exception_el2.s.o $(BUILD_DIR)/gic.o  \
 $(BUILD_DIR)/syscall.o $(BUILD_DIR)/timer.o $(BUILD_DIR)/task.o $(BUILD_DIR)/context.s.o $(BUILD_DIR)/spinlock.s.o \
-$(BUILD_DIR)/vcpu.o $(BUILD_DIR)/hyper_ctx.s.o $(BUILD_DIR)/vgic.o $(BUILD_DIR)/vm.o $(BUILD_DIR)/list.o $(BUILD_DIR)/mem.o \
+$(BUILD_DIR)/vcpu.o $(BUILD_DIR)/hyper_ctx.s.o $(BUILD_DIR)/vgic.o $(BUILD_DIR)/vpsci.o $(BUILD_DIR)/vm.o $(BUILD_DIR)/list.o $(BUILD_DIR)/mem.o \
 $(BUILD_DIR)/mutex.o $(BUILD_DIR)/process.o $(BUILD_DIR)/ramfs.o
 	$(TOOL_PREFIX)ld -T $(LD) -o $(BUILD_DIR)/kernel.elf \
 	$(BUILD_DIR)/boot.s.o 			\
@@ -197,6 +199,7 @@ $(BUILD_DIR)/mutex.o $(BUILD_DIR)/process.o $(BUILD_DIR)/ramfs.o
 	$(BUILD_DIR)/spinlock.s.o       \
 	$(BUILD_DIR)/vcpu.o             \
 	$(BUILD_DIR)/vgic.o             \
+	$(BUILD_DIR)/vpsci.o			\
 	$(BUILD_DIR)/vm.o               \
 	$(BUILD_DIR)/hyper_ctx.s.o      \
 	$(BUILD_DIR)/list.o             \
