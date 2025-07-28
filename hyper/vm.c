@@ -179,7 +179,7 @@ void vm_init(struct vm_t *vm, int vcpu_num)
             logger_error("Failed to allocate stack for vcpu %d\n", i);
             return;
         }
-        tcb_t *task = craete_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 0));
+        tcb_t *task = craete_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 1));
         if (task == NULL)
         {
             logger_error("Failed to create vcpu task %d\n", i);
