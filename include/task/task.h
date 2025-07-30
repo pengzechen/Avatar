@@ -42,10 +42,11 @@ extern cpu_t vcpu[];
 
 typedef enum _task_state_t
 {
-    TASK_STATE_CREATE = 1,  // 刚分配完 TCB，还没进入任何队列
-    TASK_STATE_READY,       // 已进入 ready 队列，等待调度
+    TASK_STATE_CREATE = 1, // 刚分配完 TCB，还没进入任何队列
+    TASK_STATE_READY,      // 已进入 ready 队列，等待调度
     TASK_STATE_RUNNING,
-    TASK_STATE_WAITING,     // 睡眠状态（sleep tick 到期后可转 READY）
+    TASK_STATE_WAITING,  // 睡眠状态（sleep tick 到期后可转 READY）
+    TASK_STATE_WAIT_IRQ, // 等待中断
 } task_state_t;
 
 #pragma pack(1)
@@ -64,11 +65,12 @@ typedef struct _tcb_t
     uint32_t sleep_ticks;
     uint32_t priority;
 
-    list_node_t run_node;  // 运行相关结点
-    list_node_t wait_node; // 等待队列
-    list_node_t all_node;  // 所有队列结点
+    list_node_t run_node;   // 运行相关结点
+    list_node_t wait_node;  // 等待队列
+    list_node_t sleep_node; // 睡眠队列 not used
+    list_node_t all_node;   // 所有队列结点
 
-    list_node_t process_node;         // 属于哪个进程
+    list_node_t process_node;    // 属于哪个进程
     struct _process_t *curr_pro; // 当前进程
 
     list_node_t vm_node;   // 属于哪个虚拟机

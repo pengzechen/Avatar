@@ -178,7 +178,7 @@ void print_current_task_list()
     {
         list_node_t *next = list_node_next(curr);
         tcb_t *task = list_node_parent(curr, tcb_t, all_node);
-        logger("id: %llx, elr: 0x%llx, priority: %d\n", task->task_id, task->cpu_info->ctx.elr, task->priority);
+        logger("id: %llx, elr: 0x%llx, priority: %d, state: %d\n", task->task_id, task->cpu_info->ctx.elr, task->priority, task->state);
         curr = next;
     }
     logger("\n");
@@ -217,7 +217,7 @@ void schedule()
     spin_unlock(&print_lock);
 
     // logger("next_task page dir: 0x%llx\n", next_task->pgdir);
-    // next_task->state = TASK_STATE_RUNNING;
+    next_task->state = TASK_STATE_RUNNING;
 
     if (get_el() == 1)
     {
@@ -257,19 +257,25 @@ void timer_tick_schedule(uint64_t *sp)
         {
             // logger("task %d sleep time arrive\n", task->id);
             task_set_wakeup(task);
-            task_add_to_readylist_tail(task);
+            task_add_to_readylist_tail(task); // 此时 task 状态会设置为 READY
         }
         curr = next;
     }
 
-    if (--curr_task->counter == 0)
+    // 时间片耗尽
+    if (--curr_task->counter <= 0)
     {
-        if (curr_task == &task_manager.idle_task[get_current_cpu_id()])
+        if (curr_task != &task_manager.idle_task[get_current_cpu_id()])
+        {
+            curr_task->counter = SYS_TASK_TICK;
+            task_add_to_readylist_tail(curr_task); // 会设置状态为 READY
+        }
+        else
+        {
             curr_task->counter = SYS_TASK_TICK / 5;
-        curr_task->counter = SYS_TASK_TICK;
+        }
+        schedule();
     }
-
-    schedule();
 }
 
 //  vm 相关
@@ -449,7 +455,8 @@ static tcb_t *task_next_run(void)
         tcb_t *task = list_node_parent(iter, tcb_t, run_node);
         if (task->state == TASK_STATE_READY)
         {
-            break;
+            task_remove_from_readylist(task);
+            return task;
         }
         else
         {
@@ -458,17 +465,7 @@ static tcb_t *task_next_run(void)
         iter = list_node_next(iter);
     }
 
-    if (iter == NULL)
-    {
-        // spin_unlock(&task_manager.lock);
-        return &task_manager.idle_task[core_id];
-    }
-    tcb_t *task = list_node_parent(iter, tcb_t, run_node);
-
-    task_remove_from_readylist(task);
-    task_add_to_readylist_tail(task);
-
-    return task;
+    return &task_manager.idle_task[core_id];
 }
 
 // ============ 延时队列相关操作 ============
@@ -494,6 +491,7 @@ void task_set_wakeup(tcb_t *task)
 {
     spin_lock(&task_manager.lock);
     list_delete(&task_manager.sleep_list, &task->run_node);
+    task->state = TASK_STATE_READY;
     spin_unlock(&task_manager.lock);
 }
 
@@ -513,4 +511,47 @@ void sys_sleep_tick(uint64_t ms)
 
     // 进行一次调度
     schedule();
+}
+
+void task_yield(void)
+{
+    tcb_t *curr_task;
+    if (get_el() == 2)
+        curr_task = (tcb_t *)(void *)read_tpidr_el2();
+    else
+        curr_task = (tcb_t *)(void *)read_tpidr_el0();
+
+    // idle 任务不需要让出 CPU（它本来就是在等别人用 CPU）
+    if (curr_task == &task_manager.idle_task[get_current_cpu_id()])
+        return;
+
+    // 放回 ready 队尾
+    task_add_to_readylist_tail(curr_task);
+
+    // 重置时间片（可选，取决于你是否要立即重新分配时间）
+    curr_task->counter = SYS_TASK_TICK;
+
+    // 切换任务
+    schedule();
+}
+
+// vwfi
+void task_wait_for_irq(void)
+{
+    tcb_t *curr_task;
+    if (get_el() == 2)
+        curr_task = (tcb_t *)(void *)read_tpidr_el2();
+    else
+        curr_task = (tcb_t *)(void *)read_tpidr_el0();
+    curr_task->state = TASK_STATE_WAIT_IRQ;
+    task_remove_from_readylist(curr_task);
+    schedule();  // 调度出去
+
+    // 唤醒点类似这样
+    /*
+    if (task->state == TASK_STATE_WAIT_IRQ)
+    {
+        task_add_to_readylist_tail(task);
+    }
+    */
 }
