@@ -6,6 +6,7 @@
 #include "hyper/vcpu.h"
 #include "lib/list.h"
 #include "os_cfg.h"
+
 #include "pro.h"
 #include "hyper/vm.h"
 
@@ -41,10 +42,10 @@ extern cpu_t vcpu[];
 
 typedef enum _task_state_t
 {
-    TASK_STATE_CREATE = 1,
-    TASK_STATE_READY,
+    TASK_STATE_CREATE = 1,  // 刚分配完 TCB，还没进入任何队列
+    TASK_STATE_READY,       // 已进入 ready 队列，等待调度
     TASK_STATE_RUNNING,
-    TASK_STATE_WAITING,
+    TASK_STATE_WAITING,     // 睡眠状态（sleep tick 到期后可转 READY）
 } task_state_t;
 
 #pragma pack(1)
@@ -52,24 +53,26 @@ typedef struct _tcb_t
 {
     contex_t ctx;
     cpu_t *cpu_info;
-    uint64_t sp;
+
+    uint32_t task_id; // 任务ID
+
+    uint64_t pgdir; // 页表基址
+    uint64_t sp;    // 栈地址
 
     task_state_t state;
     uint32_t counter;
     uint32_t sleep_ticks;
     uint32_t priority;
-    uint32_t id;    // 任务ID
-    uint64_t pgdir; // 页表基址
 
     list_node_t run_node;  // 运行相关结点
     list_node_t wait_node; // 等待队列
     list_node_t all_node;  // 所有队列结点
 
-    list_node_t process;         // 属于哪个进程
+    list_node_t process_node;         // 属于哪个进程
     struct _process_t *curr_pro; // 当前进程
 
-    list_node_t vm_node; // 属于哪个虚拟机
-    struct vm_t *vm;     // 当前虚拟机
+    list_node_t vm_node;   // 属于哪个虚拟机
+    struct _vm_t *curr_vm; // 当前虚拟机
 } tcb_t;
 #pragma pack()
 
@@ -91,6 +94,31 @@ typedef struct _task_manager_t
 void timer_tick_schedule(uint64_t *);
 void print_current_task_list();
 
+static inline void flush(void)
+{
+    // 确保页表写入已完成（比如 TTBR0_EL1 已写好）
+    __asm__ volatile("dsb ish"); // Data Synchronization Barrier，Inner Shareable
+
+    // 清除所有EL1 TLB项，适用于多核 inner shareable 域
+    __asm__ volatile("tlbi vmalle1is"); // Invalidate all TLB entries for EL1 (Inner Shareable)
+
+    // 等待 TLB 刷新完成
+    __asm__ volatile("dsb ish");
+
+    // 确保后续指令看到最新的 TLB 状态
+    __asm__ volatile("isb");
+}
+
+static inline uint32_t can_run_on_core(uint32_t priority, uint32_t coreid)
+{
+    if (coreid >= 32)
+    {
+        // 超出范围，priority 只有32位
+        return false;
+    }
+    return (priority & (1U << coreid)) != 0;
+}
+
 tcb_t *alloc_tcb();
 
 // @param: task_func: el0 任务真正的入口, sp: el0 任务的内核栈
@@ -99,7 +127,7 @@ tcb_t *create_task(
     uint64_t,            // el0 任务的内核栈
     uint32_t);
 
-tcb_t *craete_vm_task(
+tcb_t *create_vm_task(
     void (*task_func)(),
     uint64_t stack_top,
     uint32_t);
@@ -110,9 +138,9 @@ void schedule_init();
 void task_manager_init(void);
 task_manager_t *get_task_manager();
 void schedule_init_local(tcb_t *task, void *new_sp);
-void task_set_ready(tcb_t *task);
+void task_add_to_readylist_tail(tcb_t *task);
 int run_task_oncore(tcb_t *task, uint32_t core_id);
-void task_set_block(tcb_t *task);
+void task_remove_from_readylist(tcb_t *task);
 void schedule();
 
 tcb_t *get_idle();

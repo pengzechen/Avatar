@@ -47,7 +47,7 @@ void mutex_lock(mutex_t *mutex)
         // 获取当前线程控制块
         tcb_t *curr = (tcb_t *)(void *)read_tpidr_el0();
         // 将当前线程控制块设置为阻塞状态
-        task_set_block(curr);
+        task_remove_from_readylist(curr);
         // 将当前线程控制块插入互斥锁的等待列表中
         list_insert_last(&mutex->wait_list, &curr->wait_node);
         spin_unlock(&mutex->lock);
@@ -83,7 +83,7 @@ void mutex_unlock(mutex_t *mutex)
                 // 获取该线程的控制块
                 tcb_t *task = list_node_parent(task_node, tcb_t, wait_node);
                 // 将该线程设为就绪状态
-                // task_set_ready(task);
+                // task_add_to_readylist_tail(task);
                 run_task_oncore(task, task->priority - 1);
 
                 // 互斥锁的锁定计数置为1

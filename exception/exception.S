@@ -112,8 +112,8 @@ exception_vector_base:
     RESTORE_REGS
     eret
 
-.global el0_tesk_entry
-el0_tesk_entry:
+.global el0_task_entry
+el0_task_entry:
     
     // sp 为el1的栈
     ldp     x10, x11, [sp, 32 * 8]

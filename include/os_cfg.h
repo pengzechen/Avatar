@@ -49,7 +49,7 @@
 #define MMIO_AREA_GICD 0x8000000UL
 #define MMIO_AREA_GICC 0x8010000UL
 
-#ifdef HV
+#if HV == 1
 // 这里是因为vmm需要申请内存
 #define KERNEL_VMA 0ULL
 #else

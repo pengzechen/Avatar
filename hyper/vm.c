@@ -15,7 +15,7 @@
 // 每个核跑两个 vcpu， 共8个vcpu
 // 跑4个vm每个vm使用2个vcpu 或者 跑2个vm每个vm使用4个vcpu
 
-static struct vm_t vms[VM_NUM_MAX];
+static struct _vm_t vms[VM_NUM_MAX];
 static uint32_t vm_num = 0;
 
 #define HV_TIMER_VECTOR 27
@@ -105,24 +105,24 @@ void test_mem_hypervisor()
 }
 
 // 一个vm必定有多个vcpu，一个vgic。 先在这里初始化
-struct vm_t *alloc_vm()
+struct _vm_t *alloc_vm()
 {
     if (vm_num >= VM_NUM_MAX)
     {
         logger_error("No more vm can be allocated!\n");
         return NULL;
     }
-    struct vm_t *vm = &vms[vm_num++];
-    memset(vm, 0, sizeof(struct vm_t));
-    vm->id = vm_num - 1;
+    struct _vm_t *vm = &vms[vm_num++];
+    memset(vm, 0, sizeof(struct _vm_t));
+    vm->vm_id = vm_num - 1;
 
     // 初始化 vcpu 列表
-    list_init(&vm->vpus);
+    list_init(&vm->vcpus);
 
     // 获取对应的 vgic 结构体
-    vm->vgic = get_vgic(vm->id);
+    vm->vgic = get_vgic(vm->vm_id);
 
-    logger_info("alloc vm: %d\n", vm->id);
+    logger_info("alloc vm: %d\n", vm->vm_id);
     return vm;
 }
 
@@ -141,7 +141,7 @@ static void guest_trap_init(void)
 }
 
 // 初始化虚拟机
-void vm_init(struct vm_t *vm, int vcpu_num)
+void vm_init(struct _vm_t *vm, int vcpu_num)
 {
     //(1) 设置hcr
     guest_trap_init();
@@ -159,14 +159,14 @@ void vm_init(struct vm_t *vm, int vcpu_num)
         logger_error("Failed to allocate stack for primary vcpu \n");
         return;
     }
-    tcb_t *task = craete_vm_task((void *)GUEST_KERNEL_START, (uint64_t)stack + 8192, (1 << 0));
+    tcb_t *task = create_vm_task((void *)GUEST_KERNEL_START, (uint64_t)stack + 8192, (1 << 0));
     if (task == NULL)
     {
         logger_error("Failed to create vcpu task\n");
         return;
     }
-    list_insert_last(&vm->vpus, &task->vm_node);
-    task->vm = vm; // 设置当前虚拟机
+    list_insert_last(&vm->vcpus, &task->vm_node);
+    task->curr_vm = vm; // 设置当前虚拟机
     task->cpu_info->sys_reg->mpidr_el1 = (1ULL << 31) | (uint64_t)(0 & 0xff);
     vm->primary_vcpu = task; // 设置主 vcpu
 
@@ -179,28 +179,28 @@ void vm_init(struct vm_t *vm, int vcpu_num)
             logger_error("Failed to allocate stack for vcpu %d\n", i);
             return;
         }
-        tcb_t *task = craete_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 0));
+        tcb_t *task = create_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 0));
         if (task == NULL)
         {
             logger_error("Failed to create vcpu task %d\n", i);
             return;
         }
-        list_insert_last(&vm->vpus, &task->vm_node);
-        task->vm = vm; // 设置当前虚拟机
+        list_insert_last(&vm->vcpus, &task->vm_node);
+        task->curr_vm = vm; // 设置当前虚拟机
 
         task->cpu_info->sys_reg->mpidr_el1 = (1ULL << 31) | (uint64_t)(i & 0xff);
 
         // dev use
-        // task_set_ready(task);
+        // task_add_to_readylist_tail(task);
     }
 
     // test
-    list_node_t *iter = list_first(&vm->vpus);
+    list_node_t *iter = list_first(&vm->vcpus);
     tcb_t *taskt = NULL;
     while (iter)
     {
         taskt = list_node_parent(iter, tcb_t, vm_node);
-        logger_info("vcpu task id: %d, mpidr_el1: 0x%x\n", taskt->id, taskt->cpu_info->sys_reg->mpidr_el1);
+        logger_info("vcpu task id: %d, mpidr_el1: 0x%x\n", taskt->task_id, taskt->cpu_info->sys_reg->mpidr_el1);
 
         iter = list_node_next(iter);
     }
@@ -224,7 +224,7 @@ void vm_init(struct vm_t *vm, int vcpu_num)
     irq_install(PL011_INT, fake_console);
 }
 
-void run_vm(struct vm_t *vm)
+void run_vm(struct _vm_t *vm)
 {
     if (vm == NULL)
     {
@@ -232,5 +232,5 @@ void run_vm(struct vm_t *vm)
         return;
     }
 
-    task_set_ready(vm->primary_vcpu);
+    task_add_to_readylist_tail(vm->primary_vcpu);
 }

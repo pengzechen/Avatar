@@ -682,7 +682,7 @@ uint64_t mutex_test_minus()
 void mutex_test_print()
 {
     mutex_lock(&g_alloc.mutex);
-    logger("mutex_test_num = %d, current task: %d\n", mutex_test_num, ((tcb_t *)(void *)read_tpidr_el0())->id);
+    logger("mutex_test_num = %d, current task: %d\n", mutex_test_num, ((tcb_t *)(void *)read_tpidr_el0())->task_id);
     mutex_unlock(&g_alloc.mutex);
 }
 

@@ -170,7 +170,7 @@ ffff00004008c70c g     F .text	0000000000000094 list_insert_last
 ffff000040086044 g     F .text	000000000000009c printf
 ffff0000400842c4 g     F .text	0000000000000030 gicc_init
 ffff0000400e4000 g     O .bss	0000000000000004 inited_cpu_num
-ffff00004008a93c g     F .text	000000000000009c task_set_ready
+ffff00004008a93c g     F .text	000000000000009c task_add_to_readylist_tail
 ffff000040081000 g       .text	0000000000000000 exception_vector_base
 ffff000040114000 g       .bss	0000000000000000 ept_L1
 ffff0000400849b4 g     F .text	0000000000000028 gic_clear_np_int
@@ -339,7 +339,7 @@ ffff000040084790 g     F .text	0000000000000068 gic_make_virtual_hardware_interr
 ffff00004008c644 g     F .text	0000000000000034 list_init
 ffff000040088bec g     F .text	0000000000000038 mock_addr_alloc_page
 ffff000040088ee4 g     F .text	0000000000000008 kmem_test
-ffff00004008a9d8 g     F .text	0000000000000090 task_set_block
+ffff00004008a9d8 g     F .text	0000000000000090 task_remove_from_readylist
 ffff000040087324 g     F .text	000000000000010c memory_alloc_page
 ffff000040085044 g     F .text	0000000000000058 uart_early_putc
 ffff00004008652c g     F .text	0000000000000020 enable_mmu_el2

@@ -25,7 +25,7 @@ typedef struct
 
 struct vgic_t
 {
-    struct vm_t *vm;
+    struct _vm_t *vm;
 
     uint32_t ptov[SPI_ID_MAX]; // 实际中断 ID 到虚拟中断 ID 的映射
     uint32_t vtop[SPI_ID_MAX];

@@ -8,13 +8,19 @@
 #include "vgic.h"
 #include "task/task.h"
 
+#define VM_NAME_MAX 64
+
 typedef struct _tcb_t tcb_t;
 
-struct vm_t
+struct _vm_t
 {
-    uint32_t id;
+    uint32_t vm_id;
+    char vm_name[VM_NAME_MAX]; // 虚拟机名称
 
-    list_t vpus;         // vcpu 列表
+    void *stage2pg_base; // stage2 页表基地址
+
+    uint64_t entry;      // 虚拟机入口地址
+    list_t vcpus;        // vcpu 列表
     tcb_t *primary_vcpu; // 主 vcpu
 
     struct vgic_t *vgic;
@@ -47,8 +53,8 @@ static inline uint64_t read_vttbr_el2()
     return value;
 }
 
-struct vm_t *alloc_vm();
-void vm_init(struct vm_t *vm, int vcpu_num);
-void run_vm(struct vm_t *vm);
+struct _vm_t *alloc_vm();
+void vm_init(struct _vm_t *vm, int vcpu_num);
+void run_vm(struct _vm_t *vm);
 
 #endif // __VM_H__

@@ -49,7 +49,7 @@ void main_entry_el2()
         alloctor_init();
         task_manager_init();
 
-        struct vm_t *vm = alloc_vm();
+        struct _vm_t *vm = alloc_vm();
         if (vm == NULL)
         {
             logger_error("Failed to allocate vm\n");

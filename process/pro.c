@@ -177,7 +177,8 @@ void process_init(process_t *pro, void *elf_addr, uint32_t priority)
     main_thread->pgdir = (uint64_t)pro->pg_base;
     main_thread->curr_pro = pro;
 
-    list_insert_last(&pro->threads, &main_thread->process);
+    list_insert_last(&pro->threads, &main_thread->process_node);
+    pro->main_thread = main_thread;
 }
 
 void run_process(process_t *pro)
@@ -186,10 +187,10 @@ void run_process(process_t *pro)
     list_node_t *iter = list_first(&pro->threads);
     while (iter)
     {
-        tcb_t *task = list_node_parent(iter, tcb_t, process);
+        tcb_t *task = list_node_parent(iter, tcb_t, process_node);
         logger("run processs: task: 0x%x\n", task);
         run_task_oncore(task, task->priority - 1);
-        // task_set_ready(task);
+        // task_add_to_readylist_tail(task);
         iter = list_node_next(iter);
     }
 }
@@ -241,7 +242,7 @@ int pro_execve(char *name, char **__argv, char **__envp)
     prepare_vm(&pro, elf_addr);
 
     list_node_t *iter = list_first(&pro->threads);
-    tcb_t *task = list_node_parent(iter, tcb_t, process);
+    tcb_t *task = list_node_parent(iter, tcb_t, process_node);
     reset_task(task, (void (*)())(void *)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE * 2, 1);
     task->pgdir = (uint64_t)pro->pg_base;
     task->curr_pro = pro;
@@ -286,8 +287,8 @@ int pro_fork(void)
     list_insert_last(&get_task_manager()->task_list, &child_task->all_node);
 
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &curr->cpu_info->ctx, sizeof(trap_frame_t));
-    extern void el0_tesk_entry();
-    child_task->ctx.x30 = (uint64_t)el0_tesk_entry;
+    extern void el0_task_entry();
+    child_task->ctx.x30 = (uint64_t)el0_task_entry;
     child_task->ctx.x29 = stack_top - sizeof(trap_frame_t);
     child_task->ctx.sp_elx = stack_top - sizeof(trap_frame_t);
     child_task->sp = (stack_top - PAGE_SIZE * 2);
@@ -296,7 +297,7 @@ int pro_fork(void)
 
     curr->cpu_info->pctx->r[0] = 0;
 
-    list_insert_last(&child_pro->threads, &child_task->process);
+    list_insert_last(&child_pro->threads, &child_task->process_node);
     child_pro->parent = pro;
 
     run_process(child_pro);
