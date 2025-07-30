@@ -10,6 +10,7 @@
 #include "hyper/vm.h"
 #include "mem/mem.h"
 #include "task/task.h"
+#include "../guest/guests.h"
 
 // qemu 准备启动4个核
 // 每个核跑两个 vcpu， 共8个vcpu
@@ -55,44 +56,35 @@ void mmio_map_gicc()
     }
 }
 
-extern void __guset_bin_start();
-extern void __guset_bin_end();
-extern void __guset_dtb_start();
-extern void __guset_dtb_end();
-extern void __guset_fs_start();
-extern void __guset_fs_end();
-
-void copy_guest(void)
+void load_guest_image(int vm_id)
 {
-    size_t size = (size_t)(__guset_bin_end - __guset_bin_start);
-    unsigned long *from = (unsigned long *)__guset_bin_start;
-    unsigned long *to = (unsigned long *)GUEST_KERNEL_START;
-    logger("Copy guest kernel image from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
-           from, to, size, from[0], from[1]);
-    memcpy(to, from, size);
-    logger("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
-}
+    guest_image_t *img = &guest_configs[vm_id].image;
+    uint64_t guest_kernel_start = guest_configs[vm_id].bin_loadaddr;
+    uint64_t guest_dtb_start = guest_configs[vm_id].dtb_loadaddr;
+    uint64_t guest_fs_start = guest_configs[vm_id].fs_loadaddr;
 
-void copy_dtb(void)
-{
-    size_t size = (size_t)(__guset_dtb_end - __guset_dtb_start);
-    unsigned long *from = (unsigned long *)__guset_dtb_start;
-    unsigned long *to = (unsigned long *)GUEST_DTB_START;
-    logger("Copy guest dtb from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
-           from, to, size, from[0], from[1]);
-    memcpy(to, from, size);
-    logger("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
-}
+    // 加载 guest kernel：必须存在
+    size_t size = img->bin_end - img->bin_start;
+    memcpy((void *)guest_kernel_start, img->bin_start, size);
+    logger_info("VM%d: Kernel loaded (%zu bytes)\n", vm_id, size);
 
-void copy_fs(void)
-{
-    size_t size = (size_t)(__guset_fs_end - __guset_fs_start);
-    unsigned long *from = (unsigned long *)__guset_fs_start;
-    unsigned long *to = (unsigned long *)GUEST_FS_START;
-    logger("Copy guest fs from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n",
-           from, to, size, from[0], from[1]);
-    memcpy(to, from, size);
-    logger("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
+    // 加载 dtb：可选
+    size = img->dtb_end - img->dtb_start;
+    if (size > 0) {
+        memcpy((void *)guest_dtb_start, img->dtb_start, size);
+        logger_info("VM%d: DTB loaded (%zu bytes)\n", vm_id, size);
+    } else {
+        logger_warn("VM%d: No DTB, skipping\n", vm_id);
+    }
+
+    // 加载 fs：可选
+    size = img->fs_end - img->fs_start;
+    if (size > 0) {
+        memcpy((void *)guest_fs_start, img->fs_start, size);
+        logger_info("VM%d: FS loaded (%zu bytes)\n", vm_id, size);
+    } else {
+        logger_warn("VM%d: No FS, skipping\n", vm_id);
+    }
 }
 
 void test_mem_hypervisor()
@@ -122,7 +114,7 @@ struct _vm_t *alloc_vm()
     // 获取对应的 vgic 结构体
     vm->vgic = get_vgic(vm->vm_id);
 
-    logger_info("alloc vm: %d\n", vm->vm_id);
+    logger_warn("alloc vm: %d\n", vm->vm_id);
     return vm;
 }
 
@@ -131,18 +123,22 @@ extern void test_guest();
 
 static void guest_trap_init(void)
 {
-    logger_info("    Initialize trap...\n");
+    logger_info("Initialize trap...\n");
     unsigned long hcr;
     hcr = read_hcr_el2();
     // WRITE_SYSREG(hcr | HCR_TGE, HCR_EL2);
     // hcr = READ_SYSREG(HCR_EL2);
-    logger_warn("HCR : 0x%llx\n", hcr);
+    logger_info("HCR : 0x%llx\n", hcr);
     isb();
 }
 
 // 初始化虚拟机
-void vm_init(struct _vm_t *vm, int vcpu_num)
+void vm_init(struct _vm_t *vm, int configured_vm_id)
 {
+    int vcpu_num = guest_configs[configured_vm_id].smp_num;
+    
+    uint64_t entry_addr = guest_configs[configured_vm_id].bin_loadaddr;
+    
     //(1) 设置hcr
     guest_trap_init();
 
@@ -159,7 +155,7 @@ void vm_init(struct _vm_t *vm, int vcpu_num)
         logger_error("Failed to allocate stack for primary vcpu \n");
         return;
     }
-    tcb_t *task = create_vm_task((void *)GUEST_KERNEL_START, (uint64_t)stack + 8192, (1 << 0));
+    tcb_t *task = create_vm_task((void *)entry_addr, (uint64_t)stack + 8192, (1 << 0));
     if (task == NULL)
     {
         logger_error("Failed to create vcpu task\n");
@@ -179,7 +175,7 @@ void vm_init(struct _vm_t *vm, int vcpu_num)
             logger_error("Failed to allocate stack for vcpu %d\n", i);
             return;
         }
-        tcb_t *task = create_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 0));
+        tcb_t *task = create_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 1));
         if (task == NULL)
         {
             logger_error("Failed to create vcpu task %d\n", i);
@@ -206,9 +202,7 @@ void vm_init(struct _vm_t *vm, int vcpu_num)
     }
 
     // 拷贝guest镜像
-    copy_dtb();
-    copy_guest();
-    copy_fs();
+    load_guest_image(configured_vm_id);
 
     // 映射 MMIO 区域
     mmio_map_gicd();

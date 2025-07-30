@@ -54,7 +54,7 @@ static inline uint64_t read_vttbr_el2()
 }
 
 struct _vm_t *alloc_vm();
-void vm_init(struct _vm_t *vm, int vcpu_num);
+void vm_init(struct _vm_t *vm, int configured_vm_id);
 void run_vm(struct _vm_t *vm);
 
 #endif // __VM_H__

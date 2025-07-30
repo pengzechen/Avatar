@@ -59,7 +59,7 @@ void guest_ept_init(void)
 	ept_L3_root = &ept_L2_root[LPAE_L2_SIZE];
 
 	logger("Initialize EPT...\n");
-	logger("EPT root address : 0x%llx\n", ept_L1);
+	logger_warn("EPT root address : 0x%llx\n", ept_L1);
 	logger("ept_L2_root : 0x%llx\n", ept_L2_root);
 	logger("ept_L3_root : 0x%llx\n", ept_L3_root);
 	logger("LPAE_L1_SIZE : %d\n", LPAE_L1_SIZE);

@@ -18,7 +18,7 @@
 
 void vtcr_init(void)
 {
-    logger_info("    Initialize vtcr...\n");
+    logger_info("Initialize vtcr...\n");
     uint64_t vtcr_val = VTCR_VS_8BIT | VTCR_PS_MASK_36_BITS |
                         VTCR_TG0_4K | VTCR_SH0_IS | VTCR_ORGN0_WBWA | VTCR_IRGN0_WBWA;
 
@@ -55,7 +55,15 @@ void main_entry_el2()
             logger_error("Failed to allocate vm\n");
             return;
         }
-        vm_init(vm, 2); // 初始化一个虚拟机，包含两个 vcpu
+        vm_init(vm, 0); // 初始化一个虚拟机
+        run_vm(vm);
+
+        vm = alloc_vm();
+        if (vm == NULL)
+        {            logger_error("Failed to allocate vm\n");
+            return;
+        }
+        vm_init(vm, 1); // 初始化第二个虚拟机
         run_vm(vm);
 
         logger("\nHello Hyper:\nthere's some hyper tests: \n");

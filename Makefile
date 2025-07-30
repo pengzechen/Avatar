@@ -149,8 +149,10 @@ $(BUILD_DIR)/ramfs.o: fs/ramfs.c
 
 
 #  guest
-$(BUILD_DIR)/guest.s.o: guest/guest.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) guest/guest.S $(INCLUDE) -o $(BUILD_DIR)/guest.s.o
+$(BUILD_DIR)/guests.s.o: guest/guests.S
+	$(TOOL_PREFIX)gcc $(CFLAGS) guest/guests.S $(INCLUDE) -o $(BUILD_DIR)/guests.s.o
+$(BUILD_DIR)/test_guest.s.o: guest/test_guest.S
+	$(TOOL_PREFIX)gcc $(CFLAGS) guest/test_guest.S $(INCLUDE) -o $(BUILD_DIR)/test_guest.s.o
 
 #  app
 $(BUILD_DIR)/app.s.o: app/app.S
@@ -159,7 +161,7 @@ $(BUILD_DIR)/app.s.o: app/app.S
 
 
 $(BUILD_DIR)/kernel.elf: $(BUILD_DIR) $(BUILD_DIR)/main.o $(BUILD_DIR)/smp.o $(BUILD_DIR)/main_hyper.o \
-$(BUILD_DIR)/boot.s.o $(BUILD_DIR)/guest.s.o $(BUILD_DIR)/app.s.o $(BUILD_DIR)/exception.s.o $(BUILD_DIR)/exception.o \
+$(BUILD_DIR)/boot.s.o $(BUILD_DIR)/guests.s.o $(BUILD_DIR)/test_guest.s.o $(BUILD_DIR)/app.s.o $(BUILD_DIR)/exception.s.o $(BUILD_DIR)/exception.o \
 $(BUILD_DIR)/io.o $(BUILD_DIR)/uart_pl011.o $(BUILD_DIR)/uart_pl011_early.o $(BUILD_DIR)/printf.o $(BUILD_DIR)/mmu.s.o \
 $(BUILD_DIR)/page.o $(BUILD_DIR)/stage2page.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o $(BUILD_DIR)/exception_el3.s.o \
 $(BUILD_DIR)/exception_el3.o $(BUILD_DIR)/exception_el2.o $(BUILD_DIR)/exception_el2.s.o $(BUILD_DIR)/gic.o  \
@@ -168,7 +170,8 @@ $(BUILD_DIR)/vcpu.o $(BUILD_DIR)/hyper_ctx.s.o $(BUILD_DIR)/vgic.o $(BUILD_DIR)/
 $(BUILD_DIR)/mutex.o $(BUILD_DIR)/process.o $(BUILD_DIR)/ramfs.o
 	$(TOOL_PREFIX)ld -T $(LD) -o $(BUILD_DIR)/kernel.elf \
 	$(BUILD_DIR)/boot.s.o 			\
-	$(BUILD_DIR)/guest.s.o          \
+	$(BUILD_DIR)/guests.s.o         \
+	$(BUILD_DIR)/test_guest.s.o     \
 	$(BUILD_DIR)/app.s.o            \
 	$(BUILD_DIR)/main.o 			\
 	$(BUILD_DIR)/smp.o              \

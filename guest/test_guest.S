@@ -29,15 +29,3 @@ test_guest:
 	mov x10, #10
 
 	b .  // el1
-
-
-.section .data.guset_bin
-	// .incbin "../guest/nimbos/nimbos.bin"
-	.incbin "../guest/testos/build/kernel.bin"
-	// .incbin "../guest/linux/linux.bin"
-
-.section .data.guest_dtb
-  	.incbin "../guest/linux/linux.dtb"
-
-.section .data.guest_fs
-  	.incbin "../guest/linux/initrd.gz"
