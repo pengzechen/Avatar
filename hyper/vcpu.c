@@ -6,9 +6,9 @@
 
 cpu_sysregs_t cpu_sysregs[MAX_TASKS];
 
-// void print_vcpu(int id)
+// void print_vcpu(int32_t id)
 // {
-// 	int reg;
+// 	int32_t reg;
 // 	spin_lock(&vcpu[id].lock);
 // 	for (reg = 0; reg < 31; reg++)
 // 	{

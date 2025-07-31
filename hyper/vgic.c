@@ -12,7 +12,7 @@
 
 #define HIGHEST_BIT_POSITION(x)        \
     ({                                 \
-        unsigned int _i = 0;           \
+        uint32_t _i = 0;           \
         unsigned long long _val = (x); \
         while (_val >>= 1)             \
         {                              \
@@ -110,9 +110,9 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
         { // 寄存器写到内存
             if (gpa == GICD_CTLR)
             {
-                int reg_num = info->hsr.dabt.reg;
-                int r = el2_ctx->r[reg_num];
-                int len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t r = el2_ctx->r[reg_num];
+                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
                 vgic->gicd_ctlr = r;
                 logger_info("      <<< gicd emu write GICD_CTLR: ");
                 logger("gpa: 0x%llx, r: 0x%llx, len: %d\n", gpa, r, len);
@@ -120,46 +120,46 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             /*  is enable reg*/
             else if (gpa == GICD_ISENABLER(0))
             {
-                int reg_num = info->hsr.dabt.reg;
-                int r = el2_ctx->r[reg_num];
-                int len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t r = el2_ctx->r[reg_num];
+                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
                 
                 gic_enable_int(HIGHEST_BIT_POSITION(r), 1);
                 logger_info("      <<< gicd emu write GICD_ISENABLER(0): ");
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
             }
             else if (GICD_ISENABLER(1) <= gpa && gpa < GICD_ICENABLER(0))
             {
-                int reg_num = info->hsr.dabt.reg;
-                int r = el2_ctx->r[reg_num];
-                int len = 1 << (info->hsr.dabt.size & 0x00000003);
-                int id = ((gpa - GICD_ISENABLER(0)) / 0x4) * 32;
+                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t r = el2_ctx->r[reg_num];
+                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t id = ((gpa - GICD_ISENABLER(0)) / 0x4) * 32;
                 
                 gic_enable_int(HIGHEST_BIT_POSITION(r) + id, 1);
                 logger_info("      <<< gicd emu write GICD_ISENABLER(i): ");
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
             }
             /* ic enable reg*/
             else if (gpa == GICD_ICENABLER(0))
             {
-                int reg_num = info->hsr.dabt.reg;
-                int r = el2_ctx->r[reg_num];
-                int len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t r = el2_ctx->r[reg_num];
+                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
                 
                 gic_enable_int(HIGHEST_BIT_POSITION(r), 0);
                 logger_info("      <<< gicd emu write GICD_ICENABLER(0): ");
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
             }
             else if (GICD_ICENABLER(1) <= gpa && gpa < GICD_ISPENDER(0))
             {
-                int reg_num = info->hsr.dabt.reg;
-                int r = el2_ctx->r[reg_num];
-                int len = 1 << (info->hsr.dabt.size & 0x00000003);
-                int id = ((gpa - GICD_ICENABLER(0)) / 0x4) * 32;
+                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t r = el2_ctx->r[reg_num];
+                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t id = ((gpa - GICD_ICENABLER(0)) / 0x4) * 32;
 
                 gic_enable_int(HIGHEST_BIT_POSITION(r) + id, 0);
                 logger_info("      <<< gicd emu write GICD_ICENABLER(i): ");
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
             }
             /* is pend reg*/
             else if (gpa == GICD_ISPENDER(0))
@@ -173,37 +173,37 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             /* ic pend reg*/
             else if (gpa == GICD_ICPENDER(0))
             {   
-                int reg_num = info->hsr.dabt.reg;
-                int r = el2_ctx->r[reg_num];
-                int len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t r = el2_ctx->r[reg_num];
+                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
                 
                 gic_set_pending(HIGHEST_BIT_POSITION(r), 0, 0);
                 logger_info("      <<< gicd emu write GICD_ICPENDER(0): ");
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
             }
             else if (GICD_ICPENDER(1) <= gpa && gpa < GICD_ISACTIVER(0))
             {
-                int reg_num = info->hsr.dabt.reg;
-                int r = el2_ctx->r[reg_num];
-                int len = 1 << (info->hsr.dabt.size & 0x00000003);
-                int id = ((gpa - GICD_ICPENDER(0)) / 0x4) * 32;
+                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t r = el2_ctx->r[reg_num];
+                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t id = ((gpa - GICD_ICPENDER(0)) / 0x4) * 32;
 
                 gic_set_pending(HIGHEST_BIT_POSITION(r) + id, 0, 0);
                 logger_info("      <<< gicd emu write GICD_ICPENDER(i): ");
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int id: %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
             }
             /* I priority reg*/
             else if (GICD_IPRIORITYR(0) <= gpa && gpa < GICD_IPRIORITYR(GIC_FIRST_SPI / 4))
             {
                 // SGI + PPI priority write
-                int reg_num = info->hsr.dabt.reg;
-                int len = 1 << (info->hsr.dabt.size & 0x3);
+                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t len = 1 << (info->hsr.dabt.size & 0x3);
                 uint32_t val = el2_ctx->r[reg_num];
 
-                int offset = gpa - GICD_IPRIORITYR(0);
-                int int_id = offset;  // 每字节一个中断，直接用 offset
+                int32_t offset = gpa - GICD_IPRIORITYR(0);
+                int32_t int_id = offset;  // 每字节一个中断，直接用 offset
 
-                for (int i = 0; i < len; ++i) {
+                for (int32_t i = 0; i < len; ++i) {
                     uint32_t vector = int_id + i;
                     uint8_t pri_raw = (val >> (8 * i)) & 0xFF;
                     uint32_t pri = pri_raw >> 3;  // 还原 priority 值（只保留高 5 位）
@@ -217,14 +217,14 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             else if (GICD_IPRIORITYR(GIC_FIRST_SPI / 4) <= gpa && gpa < GICD_IPRIORITYR(SPI_ID_MAX / 4))
             {
                 // SPI priority write
-                int reg_num = info->hsr.dabt.reg;
-                int len = 1 << (info->hsr.dabt.size & 0x3);
+                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t len = 1 << (info->hsr.dabt.size & 0x3);
                 uint32_t val = el2_ctx->r[reg_num];
 
-                int offset = gpa - GICD_IPRIORITYR(0);
-                int int_id = offset;
+                int32_t offset = gpa - GICD_IPRIORITYR(0);
+                int32_t int_id = offset;
 
-                for (int i = 0; i < len; ++i) {
+                for (int32_t i = 0; i < len; ++i) {
                     uint32_t vector = int_id + i;
                     uint8_t pri_raw = (val >> (8 * i)) & 0xFF;
                     uint32_t pri = pri_raw >> 3;
@@ -357,9 +357,9 @@ void vgic_inject(uint32_t vector)
     uint32_t is_active = gic_apr();
     uint32_t pri = gic_lr_read_pri(mask);
     uint32_t irq_no = gic_lr_read_vid(mask);
-    int freelr = -1;
+    int32_t freelr = -1;
 
-    for (int i = 0; i < 4; i++)
+    for (int32_t i = 0; i < 4; i++)
     {
         if ((elsr >> i) & 0x1)
         {

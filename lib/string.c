@@ -8,10 +8,9 @@
 #include <lib/aj_string.h>
 #include <aj_types.h>
 
-unsigned long strlen(const char *buf)
+size_t strlen(const char *buf)
 {
-    unsigned long len = 0;
-
+    size_t len = 0;
     while (*buf++)
         ++len;
     return len;
@@ -20,7 +19,6 @@ unsigned long strlen(const char *buf)
 char *strcat(char *dest, const char *src)
 {
     char *p = dest;
-
     while (*p)
         ++p;
     while ((*p++ = *src++) != 0)
@@ -34,21 +32,25 @@ char *strcpy(char *dest, const char *src)
     return strcat(dest, src);
 }
 
-int strncmp(const char *a, const char *b, size_t n)
+int32_t strncmp(const char *a, const char *b, size_t n)
 {
     for (; n--; ++a, ++b)
         if (*a != *b || *a == '\0')
             return *a - *b;
-
     return 0;
 }
 
-int strcmp(const char *a, const char *b)
+int32_t strcmp(const char *a, const char *b)
 {
-    return strncmp(a, b, SIZE_MAX);
+    while (*a && (*a == *b))
+    {
+        a++;
+        b++;
+    }
+    return (uint8_t)*a - (uint8_t)*b;
 }
 
-char *strchr(const char *s, int c)
+char *strchr(const char *s, int32_t c)
 {
     while (*s != (char)c)
         if (*s++ == '\0')
@@ -59,7 +61,6 @@ char *strchr(const char *s, int c)
 char *strstr(const char *s1, const char *s2)
 {
     size_t l1, l2;
-
     l2 = strlen(s2);
     if (!l2)
         return (char *)s1;
@@ -74,14 +75,12 @@ char *strstr(const char *s1, const char *s2)
     return NULL;
 }
 
-void *memset(void *s, int c, size_t n)
+void *memset(void *s, int32_t c, size_t n)
 {
     size_t i;
     char *a = s;
-
     for (i = 0; i < n; ++i)
         a[i] = c;
-
     return s;
 }
 
@@ -90,18 +89,15 @@ void *memcpy(void *dest, const void *src, size_t n)
     size_t i;
     char *a = dest;
     const char *b = src;
-
     for (i = 0; i < n; ++i)
         a[i] = b[i];
-
     return dest;
 }
 
-int memcmp(const void *s1, const void *s2, size_t n)
+int32_t memcmp(const void *s1, const void *s2, size_t n)
 {
-    const unsigned char *a = s1, *b = s2;
-    int ret = 0;
-
+    const uint8_t *a = s1, *b = s2;
+    int32_t ret = 0;
     while (n--)
     {
         ret = *a - *b;
@@ -114,9 +110,8 @@ int memcmp(const void *s1, const void *s2, size_t n)
 
 void *memmove(void *dest, const void *src, size_t n)
 {
-    const unsigned char *s = src;
-    unsigned char *d = dest;
-
+    const uint8_t *s = src;
+    uint8_t *d = dest;
     if (d <= s)
     {
         while (n--)
@@ -131,22 +126,20 @@ void *memmove(void *dest, const void *src, size_t n)
     return dest;
 }
 
-void *memchr(const void *s, int c, size_t n)
+void *memchr(const void *s, int32_t c, size_t n)
 {
-    const unsigned char *str = s, chr = (unsigned char)c;
-
+    const uint8_t *str = s, chr = (uint8_t)c;
     while (n--)
         if (*str++ == chr)
             return (void *)(str - 1);
     return NULL;
 }
 
-long atol(const char *ptr)
+int64_t atol(const char *ptr)
 {
-    long acc = 0;
+    int64_t acc = 0;
     const char *s = ptr;
-    int neg, c;
-
+    int32_t neg, c;
     while (*s == ' ' || *s == '\t')
         s++;
     if (*s == '-')
@@ -160,7 +153,6 @@ long atol(const char *ptr)
         if (*s == '+')
             s++;
     }
-
     while (*s)
     {
         if (*s < '0' || *s > '9')
@@ -169,24 +161,18 @@ long atol(const char *ptr)
         acc = acc * 10 + c;
         s++;
     }
-
     if (neg)
         acc = -acc;
-
     return acc;
 }
 
 char *get_file_name(char *name)
 {
     char *s = name;
-
-    // 定位到结束符
     while (*s != '\0')
     {
         s++;
     }
-
-    // 反向搜索，直到找到反斜杆或者到文件开头
     while ((*s != '\\') && (*s != '/') && (s >= name))
     {
         s--;

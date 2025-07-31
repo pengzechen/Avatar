@@ -326,7 +326,7 @@ void idle_task_el1()
     {
         wfi();
         // __asm__ __volatile__("msr daifclr, #2" : : : "memory");
-        // for (int i = 0; i < 100000000; i++);
+        // for (int32_t i = 0; i < 100000000; i++);
         // logger("current el: %d, idle task\n", get_el());
     }
 }
@@ -387,7 +387,7 @@ void el2_idle_init()
 void task_manager_init(void)
 {
     // 各队列初始化
-    for (int i = 0; i < SMP_NUM; i++)
+    for (int32_t i = 0; i < SMP_NUM; i++)
     {
         list_init(&task_manager.ready_list[i]);
     }

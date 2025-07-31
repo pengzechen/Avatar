@@ -36,7 +36,7 @@ void fake_console()
 
 void mmio_map_gicd()
 {
-    for (int i = 0; i < 16; i++)
+    for (int32_t i = 0; i < 16; i++)
     {
         lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_AREA_GICD + 0x1000 * i); // 0800 0000 - 0801 0000  gicd
         avr_entry->p2m.read = 0;
@@ -47,7 +47,7 @@ void mmio_map_gicd()
 
 void mmio_map_gicc()
 {
-    for (int i = 0; i < 16; i++)
+    for (int32_t i = 0; i < 16; i++)
     {
         lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_AREA_GICC + 0x1000 * i); // 0800 0000 - 0801 0000  gicd
         avr_entry->p2m.read = 0;
@@ -56,7 +56,7 @@ void mmio_map_gicc()
     }
 }
 
-void load_guest_image(int vm_id)
+void load_guest_image(int32_t vm_id)
 {
     guest_image_t *img = &guest_configs[vm_id].image;
     uint64_t guest_kernel_start = guest_configs[vm_id].bin_loadaddr;
@@ -133,9 +133,9 @@ static void guest_trap_init(void)
 }
 
 // 初始化虚拟机
-void vm_init(struct _vm_t *vm, int configured_vm_id)
+void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
 {
-    int vcpu_num = guest_configs[configured_vm_id].smp_num;
+    int32_t vcpu_num = guest_configs[configured_vm_id].smp_num;
     
     uint64_t entry_addr = guest_configs[configured_vm_id].bin_loadaddr;
     
@@ -167,7 +167,7 @@ void vm_init(struct _vm_t *vm, int configured_vm_id)
     vm->primary_vcpu = task; // 设置主 vcpu
 
     //(3.2) 其它核
-    for (int i = 1; i < vcpu_num; i++)
+    for (int32_t i = 1; i < vcpu_num; i++)
     {
         void *stack = kalloc_pages(2);
         if (stack == NULL)

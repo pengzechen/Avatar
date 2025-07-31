@@ -8,9 +8,9 @@ void handle_sync_exception_el3(uint64_t *stack_pointer)
 {
     trap_frame_t *context = (trap_frame_t *)stack_pointer;
 
-    int el3_esr = read_esr_el3();
+    int32_t el3_esr = read_esr_el3();
 
-    int ec = ((el3_esr >> 26) & 0b111111);
+    int32_t ec = ((el3_esr >> 26) & 0b111111);
 
     logger("        el1 esr: %llx\n", el3_esr);
     logger("        ec: %llx\n", ec);
@@ -21,7 +21,7 @@ void handle_sync_exception_el3(uint64_t *stack_pointer)
         return;
     }
 
-    for (int i = 0; i < 31; i++)
+    for (int32_t i = 0; i < 31; i++)
     {
         uint64_t value = context->r[i];
         logger("General-purpose register: %d, value: %llx\n", i, value);

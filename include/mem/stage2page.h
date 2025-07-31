@@ -25,7 +25,7 @@ void apply_ept(void *ept);
 
 void data_abort_handler(stage2_fault_info_t *info, trap_frame_t *);
 
-int gva_to_ipa(uint64_t va, uint64_t *paddr);
+int32_t gva_to_ipa(uint64_t va, uint64_t *paddr);
 
 static inline uint64_t read_par(void)
 {

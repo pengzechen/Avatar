@@ -45,7 +45,7 @@ void test_types()
         ;
 }
 
-int inited_cpu_num = 0;
+int32_t inited_cpu_num = 0;
 spinlock_t lock;
 
 void main_entry()
@@ -93,12 +93,12 @@ void main_entry()
     extern void el0_task_entry();
     el0_task_entry();
 
-    // int x;
+    // int32_t x;
     // while (1)
     // {
-    //     for(int i = 0; i < 100000000; i++);
+    //     for(int32_t i = 0; i < 100000000; i++);
     //     x++;
-    //     int y = get_current_cpu_id();
+    //     int32_t y = get_current_cpu_id();
     //     logger("cpu %d running %d\n", y, x);
     // }
 }

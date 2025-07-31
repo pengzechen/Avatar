@@ -4,8 +4,8 @@
 
 struct thread_info
 {
-    int cpu;
-    unsigned int flags;
+    int32_t cpu;
+    uint32_t flags;
     void *pgtable;
     void *current_thread;
 #if 0
@@ -37,11 +37,11 @@ static inline struct thread_info *set_thread_info(void *new_sp)
     return thread_info_sp((unsigned long)new_sp);
 }
 
-static inline unsigned int get_current_cpu_id(void)
+static inline uint32_t get_current_cpu_id(void)
 {
     unsigned long mpidr;
     __asm__ __volatile__("mrs %0, mpidr_el1" : "=r"(mpidr));
-    return (unsigned int)(mpidr & 0xff);
+    return (uint32_t)(mpidr & 0xff);
 }
 
 static inline uint64_t read_tpidr_el0(void)

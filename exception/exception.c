@@ -14,9 +14,9 @@ void handle_sync_exception(uint64_t *stack_pointer)
 {
     trap_frame_t *el1_ctx = (trap_frame_t *)stack_pointer;
 
-    int el1_esr = read_esr_el1();
+    int32_t el1_esr = read_esr_el1();
 
-    int ec = ((el1_esr >> 26) & 0b111111);
+    int32_t ec = ((el1_esr >> 26) & 0b111111);
 
     save_cpu_ctx(el1_ctx); // 保存 发生异常的那个任务的 处理器状态
 
@@ -46,7 +46,7 @@ void handle_sync_exception(uint64_t *stack_pointer)
         logger("el1 esr: %llx\n", el1_esr);
         logger("ec: %llx\n", ec);
         logger("This is handle_sync_exception: \n");
-        for (int i = 0; i < 31; i++)
+        for (int32_t i = 0; i < 31; i++)
         {
             uint64_t value = el1_ctx->r[i];
             logger("General-purpose register: %d, value: %llx\n", i, value);
@@ -67,7 +67,7 @@ irq_handler_t *get_g_handler_vec()
     return g_handler_vec;
 }
 
-void irq_install(int vector, void (*h)(uint64_t *))
+void irq_install(int32_t vector, void (*h)(uint64_t *))
 {
     g_handler_vec[vector] = h;
 }
@@ -81,8 +81,8 @@ void handle_irq_exception(uint64_t *stack_pointer)
     uint64_t sp_el0_value = el1_ctx->usp;
     save_cpu_ctx(el1_ctx); // 保存 发生异常的那个任务的 处理器状态
 
-    int iar = gic_read_iar();
-    int vector = gic_iar_irqnr(iar);
+    int32_t iar = gic_read_iar();
+    int32_t vector = gic_iar_irqnr(iar);
     gic_write_eoir(iar);
 
     g_handler_vec[vector]((uint64_t *)el1_ctx); // arg not use

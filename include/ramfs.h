@@ -47,14 +47,14 @@ typedef struct
 void ramfs_init();
 void ramfs_test();
 
-int ramfs_open(const char *name);
-int ramfs_close(int fd);
-size_t ramfs_read(int fd, void *buf, size_t count);
-size_t ramfs_write(int fd, const void *buf, size_t count);
-off_t ramfs_lseek(int fd, off_t offset, int whence);
-int ramfs_fcntl(int fd, int cmd, ...);
-int ramfs_link(const char *oldname, const char *newname);
-int ramfs_unlink(const char *name);
-int ramfs_rename(const char *oldname, const char *newname);
+int32_t ramfs_open(const char *name);
+int32_t ramfs_close(int32_t fd);
+size_t ramfs_read(int32_t fd, void *buf, size_t count);
+size_t ramfs_write(int32_t fd, const void *buf, size_t count);
+off_t ramfs_lseek(int32_t fd, off_t offset, int32_t whence);
+int32_t ramfs_fcntl(int32_t fd, int32_t cmd, ...);
+int32_t ramfs_link(const char *oldname, const char *newname);
+int32_t ramfs_unlink(const char *name);
+int32_t ramfs_rename(const char *oldname, const char *newname);
 
 #endif // RAM_FS

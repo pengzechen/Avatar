@@ -177,7 +177,7 @@ static inline uint64_t read_hyfar_el2(void)
 
 typedef void (*irq_handler_t)(uint64_t *);
 
-void irq_install(int vector, void (*h)(uint64_t *));
+void irq_install(int32_t vector, void (*h)(uint64_t *));
 irq_handler_t *get_g_handler_vec();
 
 #endif // __ECCEPTION_FRAME_H__

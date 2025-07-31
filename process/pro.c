@@ -15,7 +15,7 @@ static process_t g_pro_dec[MAX_TASKS];
 process_t *alloc_process(char *name)
 {
     static uint32_t pro_count = 1;
-    for (int i = 0; i < MAX_TASKS; i++)
+    for (int32_t i = 0; i < MAX_TASKS; i++)
     {
         if (g_pro_dec[i].process_id == 0)
         {
@@ -40,20 +40,20 @@ void free_process(process_t *pro)
 // void copy_app_testapp(void)
 // {
 //     size_t size = (size_t)(__testapp_bin_end - __testapp_bin_start);
-//     unsigned long *from = (unsigned long *)__testapp_bin_start;
-//     unsigned long *to = (unsigned long *)0x90000000;
+//     uint64_t *from = (uint64_t *)__testapp_bin_start;
+//     uint64_t *to = (uint64_t *)0x90000000;
 //     logger("Copy app image from %llx to %llx (%d bytes): 0x%llx / 0x%llx\n", from, to, size, from[0], from[1]);
 //     memcpy(to, from, size);
 //     logger("Copy end : 0x%llx / 0x%llx\n", to[0], to[1]);
 // }
 
-static int load_phdr(const char *elf_file_addr, Elf64_Phdr *phdr, pte_t *page_dir)
+static int32_t load_phdr(const char *elf_file_addr, Elf64_Phdr *phdr, pte_t *page_dir)
 {
     // 生成的ELF文件要求是页边界对齐的
     assert((phdr->p_vaddr & (PAGE_SIZE - 1)) == 0);
 
     // 分配空间
-    int err = memory_alloc_page(page_dir, phdr->p_vaddr, phdr->p_memsz, 0);
+    int32_t err = memory_alloc_page(page_dir, phdr->p_vaddr, phdr->p_memsz, 0);
     if (err < 0)
     {
         logger("no memory");
@@ -68,7 +68,7 @@ static int load_phdr(const char *elf_file_addr, Elf64_Phdr *phdr, pte_t *page_di
     // 复制文件数据到相应的内存地址
     while (size > 0)
     {
-        int curr_size = (size > PAGE_SIZE) ? PAGE_SIZE : size;
+        int32_t curr_size = (size > PAGE_SIZE) ? PAGE_SIZE : size;
 
         uint64_t paddr = memory_get_paddr(page_dir, vaddr);
 
@@ -112,7 +112,7 @@ static uint64_t load_elf_file(process_t *pro, const char *elf_file_addr, pte_t *
 
     uint64_t e_phoff = elf_hdr->e_phoff;
     // 遍历程序头，加载段
-    for (int i = 0; i < elf_hdr->e_phnum; i++, e_phoff += elf_hdr->e_phentsize)
+    for (int32_t i = 0; i < elf_hdr->e_phnum; i++, e_phoff += elf_hdr->e_phentsize)
     {
         // 读取程序头
         elf_phdr = *(Elf64_Phdr *)(elf_file_addr + e_phoff);
@@ -124,7 +124,7 @@ static uint64_t load_elf_file(process_t *pro, const char *elf_file_addr, pte_t *
         }
 
         // 加载该段
-        int err = load_phdr(elf_file_addr, &elf_phdr, page_dir);
+        int32_t err = load_phdr(elf_file_addr, &elf_phdr, page_dir);
         if (err < 0)
         {
             logger("load program header failed");
@@ -205,17 +205,17 @@ void exit_process(process_t *pro)
     free_process(pro);
 }
 
-// int execve (const char *__path, char * const __argv[], char * const __envp[]);
-int pro_execve(char *name, char **__argv, char **__envp)
+// int32_t execve (const char *__path, char * const __argv[], char * const __envp[]);
+int32_t pro_execve(char *name, char **__argv, char **__envp)
 {
     tcb_t *curr = (tcb_t *)(void *)read_tpidr_el0();
     process_t *pro = curr->curr_pro;
 
-    for (int i = 0; __argv[i] != NULL; i++)
+    for (int32_t i = 0; __argv[i] != NULL; i++)
     {
         logger("argv[%d]: %s\n", i, __argv[i]);
     }
-    for (int i = 0; __envp[i] != NULL; i++)
+    for (int32_t i = 0; __envp[i] != NULL; i++)
     {
         logger("argv[%d]: %s\n", i, __envp[i]);
     }
@@ -263,7 +263,7 @@ int pro_execve(char *name, char **__argv, char **__envp)
     return 0;
 }
 
-int pro_fork(void)
+int32_t pro_fork(void)
 {
     tcb_t *curr = (tcb_t *)(void *)read_tpidr_el0();
     process_t *pro = curr->curr_pro;
@@ -271,7 +271,7 @@ int pro_fork(void)
     process_t *child_pro = alloc_process("new");
     child_pro->pg_base = kalloc_pages(1);
     // 复制父进程的内存空间到子进程
-    int ret = memory_copy_uvm_4level(child_pro->pg_base, pro->pg_base);
+    int32_t ret = memory_copy_uvm_4level(child_pro->pg_base, pro->pg_base);
     if (ret < 0)
     {
         logger("copy uvm error!\n");

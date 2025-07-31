@@ -20,9 +20,9 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
 {
     trap_frame_t *ctx_el2 = (trap_frame_t *)stack_pointer;
 
-    int el2_esr = read_esr_el2();
+    int32_t el2_esr = read_esr_el2();
 
-    int ec = ((el2_esr >> 26) & 0b111111);
+    int32_t ec = ((el2_esr >> 26) & 0b111111);
 
     // logger("        el2 esr: %llx, ec: %llx\n", el2_esr, ec);
 
@@ -47,7 +47,7 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
         if (ctx_el2->r[0] == PSCI_0_2_FN64_CPU_ON)
         {
             logger_info("           This is cpu on handler\n");
-            int ret = vpsci_cpu_on(ctx_el2);
+            int32_t ret = vpsci_cpu_on(ctx_el2);
             ctx_el2->r[0] = ret; // SMC 返回值
         }
         advance_pc(&info, ctx_el2);
@@ -87,7 +87,7 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
         return;
     }
 
-    for (int i = 0; i < 31; i++)
+    for (int32_t i = 0; i < 31; i++)
     {
         uint64_t value = ctx_el2->r[i];
         logger("General-purpose register: %d, value: %llx\n", i, value);
@@ -111,8 +111,8 @@ void handle_irq_exception_el2(uint64_t *stack_pointer)
     uint64_t x1_value = context->r[1];
     uint64_t sp_el0_value = context->usp;
 
-    int iar = gic_read_iar();
-    int vector = gic_iar_irqnr(iar);
+    int32_t iar = gic_read_iar();
+    int32_t vector = gic_iar_irqnr(iar);
     gic_write_eoir(iar);
 
     if (vector != 27 && vector != 33)
@@ -139,14 +139,14 @@ void invalid_exception_el2(uint64_t *stack_pointer, uint64_t kind, uint64_t sour
 
     logger("invalid_exception_el2, kind: %d, source: %d\n", kind, source);
 
-    int el2_esr = read_esr_el2();
+    int32_t el2_esr = read_esr_el2();
 
-    int ec = ((el2_esr >> 26) & 0b111111);
+    int32_t ec = ((el2_esr >> 26) & 0b111111);
 
     logger("        el2 esr: %llx\n", el2_esr);
     logger("        ec: %llx\n", ec);
 
-    for (int i = 0; i < 31; i++)
+    for (int32_t i = 0; i < 31; i++)
     {
         uint64_t value = context->r[i];
         logger("General-purpose register: %d, value: %llx\n", i, value);

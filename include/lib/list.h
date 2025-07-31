@@ -14,7 +14,7 @@ typedef struct _list_t
 {
     list_node_t *first;
     list_node_t *last;
-    int count;
+    int32_t count;
 
 } list_t;
 
@@ -33,12 +33,12 @@ static inline list_node_t *list_node_next(list_node_t *node)
     return node->next;
 }
 
-static inline int list_is_empty(list_t *list)
+static inline int32_t list_is_empty(list_t *list)
 {
     return list->count == 0;
 }
 
-static inline int list_count(list_t *list)
+static inline int32_t list_count(list_t *list)
 {
     return list->count;
 }

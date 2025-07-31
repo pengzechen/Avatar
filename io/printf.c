@@ -22,17 +22,15 @@
 
 static char digits[16] = "0123456789abcdef";
 
-typedef struct pstream
-{
+typedef struct pstream {
     char *buffer;
-    int remain;
-    int added;
+    int32_t remain;
+    int32_t added;
 } pstream_t;
 
-typedef struct strprops
-{
+typedef struct strprops {
     char pad;
-    int npad;
+    int32_t npad;
     bool alternate;
 } strprops_t;
 
@@ -49,7 +47,7 @@ static void addchar(pstream_t *p, char c)
 static void print_str(pstream_t *p, const char *s, strprops_t props)
 {
     const char *s_orig = s;
-    int npad = props.npad;
+    int32_t npad = props.npad;
 
     if (npad > 0)
     {
@@ -76,10 +74,10 @@ static void print_str(pstream_t *p, const char *s, strprops_t props)
     }
 }
 
-static void print_int(pstream_t *ps, long long n, int base, strprops_t props)
+static void print_int(pstream_t *ps, int64_t n, int32_t base, strprops_t props)
 {
     char buf[sizeof(long) * 3 + 2], *p = buf;
-    int s = 0, i;
+    int32_t s = 0, i;
 
     if (n < 0)
     {
@@ -112,10 +110,10 @@ static void print_int(pstream_t *ps, long long n, int base, strprops_t props)
     print_str(ps, buf, props);
 }
 
-static void print_unsigned(pstream_t *ps, uint64_t n, int base, strprops_t props)
+static void print_unsigned(pstream_t *ps, uint64_t n, int32_t base, strprops_t props)
 {
     char buf[sizeof(long) * 3 + 3], *p = buf;
-    int i;
+    int32_t i;
 
     while (n)
     {
@@ -155,10 +153,10 @@ static void print_unsigned(pstream_t *ps, uint64_t n, int base, strprops_t props
     print_str(ps, buf, props);
 }
 
-static int fmtnum(const char **fmt)
+static int32_t fmtnum(const char **fmt)
 {
     const char *f = *fmt;
-    int len = 0, num;
+    int32_t len = 0, num;
 
     if (*f == '-')
         ++f, ++len;
@@ -171,7 +169,7 @@ static int fmtnum(const char **fmt)
     return num;
 }
 
-int my_vsnprintf(char *buf, int size, const char *fmt, va_list va)
+int32_t my_vsnprintf(char *buf, int32_t size, const char *fmt, va_list va)
 {
     pstream_t s;
     s.buffer = buf;
@@ -180,7 +178,7 @@ int my_vsnprintf(char *buf, int size, const char *fmt, va_list va)
     while (*fmt)
     {
         char f = *fmt++;
-        int nlong = 0;
+        int32_t nlong = 0;
         strprops_t props;
         memset(&props, 0, sizeof(props));
         props.pad = ' ';
@@ -198,7 +196,7 @@ int my_vsnprintf(char *buf, int size, const char *fmt, va_list va)
             addchar(&s, '%');
             break;
         case 'c':
-            addchar(&s, va_arg(va, int));
+            addchar(&s, va_arg(va, int32_t));
             break;
         case '\0':
             --fmt;
@@ -222,7 +220,7 @@ int my_vsnprintf(char *buf, int size, const char *fmt, va_list va)
         case 'z':
             /* Here we only care that sizeof(size_t) == sizeof(long).
              * On a 32-bit platform it doesn't matter that size_t is
-             * typedef'ed to int or long; va_arg will work either way.
+             * typedef'ed to int32_t or long; va_arg will work either way.
              * Same for ptrdiff_t (%td).
              */
             nlong = 1;
@@ -231,7 +229,7 @@ int my_vsnprintf(char *buf, int size, const char *fmt, va_list va)
             switch (nlong)
             {
             case 0:
-                print_int(&s, va_arg(va, int), 10, props);
+                print_int(&s, va_arg(va, int32_t), 10, props);
                 break;
             case 1:
                 print_int(&s, va_arg(va, long), 10, props);
@@ -285,10 +283,10 @@ int my_vsnprintf(char *buf, int size, const char *fmt, va_list va)
     return s.added;
 }
 
-int my_snprintf(char *buf, int size, const char *fmt, ...)
+int32_t my_snprintf(char *buf, int32_t size, const char *fmt, ...)
 {
     va_list va;
-    int r;
+    int32_t r;
 
     va_start(va, fmt);
     r = my_vsnprintf(buf, size, fmt, va);
@@ -296,21 +294,21 @@ int my_snprintf(char *buf, int size, const char *fmt, ...)
     return r;
 }
 
-int my_vprintf(const char *fmt, va_list va)
+int32_t my_vprintf(const char *fmt, va_list va)
 {
     char buf[BUFSZ];
-    int r;
+    int32_t r;
 
     r = my_vsnprintf(buf, sizeof(buf), fmt, va);
     uart_putstr(buf);
     return r;
 }
 
-int logger(const char *fmt, ...)
+int32_t logger(const char *fmt, ...)
 {
     va_list va;
     char buf[BUFSZ];
-    int r;
+    int32_t r;
 
     va_start(va, fmt);
     r = my_vsnprintf(buf, sizeof buf, fmt, va);
@@ -321,11 +319,11 @@ int logger(const char *fmt, ...)
     return r;
 }
 
-int logger_warn(const char *fmt, ...)
+int32_t logger_warn(const char *fmt, ...)
 {
     va_list va;
     char buf[BUFSZ];
-    int r;
+    int32_t r;
 
     va_start(va, fmt);
     r = my_vsnprintf(buf, sizeof buf, fmt, va);
@@ -338,11 +336,11 @@ int logger_warn(const char *fmt, ...)
     return r;
 }
 
-int logger_error(const char *fmt, ...)
+int32_t logger_error(const char *fmt, ...)
 {
     va_list va;
     char buf[BUFSZ];
-    int r;
+    int32_t r;
 
     va_start(va, fmt);
     r = my_vsnprintf(buf, sizeof buf, fmt, va);
@@ -355,11 +353,11 @@ int logger_error(const char *fmt, ...)
     return r;
 }
 
-int logger_info(const char *fmt, ...)
+int32_t logger_info(const char *fmt, ...)
 {
     va_list va;
     char buf[BUFSZ];
-    int r;
+    int32_t r;
 
     va_start(va, fmt);
     r = my_vsnprintf(buf, sizeof buf, fmt, va);
@@ -374,9 +372,9 @@ int logger_info(const char *fmt, ...)
 
 void binstr(uint32_t x, char out[BINSTR_SZ])
 {
-    int i;
+    int32_t i;
     char *c;
-    int n;
+    int32_t n;
 
     n = sizeof(uint32_t) * 8;
     i = 0;

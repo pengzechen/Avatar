@@ -28,12 +28,12 @@ void _sleep_tick(void *args)
 	sys_sleep_tick(*(uint64_t *)args);
 }
 
-int _pro_execve(void *args)
+int32_t _pro_execve(void *args)
 {
 	return pro_execve(*(char **)args, *((char ***)args + 1), *((char ***)args + 2));
 }
 
-int _pro_fork(void *args)
+int32_t _pro_fork(void *args)
 {
 	return pro_fork();
 }

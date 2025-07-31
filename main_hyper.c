@@ -31,7 +31,7 @@ void vtcr_init(void)
 
 
 extern size_t cacheline_bytes;
-int inited_cpu_num_el2 = 0;
+int32_t inited_cpu_num_el2 = 0;
 spinlock_t lock_el2;
 
 

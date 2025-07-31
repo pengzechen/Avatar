@@ -9,19 +9,19 @@
 
 #include "aj_types.h"
 
-extern unsigned long strlen(const char *buf);
+extern size_t strlen(const char *buf);
 extern char *strcat(char *dest, const char *src);
 extern char *strcpy(char *dest, const char *src);
-extern int strcmp(const char *a, const char *b);
-extern int strncmp(const char *a, const char *b, size_t n);
-extern char *strchr(const char *s, int c);
+extern int32_t strcmp(const char *a, const char *b);
+extern int32_t strncmp(const char *a, const char *b, size_t n);
+extern char *strchr(const char *s, int32_t c);
 extern char *strstr(const char *haystack, const char *needle);
-extern void *memset(void *s, int c, size_t n);
+extern void *memset(void *s, int32_t c, size_t n);
 extern void *memcpy(void *dest, const void *src, size_t n);
-extern int memcmp(const void *s1, const void *s2, size_t n);
+extern int32_t memcmp(const void *s1, const void *s2, size_t n);
 extern void *memmove(void *dest, const void *src, size_t n);
-extern void *memchr(const void *s, int c, size_t n);
+extern void *memchr(const void *s, int32_t c, size_t n);
 
-long atol(const char *ptr);
+int64_t atol(const char *ptr);
 char *get_file_name(char *name);
 #endif /* _STRING_H */

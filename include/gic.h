@@ -106,7 +106,7 @@
 
 typedef struct gic_t
 {
-	unsigned int irq_nr;
+	uint32_t irq_nr;
 } gic_t;
 
 typedef enum
@@ -155,28 +155,28 @@ uint32_t gic_iar_irqnr(uint32_t iar);
 void gic_write_eoir(uint32_t irqstat);
 void gic_write_dir(uint32_t irqstat);
 
-void gic_ipi_send_single(int irq, int cpu);
+void gic_ipi_send_single(int32_t irq, int32_t cpu);
 
-void gic_enable_int(int vector, int enabled);
-int gic_get_enable(int vector);
-void gic_set_active(int int_id, int act);
-void gic_set_pending(int int_id, int pend, int target_cpu);
+void gic_enable_int(int32_t vector, int32_t enabled);
+int32_t gic_get_enable(int32_t vector);
+void gic_set_active(int32_t int_id, int32_t act);
+void gic_set_pending(int32_t int_id, int32_t pend, int32_t target_cpu);
 
 void gic_set_ipriority(uint32_t n, uint32_t value);
-int gic_get_ipriority(int vector);
-void gic_set_target(int int_id, uint8_t target);
-int gic_get_target(int int_id);
+int32_t gic_get_ipriority(int32_t vector);
+void gic_set_target(int32_t int_id, uint8_t target);
+int32_t gic_get_target(int32_t int_id);
 void gic_set_icfgr(uint32_t int_id, uint8_t cfg);
 
 
-uint32_t gic_make_virtual_hardware_interrupt(uint32_t vector, uint32_t pintvec, int pri, bool grp1);
-uint32_t gic_make_virtual_software_interrupt(uint32_t vector, int pri, bool grp1);
-uint32_t gic_make_virtual_software_sgi(uint32_t vector, int cpu_id, int pri, bool grp1);
+uint32_t gic_make_virtual_hardware_interrupt(uint32_t vector, uint32_t pintvec, int32_t pri, bool grp1);
+uint32_t gic_make_virtual_software_interrupt(uint32_t vector, int32_t pri, bool grp1);
+uint32_t gic_make_virtual_software_sgi(uint32_t vector, int32_t cpu_id, int32_t pri, bool grp1);
 
-uint32_t gic_read_lr(int n);
-int gic_lr_read_pri(uint32_t lr_value);
+uint32_t gic_read_lr(int32_t n);
+int32_t gic_lr_read_pri(uint32_t lr_value);
 uint32_t gic_lr_read_vid(uint32_t lr_value);
-void gic_write_lr(int n, uint32_t mask);
+void gic_write_lr(int32_t n, uint32_t mask);
 void gic_set_np_int(void);
 void gic_clear_np_int(void);
 

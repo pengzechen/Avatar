@@ -12,8 +12,8 @@ extern lpae_t ept_L1[];
 lpae_t *ept_L2_root;
 lpae_t *ept_L3_root;
 
-static int handle_mmio(stage2_fault_info_t *info, trap_frame_t *el2_ctx);
-static int handle_mmio_hack(stage2_fault_info_t *info, trap_frame_t *el2_ctx);
+static int32_t handle_mmio(stage2_fault_info_t *info, trap_frame_t *el2_ctx);
+static int32_t handle_mmio_hack(stage2_fault_info_t *info, trap_frame_t *el2_ctx);
 
 /* Return the cache property of the input gpa */
 /* It is determined depending on whether the */
@@ -45,7 +45,7 @@ void apply_ept(void *ept)
 // 2 9 9 12 最多管理4G内存
 void guest_ept_init(void)
 {
-	int index_l1, index_l2, index_l3;
+	int32_t index_l1, index_l2, index_l3;
 	unsigned long long gpa = 0;
 	unsigned long vttbr_val = (unsigned long)ept_L1;
 	unsigned long hcr;
@@ -173,7 +173,7 @@ static inline uint64_t gva_to_ipa_par(uint64_t va)
 	return par;		   // 返回转换后的物理地址
 }
 
-int gva_to_ipa(uint64_t va, uint64_t *paddr)
+int32_t gva_to_ipa(uint64_t va, uint64_t *paddr)
 {
 	uint64_t par = gva_to_ipa_par(va);
 	if (par & PAR_F)
@@ -243,7 +243,7 @@ void data_abort_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 }
 
 // 用这个函数可以在smp=1 hack的跑起linux
-int handle_mmio_hack(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
+int32_t handle_mmio_hack(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 {
 	paddr_t gpa = info->gpa;
 	if (gpa == 0x8040000)
@@ -322,7 +322,7 @@ int handle_mmio_hack(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 	// return 0;
 }
 
-int handle_mmio(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
+int32_t handle_mmio(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 {
 	paddr_t gpa = info->gpa;
 	

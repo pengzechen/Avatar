@@ -31,7 +31,7 @@ void ramfs_init()
     fs_head = (Head *)(void *)(RAM_FS_MEM_START);
     fs_head->magic = 9270682;
     // 为每个文件分配内存
-    for (int i = 0; i < MAX_FILES; i++)
+    for (int32_t i = 0; i < MAX_FILES; i++)
     {
         fs_files[i] = (File *)(RAM_FS_MEM_START + sizeof(Head) + i * sizeof(File));
         // 初始化每个文件的指针为NULL
@@ -40,10 +40,10 @@ void ramfs_init()
 }
 
 // 打开文件
-int ramfs_open(const char *name)
+int32_t ramfs_open(const char *name)
 {
     // 查找文件是否已存在
-    for (int i = 0; i < MAX_FILES; i++)
+    for (int32_t i = 0; i < MAX_FILES; i++)
     {
         if (strcmp((const char *)fs_files[i]->name, name) == 0)
         {
@@ -53,7 +53,7 @@ int ramfs_open(const char *name)
     }
 
     // 如果文件不存在，并且文件数量未满
-    for (int i = 0; i < MAX_FILES; i++)
+    for (int32_t i = 0; i < MAX_FILES; i++)
     {
         // 找到一个空槽位，初始化新文件
         if (fs_files[i]->name[0] == 0)
@@ -80,7 +80,7 @@ int ramfs_open(const char *name)
 }
 
 // 关闭文件
-int ramfs_close(int fd)
+int32_t ramfs_close(int32_t fd)
 {
     // 检查文件描述符是否合法
     if (fd < 0 || fd >= MAX_FILES || fs_files[fd]->name[0] == 0)
@@ -96,7 +96,7 @@ int ramfs_close(int fd)
 }
 
 // 读取文件
-size_t ramfs_read(int fd, void *buf, size_t count)
+size_t ramfs_read(int32_t fd, void *buf, size_t count)
 {
     if (fd < 0 || fd >= MAX_FILES || fs_files[fd]->name[0] == 0)
     {
@@ -143,7 +143,7 @@ size_t ramfs_read(int fd, void *buf, size_t count)
 }
 
 // 写入文件
-size_t ramfs_write(int fd, const void *buf, size_t count)
+size_t ramfs_write(int32_t fd, const void *buf, size_t count)
 {
     if (fd < 0 || fd >= MAX_FILES || fs_files[fd]->name[0] == 0)
     {
@@ -217,7 +217,7 @@ size_t ramfs_write(int fd, const void *buf, size_t count)
 }
 
 // 定位文件指针
-off_t ramfs_lseek(int fd, off_t offset, int whence)
+off_t ramfs_lseek(int32_t fd, off_t offset, int32_t whence)
 {
     if (fd < 0 || fd >= MAX_FILES || fs_files[fd]->name[0] == 0)
     {
@@ -254,7 +254,7 @@ off_t ramfs_lseek(int fd, off_t offset, int whence)
 }
 
 // 文件控制操作
-int ramfs_fcntl(int fd, int cmd, ...)
+int32_t ramfs_fcntl(int32_t fd, int32_t cmd, ...)
 {
     // 检查文件描述符是否有效
     if (fd < 0 || fd >= MAX_FILES || fs_files[fd]->name[0] == 0)
@@ -275,7 +275,7 @@ int ramfs_fcntl(int fd, int cmd, ...)
     case F_SETFL:
     {
         // 设置文件状态标志
-        int flags = va_arg(args, int); // 获取传入的标志
+        int32_t flags = va_arg(args, int32_t); // 获取传入的标志
 
         // 处理文件的附加操作标志
         if (flags & O_APPEND)
@@ -296,12 +296,12 @@ int ramfs_fcntl(int fd, int cmd, ...)
 }
 
 // 创建硬链接
-int ramfs_link(const char *oldname, const char *newname)
+int32_t ramfs_link(const char *oldname, const char *newname)
 {
 
     // 查找原文件
-    int old_fd = -1;
-    for (int i = 0; i < MAX_FILES; i++)
+    int32_t old_fd = -1;
+    for (int32_t i = 0; i < MAX_FILES; i++)
     {
         if (strcmp(fs_files[i]->name, oldname) == 0)
         {
@@ -316,7 +316,7 @@ int ramfs_link(const char *oldname, const char *newname)
     }
 
     // 检查新文件名是否已经存在
-    for (int i = 0; i < MAX_FILES; i++)
+    for (int32_t i = 0; i < MAX_FILES; i++)
     {
         if (strcmp(fs_files[i]->name, newname) == 0)
         {
@@ -325,7 +325,7 @@ int ramfs_link(const char *oldname, const char *newname)
     }
 
     // 添加新文件
-    for (int i = 0; i < MAX_FILES; i++)
+    for (int32_t i = 0; i < MAX_FILES; i++)
     {
         // 找到一个空槽位，初始化新文件
         if (fs_files[i]->name[0] == 0)
@@ -349,10 +349,10 @@ int ramfs_link(const char *oldname, const char *newname)
 }
 
 // 删除文件
-int ramfs_unlink(const char *name)
+int32_t ramfs_unlink(const char *name)
 {
     // 查找文件是否存在
-    for (int i = 0; i < MAX_FILES; i++)
+    for (int32_t i = 0; i < MAX_FILES; i++)
     {
         if (strcmp((const char *)fs_files[i]->name, name) == 0)
         {
@@ -389,17 +389,17 @@ int ramfs_unlink(const char *name)
 }
 
 // 重命名文件
-int ramfs_rename(const char *oldname, const char *newname)
+int32_t ramfs_rename(const char *oldname, const char *newname)
 {
     // 查找旧文件名
-    for (int i = 0; i < MAX_FILES; i++)
+    for (int32_t i = 0; i < MAX_FILES; i++)
     {
         // 找到匹配的旧文件名
         if (strcmp((const char *)fs_files[i]->name, oldname) == 0)
         {
 
             // 检查新文件名是否已经存在
-            for (int j = 0; j < MAX_FILES; j++)
+            for (int32_t j = 0; j < MAX_FILES; j++)
             {
                 if (strcmp((const char *)fs_files[j]->name, newname) == 0)
                 {
@@ -420,9 +420,9 @@ int ramfs_rename(const char *oldname, const char *newname)
 
 /*
 // 获取文件信息
-int ramfs_stat(const char *path, struct stat *st) {
+int32_t ramfs_stat(const char *path, struct stat *st) {
     // 查找文件是否存在
-    for (int i = 0; i < MAX_FILES; i++) {
+    for (int32_t i = 0; i < MAX_FILES; i++) {
         if (fs_files[i]->name[0] != 0 && strcmp((const char*)fs_files[i]->name, path) == 0) {
             // 填充 stat 结构体
             st->st_size = fs_files[i]->size;      // 文件大小
@@ -438,7 +438,7 @@ int ramfs_stat(const char *path, struct stat *st) {
 }
 
 // 获取文件状态
-int ramfs_fstat(int fd, struct stat *st) {
+int32_t ramfs_fstat(int32_t fd, struct stat *st) {
     // 检查文件描述符是否合法
     if (fd < 0 || fd >= MAX_FILES || fs_files[fd]->name[0] == 0) {
         return -1;  // 无效的文件描述符
@@ -457,7 +457,7 @@ int ramfs_fstat(int fd, struct stat *st) {
 
 /*
 DIR* opendir(const char *name) {
-    int fd = open(name, O_RDONLY);  // 打开目录文件，O_RDONLY 是只读模式
+    int32_t fd = open(name, O_RDONLY);  // 打开目录文件，O_RDONLY 是只读模式
     if (fd < 0) {
         return NULL;  // 打开失败
     }
@@ -487,8 +487,8 @@ struct dirent* readdir(DIR *dir) {
     return entry;
 }
 
-int closedir(DIR *dir) {
-    int result = close(dir->fd);  // 关闭目录文件描述符
+int32_t closedir(DIR *dir) {
+    int32_t result = close(dir->fd);  // 关闭目录文件描述符
     free(dir);  // 释放目录结构
     return result;
 }
@@ -501,17 +501,17 @@ uint8_t test_buf[70 * 1024];
 
 void basic_test()
 {
-    int fd = ramfs_open("/home/ajax/1.txt");
+    int32_t fd = ramfs_open("/home/ajax/1.txt");
     logger("fd: %d\n", fd);
 
-    int size = (uint64_t)__add_bin_end - (uint64_t)__add_bin_start;
-    int w = ramfs_write(fd, __add_bin_start, size);
+    int32_t size = (uint64_t)__add_bin_end - (uint64_t)__add_bin_start;
+    int32_t w = ramfs_write(fd, __add_bin_start, size);
     logger("write %d bytes\n", w);
 
-    int seek = ramfs_lseek(fd, 0, SEEK_SET);
+    int32_t seek = ramfs_lseek(fd, 0, SEEK_SET);
     logger("seek set 0: %d\n", seek);
 
-    int r = ramfs_read(fd, test_buf, size);
+    int32_t r = ramfs_read(fd, test_buf, size);
     logger("read %d\n", r);
 
     if (memcmp(test_buf, __add_bin_start, size) == 0)

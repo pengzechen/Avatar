@@ -128,7 +128,7 @@ static inline void __clean_and_invalidate_dcache_one(const void *addr)
     __asm__ __volatile__("dc civac, %0" ::"r"(addr));
 }
 
-static inline int invalidate_dcache_va_range(const void *p, unsigned long size)
+static inline int32_t invalidate_dcache_va_range(const void *p, unsigned long size)
 {
     size_t off;
     const void *end = p + size;
@@ -159,7 +159,7 @@ static inline int invalidate_dcache_va_range(const void *p, unsigned long size)
     return 0;
 }
 
-static inline int clean_and_invalidate_dcache_va_range(const void *p, unsigned long size)
+static inline int32_t clean_and_invalidate_dcache_va_range(const void *p, unsigned long size)
 {
     const void *end;
     dsb(sy); /* So the CPU issues all writes to the range */

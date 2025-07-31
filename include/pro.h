@@ -39,7 +39,7 @@ process_t *alloc_process(char *name);
 void process_init(process_t *pro, void *elf_addr, uint32_t priority);
 void run_process(process_t *pro);
 
-int pro_execve(char *name, char **__argv, char **__envp);
-int pro_fork(void);
+int32_t pro_execve(char *name, char **__argv, char **__envp);
+int32_t pro_fork(void);
 
 #endif // PRO_H

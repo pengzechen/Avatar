@@ -7,13 +7,13 @@
 
 // 接收环形缓冲区
 char rx_buffer[BUFFER_SIZE];
-int rx_read_idx = 0;
-int rx_write_idx = 0;
+int32_t rx_read_idx = 0;
+int32_t rx_write_idx = 0;
 
 // 发送环形缓冲区
 char tx_buffer[BUFFER_SIZE];
-int tx_read_idx = 0;
-int tx_write_idx = 0;
+int32_t tx_read_idx = 0;
+int32_t tx_write_idx = 0;
 
 static spinlock_t lock;
 
@@ -62,7 +62,7 @@ char uart_advance_getc(void)
 
 void uart_advance_putc(char c)
 {
-    int next_write_idx = (tx_write_idx + 1) % BUFFER_SIZE;
+    int32_t next_write_idx = (tx_write_idx + 1) % BUFFER_SIZE;
     while (next_write_idx == tx_read_idx)
     {
         // 等待缓冲区有空闲空间
@@ -81,7 +81,7 @@ void uart_interrupt_handler(uint64_t *)
         while (!(UART0_FR & 0x10))
         { // RX FIFO不为空
             char c = UART0_DR;
-            int next_write_idx = (rx_write_idx + 1) % BUFFER_SIZE;
+            int32_t next_write_idx = (rx_write_idx + 1) % BUFFER_SIZE;
             if (next_write_idx != rx_read_idx)
             {
                 rx_buffer[rx_write_idx] = c;

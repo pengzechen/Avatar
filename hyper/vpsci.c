@@ -8,7 +8,7 @@
 // vpsci_cpu_on: 启动 guest vcpu
 // ctx_el2: 当前 trap_frame_t
 // 返回值：0 成功，其他失败
-int vpsci_cpu_on(trap_frame_t *ctx_el2)
+int32_t vpsci_cpu_on(trap_frame_t *ctx_el2)
 {
     uint64_t cpu_id = ctx_el2->r[1];
     uint64_t entry = ctx_el2->r[2];
@@ -19,7 +19,7 @@ int vpsci_cpu_on(trap_frame_t *ctx_el2)
 
     list_node_t *iter = list_first(&vm->vcpus);
     tcb_t *task = NULL;
-    int found = 0;
+    int32_t found = 0;
     while (iter)
     {
         task = list_node_parent(iter, tcb_t, vm_node);

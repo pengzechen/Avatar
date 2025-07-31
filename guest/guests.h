@@ -20,7 +20,7 @@ typedef struct {
     uint64_t dtb_loadaddr;   // dtb 加载地址
     uint64_t fs_loadaddr;    // fs 加载地址
 
-    int smp_num;              // 虚拟 CPU 数量
+    int32_t smp_num;              // 虚拟 CPU 数量
 } guest_config_t;
 
 

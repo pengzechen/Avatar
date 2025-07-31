@@ -11,7 +11,7 @@
 typedef struct _mutex_t
 {
     tcb_t *owner;
-    int locked_count;
+    int32_t locked_count;
     list_t wait_list;
     spinlock_t lock;
 } mutex_t;

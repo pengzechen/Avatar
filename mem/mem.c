@@ -71,12 +71,12 @@ void alloctor_init() //  初始化 g_alloc
     mark_kernel_memory_allocated();
 }
 
-static uint64_t addr_alloc_page(addr_alloc_t *alloc, int page_count)
+static uint64_t addr_alloc_page(addr_alloc_t *alloc, int32_t page_count)
 {
     uint64_t addr = 0;
     // mutex_lock(&alloc->mutex);
 
-    int page_index = bitmap_find_contiguous_free(&alloc->bitmap, page_count);
+    int32_t page_index = bitmap_find_contiguous_free(&alloc->bitmap, page_count);
     if (page_index >= 0)
     {
         // logger("Allocating pages starting from index: %d\n", page_index);
@@ -93,12 +93,12 @@ static uint64_t addr_alloc_page(addr_alloc_t *alloc, int page_count)
     return addr;
 }
 
-uint64_t fs_malloc_pages(int page_count)
+uint64_t fs_malloc_pages(int32_t page_count)
 {
     uint64_t addr = 0;
     mutex_lock(&g_alloc.mutex);
 
-    int page_index = bitmap_find_contiguous_free_fs(&g_alloc.bitmap, page_count);
+    int32_t page_index = bitmap_find_contiguous_free_fs(&g_alloc.bitmap, page_count);
     if (page_index >= 0)
     {
         // logger("Allocating pages starting from index: %d\n", page_index);
@@ -115,7 +115,7 @@ uint64_t fs_malloc_pages(int page_count)
     return addr;
 }
 
-static void addr_free_page(addr_alloc_t *alloc, uint64_t addr, int page_count)
+static void addr_free_page(addr_alloc_t *alloc, uint64_t addr, int32_t page_count)
 {
     // mutex_lock(&alloc->mutex);
     uint64_t start = (uint64_t)(void *)__kernal_start;
@@ -151,7 +151,7 @@ void kfree_pages(void *addr, uint32_t pages)
 
 pte_t *find_pte(pte_t *page_dir, // 虚拟地址
                 uint64_t vaddr,
-                int alloc) // 返回虚拟地址
+                int32_t alloc) // 返回虚拟地址
 {
 
     // logger("find_pte called for vaddr: 0x%llx\n", vaddr);
@@ -229,7 +229,7 @@ pte_t *find_pte(pte_t *page_dir, // 虚拟地址
     return &pte_base[GET_PTE_INDEX(vaddr)];
 }
 
-int memory_create_map(pte_t *page_dir, uint64_t vaddr, uint64_t paddr, int count, uint64_t perm)
+int32_t memory_create_map(pte_t *page_dir, uint64_t vaddr, uint64_t paddr, int32_t count, uint64_t perm)
 {
     uint64_t start = (uint64_t)(void *)__kernal_start;
     uint64_t end = (uint64_t)(void *)__heap_flag + 0x900000ULL;
@@ -243,7 +243,7 @@ int memory_create_map(pte_t *page_dir, uint64_t vaddr, uint64_t paddr, int count
     if ((paddr < start || paddr > end) && (paddr > 0xa000000))
         logger("=>Starting memory_create_map for vaddr 0x%llx, paddr 0x%llx, count %d\n", vaddr, paddr, count);
 
-    for (int i = 0; i < count; i++)
+    for (int32_t i = 0; i < count; i++)
     {
         // 获取对应的 PTE
         pte_t *pte_entry = find_pte(page_dir, vaddr, 1);
@@ -330,14 +330,14 @@ uint64_t memory_get_paddr(pte_t *page_dir, uint64_t vaddr) // 返回物理地址
 uint64_t memory_alloc_page(pte_t *page_dir, // 虚拟地址
                            uint64_t vaddr,
                            uint64_t size,
-                           int perm)
+                           int32_t perm)
 {
     uint64_t curr_vaddr = vaddr;
-    int page_count = UP2(size, PAGE_SIZE) / PAGE_SIZE;
+    int32_t page_count = UP2(size, PAGE_SIZE) / PAGE_SIZE;
     vaddr = DOWN2(vaddr, PAGE_SIZE);
 
     // 逐页分配内存，然后建立映射关系
-    for (int i = 0; i < page_count; i++)
+    for (int32_t i = 0; i < page_count; i++)
     {
         // 分配需要的内存
         uint64_t paddr = addr_alloc_page(&g_alloc, 1);
@@ -348,7 +348,7 @@ uint64_t memory_alloc_page(pte_t *page_dir, // 虚拟地址
         }
 
         // 建立分配的内存与指定地址的关联
-        int err = memory_create_map((pte_t *)page_dir, curr_vaddr, paddr, 1, perm);
+        int32_t err = memory_create_map((pte_t *)page_dir, curr_vaddr, paddr, 1, perm);
         if (err < 0)
         {
             logger("create memory map failed. err = %d", err);
@@ -407,7 +407,7 @@ pte_t *create_uvm(void)
     return page_dir;
 }
 
-void _destroy_page_table_vm(pte_t *table, int level)
+void _destroy_page_table_vm(pte_t *table, int32_t level)
 {
     // 输出当前正在处理的层级
     // logger("Destroying page table at level %d\n", level);
@@ -416,11 +416,11 @@ void _destroy_page_table_vm(pte_t *table, int level)
         return;
 
     // 各级页表的最大项数（按实际情况调整）
-    static const int max_entries[] = {1, 4, 512, 512};
-    int entry_count = max_entries[level];
+    static const int32_t max_entries[] = {1, 4, 512, 512};
+    int32_t entry_count = max_entries[level];
 
     // 遍历当前层级的所有页表项
-    for (int i = 0; i < entry_count; i++)
+    for (int32_t i = 0; i < entry_count; i++)
     {
         pte_t *entry = &table[i];
 
@@ -473,7 +473,7 @@ void _destroy_page_table_vm(pte_t *table, int level)
     }
 }
 
-void _destroy_page_table(pte_t *table, int level)
+void _destroy_page_table(pte_t *table, int32_t level)
 {
     // 输出当前正在处理的层级
     // logger("Destroying page table at level %d\n", level);
@@ -482,11 +482,11 @@ void _destroy_page_table(pte_t *table, int level)
         return;
 
     // 各级页表的最大项数（按实际情况调整）
-    static const int max_entries[] = {1, 8, 512, 512};
-    int entry_count = max_entries[level];
+    static const int32_t max_entries[] = {1, 8, 512, 512};
+    int32_t entry_count = max_entries[level];
 
     // 遍历当前层级的所有页表项
-    for (int i = 0; i < entry_count; i++)
+    for (int32_t i = 0; i < entry_count; i++)
     {
         pte_t *entry = &table[i];
 
@@ -512,9 +512,9 @@ void _destroy_page_table(pte_t *table, int level)
     }
 }
 
-bool _copy_page_table(pte_t *src_table, pte_t *dst_table, int level)
+bool _copy_page_table(pte_t *src_table, pte_t *dst_table, int32_t level)
 {
-    for (int i = 0; i < 512; i++)
+    for (int32_t i = 0; i < 512; i++)
     {
         pte_t *src_entry = &src_table[i];
         if (!src_entry->table.is_valid)
@@ -629,7 +629,7 @@ void copydata_to_uvm(pte_t *page_dir, uint64_t vaddr, uint64_t paddr, uint64_t s
 }
 
 // 复制某个进程空间的所有内存到另一个进程空间下
-int memory_copy_uvm_4level(pte_t *dst_pgd, pte_t *src_pgd)
+int32_t memory_copy_uvm_4level(pte_t *dst_pgd, pte_t *src_pgd)
 {
 
     if (!_copy_page_table(src_pgd, dst_pgd, 0))
@@ -646,7 +646,7 @@ uint64_t mutex_test_num = 6;
 uint64_t mutex_test_add()
 {
     mutex_lock(&g_alloc.mutex);
-    for (int i = 0; i < 10000; i++)
+    for (int32_t i = 0; i < 10000; i++)
     {
         mutex_test_num++;
         mutex_test_num--;
@@ -664,7 +664,7 @@ uint64_t mutex_test_add()
 uint64_t mutex_test_minus()
 {
     mutex_lock(&g_alloc.mutex);
-    for (int i = 0; i < 10000; i++)
+    for (int32_t i = 0; i < 10000; i++)
     {
         mutex_test_num++;
         mutex_test_num--;
@@ -687,9 +687,9 @@ void mutex_test_print()
 }
 
 // 获取系统当前可用的总页数
-static int get_available_page_count(addr_alloc_t *alloc)
+static int32_t get_available_page_count(addr_alloc_t *alloc)
 {
-    int available_page_count = 0;
+    int32_t available_page_count = 0;
 
     // 锁住分配器，确保线程安全
     // mutex_lock(&alloc->mutex);
@@ -699,7 +699,7 @@ static int get_available_page_count(addr_alloc_t *alloc)
     uint64_t end_page = (0x60000000 - g_alloc.start) / g_alloc.page_size;
 
     // 遍历位图，统计未分配的页面数量
-    for (int i = start_page; i < end_page; i++)
+    for (int32_t i = start_page; i < end_page; i++)
     {
         if (!bitmap_test(&alloc->bitmap, i))
         {
@@ -753,7 +753,7 @@ void test_alloc_free()
     assert(addr != 0);
 
     // 确认分配的4页在位图中标记为已使用
-    for (int i = 0; i < 4; i++)
+    for (int32_t i = 0; i < 4; i++)
     {
         assert_bitmap_state(addr + i * PAGE_SIZE, 1);
     }
@@ -763,7 +763,7 @@ void test_alloc_free()
     logger("Freed 4 pages starting at address: 0x%llx\n", addr);
 
     // 确认释放后的4页在位图中标记为未使用
-    for (int i = 0; i < 4; i++)
+    for (int32_t i = 0; i < 4; i++)
     {
         assert_bitmap_state(addr + i * PAGE_SIZE, 0);
     }
@@ -804,7 +804,7 @@ void test_find_contiguous_free_pages()
     assert(free_page != -1);
 
     // 确认返回的连续空闲页是正确的
-    for (int i = 0; i < 4; i++)
+    for (int32_t i = 0; i < 4; i++)
     {
         assert_bitmap_state((free_page + i) * PAGE_SIZE + g_alloc.start, 0);
     }
@@ -854,9 +854,9 @@ void test_memory_create_map()
 
     uint64_t vaddr = 0x1000;                       // 虚拟地址
     uint64_t paddr = addr_alloc_page(&g_alloc, 3); // 物理地址
-    int count = 3;                                 // 映射2个页面
+    int32_t count = 3;                                 // 映射2个页面
 
-    int result = memory_create_map(page_dir, vaddr, paddr, count, 0x0); // 假设权限为0x0
+    int32_t result = memory_create_map(page_dir, vaddr, paddr, count, 0x0); // 假设权限为0x0
     assert(result == 0);
 
     // 测试映射结果：验证虚拟地址映射到的物理地址
@@ -944,7 +944,7 @@ void test_copydata_to_uvm()
     assert(total_nums == end_total_nums);
 }
 
-uint64_t mock_addr_alloc_page(void *alloc, int count)
+uint64_t mock_addr_alloc_page(void *alloc, int32_t count)
 {
     // Simulate out-of-memory failure
     return (count == 1) ? 0 : addr_alloc_page(alloc, count); // Fail for single-page allocation
@@ -988,7 +988,7 @@ void test_memory_copy_uvm_4level()
                        "1234567890abcdefghijklmnooqrstuvwxyz"
                        "1234567890abcdefghijklmnooqrstuvwxyz"
                        "1234567890abcdefghijklmnooqrstuvwxyz";
-    int data_len = strlen(data);
+    size_t data_len = strlen(data);
 
     // 准备内核数据
     uint64_t src_phys = addr_alloc_page(&g_alloc, 1);
@@ -999,7 +999,7 @@ void test_memory_copy_uvm_4level()
     // 内核将数据拷贝到指定进程空间下
     copydata_to_uvm(src_pgd, 0x1000, src_phys, data_len);
 
-    int result = memory_copy_uvm_4level(dst_pgd, src_pgd);
+    int32_t result = memory_copy_uvm_4level(dst_pgd, src_pgd);
     assert(result == 0);
 
     // Validate the data in the destination page table
