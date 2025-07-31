@@ -47,11 +47,13 @@ git clone --recurse-submodules https://github.com/pengzechen/Avatar.git
 ### step2 make application and guest
 ```bash
 make app
-cd guets/testos
+cd guest/testos/
+mkdir build
 make SMP=2 GUEST_LABEL='[guest:0] ' LOAD_ADDR=0x70200000
 mv build/kernel.bin build/guest0_kernel.bin
 make SMP=4 GUEST_LABEL='[guest:1] ' LOAD_ADDR=0x50200000
 mv build/kernel.bin build/guest1_kernel.bin
+cd ../../
 ```
 
 ### step3 compile and run
