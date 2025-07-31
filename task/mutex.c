@@ -84,7 +84,7 @@ void mutex_unlock(mutex_t *mutex)
                 tcb_t *task = list_node_parent(task_node, tcb_t, wait_node);
                 // 将该线程设为就绪状态
                 // task_add_to_readylist_tail(task);
-                run_task_oncore(task, task->priority - 1);
+                task_add_to_readylist_tail_remote(task, task->priority - 1);
 
                 // 互斥锁的锁定计数置为1
                 mutex->locked_count = 1;

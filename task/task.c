@@ -213,7 +213,7 @@ void schedule()
 
     spin_lock(&print_lock);
     // logger("core %d switch prev_task %d to next_task %d\n",
-    //     get_current_cpu_id(), prev_task->id, next_task->id);
+    //     get_current_cpu_id(), prev_task->task_id, next_task->task_id);
     spin_unlock(&print_lock);
 
     // logger("next_task page dir: 0x%llx\n", next_task->pgdir);
@@ -402,10 +402,10 @@ task_manager_t *get_task_manager()
     return &task_manager;
 }
 
-int run_task_oncore(tcb_t *task, uint32_t core_id)
+void task_add_to_readylist_tail_remote(tcb_t *task, uint32_t core_id)
 {
     if (core_id >= SMP_NUM)
-        logger("error: wrong core id\n");
+        logger_error("error: wrong core id\n");
     // logger("core id: %d\n", core_id);
     spin_lock(&task_manager.lock);
     if (task != &task_manager.idle_task[core_id])

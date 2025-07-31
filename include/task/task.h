@@ -141,7 +141,7 @@ void task_manager_init(void);
 task_manager_t *get_task_manager();
 void schedule_init_local(tcb_t *task, void *new_sp);
 void task_add_to_readylist_tail(tcb_t *task);
-int run_task_oncore(tcb_t *task, uint32_t core_id);
+void task_add_to_readylist_tail_remote(tcb_t *task, uint32_t core_id);
 void task_remove_from_readylist(tcb_t *task);
 void schedule();
 

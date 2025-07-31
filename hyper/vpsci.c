@@ -28,7 +28,8 @@ int vpsci_cpu_on(trap_frame_t *ctx_el2)
             logger_info("           found a vcpu, task id: %d\n", task->task_id);
             trap_frame_t *frame = (trap_frame_t *)task->ctx.sp_elx;
             frame->elr = entry;   // 设置 elr
-            task_add_to_readylist_tail(task); // 设置为就绪状态
+            // task_add_to_readylist_tail(task); // 设置为就绪状态
+            task_add_to_readylist_tail_remote(task, task->priority - 1);
             found = 1;
             break;
         }

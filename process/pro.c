@@ -189,7 +189,7 @@ void run_process(process_t *pro)
     {
         tcb_t *task = list_node_parent(iter, tcb_t, process_node);
         logger("run processs: task: 0x%x\n", task);
-        run_task_oncore(task, task->priority - 1);
+        task_add_to_readylist_tail_remote(task, task->priority - 1);
         // task_add_to_readylist_tail(task);
         iter = list_node_next(iter);
     }

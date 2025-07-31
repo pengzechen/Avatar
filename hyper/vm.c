@@ -226,5 +226,6 @@ void run_vm(struct _vm_t *vm)
         return;
     }
 
-    task_add_to_readylist_tail(vm->primary_vcpu);
+    // task_add_to_readylist_tail(vm->primary_vcpu);
+    task_add_to_readylist_tail_remote(vm->primary_vcpu, vm->primary_vcpu->priority - 1);
 }
