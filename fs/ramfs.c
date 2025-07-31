@@ -3,7 +3,7 @@
 #include <mem/mem.h>
 #include <lib/aj_string.h>
 #include <aj_types.h>
-#include <stdarg.h>
+#include <aj_arg.h>
 #include <os_cfg.h>
 #include <ramfs.h>
 #include <io.h>

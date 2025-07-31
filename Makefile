@@ -8,13 +8,12 @@ BUILD_DIR=build
 
 INCLUDE = -I $(realpath ./include)
 
-n = -nostdlib -nostdinc -fno-stack-protector -fno-builtin-vsnprintf -fno-builtin-snprintf -fno-builtin-printf -fexec-charset=GBK 
-
 SMP = 1
 HV  = 0
 
-CFLAGS = -g -c -O0 -fno-pie  -mgeneral-regs-only -fno-builtin-getc -fno-builtin-putc \
-	  -fno-builtin-execve -DSMP_NUM=$(SMP) -DHV=$(HV)
+CFLAGS = -g -c -O0 -fno-pie  -mgeneral-regs-only -fno-builtin -nostdinc -fno-stack-protector -DSMP_NUM=$(SMP) -DHV=$(HV)
+
+LDFLAGS += -nostdlib
 
 QEMU_ARGS = -m 4G -smp $(SMP) -cpu cortex-a72 -nographic 
 
@@ -168,7 +167,7 @@ $(BUILD_DIR)/exception_el3.o $(BUILD_DIR)/exception_el2.o $(BUILD_DIR)/exception
 $(BUILD_DIR)/syscall.o $(BUILD_DIR)/timer.o $(BUILD_DIR)/task.o $(BUILD_DIR)/context.s.o $(BUILD_DIR)/spinlock.s.o \
 $(BUILD_DIR)/vcpu.o $(BUILD_DIR)/hyper_ctx.s.o $(BUILD_DIR)/vgic.o $(BUILD_DIR)/vpsci.o $(BUILD_DIR)/vm.o $(BUILD_DIR)/list.o $(BUILD_DIR)/mem.o \
 $(BUILD_DIR)/mutex.o $(BUILD_DIR)/process.o $(BUILD_DIR)/ramfs.o
-	$(TOOL_PREFIX)ld -T $(LD) -o $(BUILD_DIR)/kernel.elf \
+	$(TOOL_PREFIX)ld $(LDFLAGS) -T $(LD) -o $(BUILD_DIR)/kernel.elf \
 	$(BUILD_DIR)/boot.s.o 			\
 	$(BUILD_DIR)/guests.s.o         \
 	$(BUILD_DIR)/test_guest.s.o     \

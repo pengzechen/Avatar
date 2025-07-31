@@ -6,7 +6,7 @@
  */
 
 
-#include <stdarg.h>
+#include <aj_arg.h>
 #include <aj_types.h>
 #include <lib/aj_string.h>
 #include <io.h>

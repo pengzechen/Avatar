@@ -3,7 +3,7 @@
 #define __IO_H__
 
 #include "aj_types.h"
-#include "stdarg.h"
+#include "aj_arg.h"
 
 void uart_early_init();
 void uart_early_putc(char c);
