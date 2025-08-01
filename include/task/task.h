@@ -55,7 +55,7 @@ typedef struct _tcb_t
     contex_t ctx;
     cpu_t *cpu_info;
 
-    uint32_t task_id; // 任务ID
+    int32_t task_id; // 任务ID
 
     uint64_t pgdir; // 页表基址
     uint64_t sp;    // 栈地址

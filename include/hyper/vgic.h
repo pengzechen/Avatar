@@ -7,17 +7,21 @@
 
 #include "aj_types.h"
 #include "vm.h"
+#include "hyper_cfg.h"
+#include "gic.h"
 
 typedef struct
 {
     uint32_t id;
+
     uint32_t vmcr; // GIC state;
-    uint32_t pending_lr[SPI_ID_MAX];
-    uint32_t saved_lr[GICH_LR_NUM];
     uint32_t saved_elsr0;
     uint32_t saved_apr;
     uint32_t saved_hcr;
-    uint32_t irq_no_mask[SPI_ID_MAX / 32]; // pendingなirqを記録する
+    uint32_t saved_lr[GICH_LR_NUM];
+    
+    uint32_t irq_pending_mask[SPI_ID_MAX / 32]; // 记录处于挂起状态的中断（IRQ）
+    uint32_t pending_lr[SPI_ID_MAX];
 
     uint32_t ppi_isenabler;
     uint8_t ppi_ipriorityr[GIC_FIRST_SPI];
@@ -32,7 +36,7 @@ struct vgic_t
     uint32_t use_irq[SPI_ID_MAX / 32]; // 一个位掩码数组，标记哪些实际中断 ID 被 VGIC 使用
     uint32_t real_pri;                 // 设置和管理实际中断的优先级
 
-    vgic_core_state_t *core_state;
+    vgic_core_state_t *core_state[VCPU_NUM_MAX];
 
     // ctrlr
     uint32_t gicd_ctlr;
@@ -57,8 +61,17 @@ void v_timer_handler();
 
 void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx);
 
-void vgic_inject(uint32_t vector);
+void vgic_inject_test(uint32_t vector);
 
-struct vgic_t *get_vgic(uint8_t);
+struct vgic_t *alloc_vgic();
+
+vgic_core_state_t *alloc_gicc() ;
+
+void vgicc_dump(vgic_core_state_t *vgicc);
+
+extern void gicc_save_core_state();
+
+extern void gicc_restore_core_state();
+
 
 #endif // __VGIC_H__

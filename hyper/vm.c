@@ -11,6 +11,7 @@
 #include "mem/mem.h"
 #include "task/task.h"
 #include "../guest/guests.h"
+#include "mmio.h"
 
 // qemu 准备启动4个核
 // 每个核跑两个 vcpu， 共8个vcpu
@@ -25,13 +26,13 @@ static uint32_t vm_num = 0;
 void v_timer_handler()
 {
     // logger("v_timer_handler\n");
-    vgic_inject(HV_TIMER_VECTOR);
+    vgic_inject_test(HV_TIMER_VECTOR);
 }
 
 void fake_console()
 {
     // logger("fake console\n");
-    vgic_inject(PL011_INT);
+    vgic_inject_test(PL011_INT);
 }
 
 void mmio_map_gicd()
@@ -112,7 +113,7 @@ struct _vm_t *alloc_vm()
     list_init(&vm->vcpus);
 
     // 获取对应的 vgic 结构体
-    vm->vgic = get_vgic(vm->vm_id);
+    vm->vgic = alloc_vgic();
 
     logger_warn("alloc vm: %d\n", vm->vm_id);
     return vm;
@@ -147,6 +148,7 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
 
     //(3) 分配vcpu
     // 创建两个 guest 任务
+    vm->vcpu_cnt = vcpu_num;
 
     //(3.1) 首核
     void *stack = kalloc_pages(2);
@@ -175,7 +177,7 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
             logger_error("Failed to allocate stack for vcpu %d\n", i);
             return;
         }
-        tcb_t *task = create_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 1));
+        tcb_t *task = create_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 0));
         if (task == NULL)
         {
             logger_error("Failed to create vcpu task %d\n", i);
@@ -208,10 +210,24 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
     mmio_map_gicd();
     mmio_map_gicc();
 
-    // 初始化虚拟 GIC （未完善）
-    virtual_gic_register_int(get_vgic(0), HV_TIMER_VECTOR, HV_TIMER_VECTOR);
+    // 初始化虚拟 GIC 
+    vm->vgic->vm = vm;
+    for (int32_t i=0; i<vm->vcpu_cnt; i++) {
+        vgic_core_state_t * state = alloc_gicc();
 
-    virtual_gic_register_int(get_vgic(0), PL011_INT, PL011_INT);
+        state->id = i;
+        state->vmcr = mmio_read32((void *)GICH_VMCR);
+        state->saved_elsr0 = mmio_read32((void *)GICH_ELSR0);
+        state->saved_apr = mmio_read32((void *)GICH_APR);
+        // state->saved_hcr = mmio_read32((void *)GICH_HCR);
+        state->saved_hcr = 0x1;
+
+        vm->vgic->core_state[i] = state;
+    }
+
+    for (int32_t i=0; i<vm->vcpu_cnt; i++) 
+        vgicc_dump(vm->vgic->core_state[i]);
+
 
     irq_install(HV_TIMER_VECTOR, v_timer_handler);
 

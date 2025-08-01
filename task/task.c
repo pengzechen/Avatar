@@ -46,6 +46,7 @@ tcb_t *alloc_tcb()
             task->ctx.sp_elx = 0LL;
 
             task->state = TASK_STATE_CREATE;
+            task->curr_vm = NULL;
 
             // 初始化任务的链表节点
             list_node_init(&task->all_node);
@@ -284,14 +285,26 @@ void vm_in()
 {
     tcb_t *curr = (tcb_t *)read_tpidr_el2();
     extern void restore_sysregs(cpu_sysregs_t *);
+    extern void gicc_restore_core_state();
+    extern void vgic_try_inject_pending(tcb_t *task);
     restore_sysregs(curr->cpu_info->sys_reg);
+
+    // 先修改内存中的值
+    if (!curr->curr_vm)
+        return;
+    vgic_try_inject_pending(curr);
+    
+    // 内存恢复到硬件
+    gicc_restore_core_state();  
 }
 
 void vm_out()
 {
     tcb_t *curr = (tcb_t *)read_tpidr_el2();
     extern void save_sysregs(cpu_sysregs_t *);
+    extern void gicc_save_core_state();
     save_sysregs(curr->cpu_info->sys_reg);
+    gicc_save_core_state();
 }
 
 void save_cpu_ctx(trap_frame_t *sp)

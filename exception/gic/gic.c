@@ -40,7 +40,7 @@ void gicc_el2_init()
 
     // bit [2] 当虚拟中断列表寄存器中没有条目时，会产生中断。
     write32((1 << 0), (void *)GICH_HCR);
-    write32((1 << 0), (void *)GICH_VMCR);
+    write32((1 << 0)|(1 << 1), (void *)GICH_VMCR);
 }
 
 // gicd g0, g1  gicc enable。smp启动首核执行

@@ -20,6 +20,7 @@ struct _vm_t
     void *stage2pg_base; // stage2 页表基地址
 
     uint64_t entry;      // 虚拟机入口地址
+    uint32_t vcpu_cnt;
     list_t vcpus;        // vcpu 列表
     tcb_t *primary_vcpu; // 主 vcpu
 
