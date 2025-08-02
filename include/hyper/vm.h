@@ -11,6 +11,7 @@
 #define VM_NAME_MAX 64
 
 typedef struct _tcb_t tcb_t;
+typedef struct _vgic_t vgic_t;
 
 struct _vm_t
 {
@@ -24,7 +25,7 @@ struct _vm_t
     list_t vcpus;        // vcpu 列表
     tcb_t *primary_vcpu; // 主 vcpu
 
-    struct vgic_t *vgic;
+    vgic_t *vgic;
 };
 
 static inline uint64_t read_sctlr_el2()
