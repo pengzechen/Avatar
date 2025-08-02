@@ -1,5 +1,6 @@
 
 #include <hyper/vgic.h>
+#include <hyper/vtimer.h>
 #include <hyper/hyper_cfg.h>
 #include <aj_types.h>
 #include "gic.h"
@@ -23,11 +24,7 @@ static uint32_t vm_num = 0;
 #define HV_TIMER_VECTOR 27
 #define PL011_INT 33
 
-void v_timer_handler()
-{
-    // logger("v_timer_handler\n");
-    vgic_hw_inject_test(HV_TIMER_VECTOR);
-}
+extern void v_timer_handler(uint64_t * nouse);
 
 void fake_console()
 {
@@ -114,6 +111,9 @@ struct _vm_t *alloc_vm()
 
     // 获取对应的 vgic 结构体
     vm->vgic = alloc_vgic();
+
+    // 获取对应的 vtimer 结构体
+    vm->vtimer = alloc_vtimer();
 
     logger_warn("alloc vm: %d\n", vm->vm_id);
     return vm;
@@ -210,7 +210,7 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
     mmio_map_gicd();
     mmio_map_gicc();
 
-    // 初始化虚拟 GIC 
+    // 初始化虚拟 GIC
     vm->vgic->vm = vm;
     for (int32_t i=0; i<vm->vcpu_cnt; i++) {
         vgic_core_state_t * state = alloc_gicc();
@@ -223,6 +223,19 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
         state->saved_hcr = 0x1;
 
         vm->vgic->core_state[i] = state;
+    }
+
+    // 初始化虚拟定时器
+    vm->vtimer->vm = vm;  // 建立双向关联
+    vm->vtimer->vcpu_cnt = vm->vcpu_cnt;
+    for (int32_t i = 0; i < vm->vcpu_cnt; i++) {
+        vtimer_core_state_t *vtimer_state = alloc_vtimer_core_state(i);
+        if (vtimer_state) {
+            vm->vtimer->core_state[i] = vtimer_state;  // 类似 vgic 的方式
+            logger_info("Allocated vtimer core state for vCPU %d\n", i);
+        } else {
+            logger_error("Failed to allocate vtimer core state for vCPU %d\n", i);
+        }
     }
 
     for (int32_t i=0; i<vm->vcpu_cnt; i++) 

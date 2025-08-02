@@ -9,6 +9,9 @@
 #include "vm.h"
 #include "hyper_cfg.h"
 #include "gic.h"
+#include "task/task.h"
+
+typedef struct _tcb_t tcb_t;
 
 typedef struct _vgic_core_state_t
 {
@@ -65,5 +68,7 @@ void vgicc_dump(vgic_core_state_t *vgicc);
 extern void gicc_save_core_state();
 
 extern void gicc_restore_core_state();
+
+void vgic_inject_ppi(tcb_t *task, int32_t irq_id);
 
 #endif // __VGIC_H__

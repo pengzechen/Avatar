@@ -12,6 +12,7 @@
 #include <thread.h>
 #include <mmio.h>
 #include <lib/aj_string.h>
+#include <exception.h>
 
 #define HIGHEST_BIT_POSITION(x)        \
     ({                                 \
@@ -30,7 +31,7 @@ static uint32_t _vgic_num = 0;
 static vgic_core_state_t _state[VCPU_NUM_MAX];
 static uint32_t _state_num = 0;
 
-void vgic_inject_sgi(tcb_t *task, uint32_t int_id);
+void vgic_inject_sgi(tcb_t *task, int32_t int_id);
 void vgic_try_inject_pending(tcb_t *task);
 
 vgic_core_state_t *get_vgicc_by_vcpu(tcb_t *task); // if task==NULL, return current task's core state structure
@@ -806,6 +807,9 @@ vgic_core_state_t *get_vgicc_by_vcpu(tcb_t *task)
     return vgicc;
 }
 
+// --------------------------------------------------------
+// ==================      Debug 使用     ==================
+// --------------------------------------------------------
 void vgicc_dump(vgic_core_state_t *vgicc)
 {
     logger_info("====== VGICC Dump (vCPU ID: %u) ======\n", vgicc->id);
@@ -986,17 +990,44 @@ void vgic_check_injection_status(void)
     logger_info("==========================================\n");
 }
 
-void vgic_inject_sgi(tcb_t *task, uint32_t int_id)
+// --------------------------------------------------------
+// ==================       中断注入       ==================
+// --------------------------------------------------------
+// 给指定vcpu注入一个sgi中断
+void vgic_inject_sgi(tcb_t *task, int32_t int_id)
 {
-    // assert(int_id < 16);  // SGI 范围应是 0~15
+    // 参数检查
+    if (int_id < 0 || int_id > 15) {
+        logger_error("Invalid SGI ID: %d (must be 0-15)\n", int_id);
+        return;
+    }
+
+    if (!task) {
+        logger_error("Invalid task for SGI injection\n");
+        return;
+    }
+
+    if (!task->curr_vm) {
+        logger_error("Task is not a VM task\n");
+        return;
+    }
 
     vgic_core_state_t *vgicc = get_vgicc_by_vcpu(task);
+    if (!vgicc) {
+        logger_error("Failed to get VGICC for task %d\n", task->task_id);
+        return;
+    }
 
     // 如果已 pending，不重复注入
     if (vgic_is_irq_pending(vgicc, int_id))
     {
         logger_warn("SGI %d already pending on vCPU %d, skip inject.\n", int_id, task->task_id);
         return;
+    }
+
+    // 检查中断是否使能
+    if (!(vgicc->sgi_ppi_isenabler & (1U << int_id))) {
+        logger_warn("SGI %d is disabled on vCPU %d, still inject to pending.\n", int_id, task->task_id);
     }
 
     // 标记为 pending
@@ -1010,12 +1041,64 @@ void vgic_inject_sgi(tcb_t *task, uint32_t int_id)
     {
         logger_info("[pcpu: %d]: (Is running)Try to inject pending SGI for vCPU: %d (task: %d)\n",
                     get_current_cpu_id(), get_vcpuid(task), task->task_id);
-        vgic_try_inject_pending(task); // 你可以实现这个函数尝试把 pending 的 SGI 填进 GICH_LR
+        vgic_try_inject_pending(task);
     }
 
     // vgicc_dump(vgicc);
 }
 
+// 给指定vcpu注入一个ppi中断
+void vgic_inject_ppi(tcb_t *task, int32_t irq_id) {
+    // irq_id: 16~31
+
+    // 参数检查
+    if (irq_id < 16 || irq_id > 31) {
+        logger_error("Invalid PPI ID: %d (must be 16-31)\n", irq_id);
+        return;
+    }
+
+    if (!task) {
+        logger_error("Invalid task for PPI injection\n");
+        return;
+    }
+
+    if (!task->curr_vm) {
+        logger_error("Task is not a VM task\n");
+        return;
+    }
+
+    vgic_core_state_t *vgicc = get_vgicc_by_vcpu(task);
+    if (!vgicc) {
+        logger_error("Failed to get VGICC for task %d\n", task->task_id);
+        return;
+    }
+
+    // 检查中断是否已经 pending
+    if (vgic_is_irq_pending(vgicc, irq_id)) {
+        logger_warn("PPI %d already pending on vCPU %d, skip inject.\n", irq_id, task->task_id);
+        return;
+    }
+
+    // 检查中断是否使能
+    if (!(vgicc->sgi_ppi_isenabler & (1U << irq_id))) {
+        logger_warn("PPI %d is disabled on vCPU %d, still inject to pending.\n", irq_id, task->task_id);
+    }
+
+    // 标记为 pending
+    vgic_set_irq_pending(vgicc, irq_id);
+
+    logger_info("[pcpu: %d]: Inject PPI id: %d to vCPU: %d(task: %d)\n",
+        get_current_cpu_id(), irq_id, get_vcpuid(task), task->task_id);
+
+    // 如果当前正在运行此 vCPU，尝试立即注入到 GICH_LR
+    if (task == (tcb_t *)read_tpidr_el2()) {
+        logger_info("[pcpu: %d]: (Is running)Try to inject pending PPI for vCPU: %d (task: %d)\n",
+                    get_current_cpu_id(), get_vcpuid(task), task->task_id);
+        vgic_try_inject_pending(task);
+    }
+}
+
+// vm进入的时候把 pending 的中断注入到 GICH_LR
 void vgic_try_inject_pending(tcb_t *task)
 {
     vgic_core_state_t *vgicc = get_vgicc_by_vcpu(task);
@@ -1023,7 +1106,8 @@ void vgic_try_inject_pending(tcb_t *task)
     // 使用软件保存的 ELSR0 来判断空闲的 LR
     uint64_t elsr = vgicc->saved_elsr0; // 目前你只有 ELSR0，够用（最多 32 个 LR）
 
-    for (int i = 0; i < MAX_SGI_ID; ++i)
+    // 处理 SGI (0-15) 和 PPI (16-31)
+    for (int i = 0; i < 32; ++i)
     {
         if (!vgic_is_irq_pending(vgicc, i))
             continue;
@@ -1049,12 +1133,21 @@ void vgic_try_inject_pending(tcb_t *task)
 
         if (freelr < 0)
         {
-            logger_warn("No free LR for SGI %d (in memory), delay inject.\n", i);
+            logger_warn("No free LR for IRQ %d (in memory), delay inject.\n", i);
             break;
         }
 
         int32_t vcpu_id = get_vcpuid(task);
-        uint32_t lr_val = gic_make_virtual_software_sgi(i, i, /*cpu_id=*/vcpu_id, 0);
+        uint32_t lr_val;
+
+        // 根据中断类型创建不同的 LR 值
+        if (i < 16) {
+            // SGI: 使用软件中断格式
+            lr_val = gic_make_virtual_software_sgi(i, /*cpu_id=*/vcpu_id, 0, 0);
+        } else {
+            // PPI: 使用硬件中断格式
+            lr_val = gic_make_virtual_hardware_interrupt(i, i, 0, 0);
+        }
 
         // 将虚拟中断写入到内存中的 LR
         vgicc->saved_lr[freelr] = lr_val;
@@ -1064,8 +1157,9 @@ void vgic_try_inject_pending(tcb_t *task)
         // 清除 pending 标志
         vgic_clear_irq_pending(vgicc, i);
 
-        logger_info("[pcpu: %d]: Injected SGI %d into LR%d for vCPU: %d (task: %d), LR value: 0x%lx\n",
-                    get_current_cpu_id(), i, freelr, vcpu_id, task->task_id, lr_val);
+        const char *irq_type = (i < 16) ? "SGI" : "PPI";
+        logger_info("[pcpu: %d]: Injected %s %d into LR%d for vCPU: %d (task: %d), LR value: 0x%x\n",
+                    get_current_cpu_id(), irq_type, i, freelr, vcpu_id, task->task_id, lr_val);
 
         // dev use
         // gicc_restore_core_state();
@@ -1075,6 +1169,9 @@ void vgic_try_inject_pending(tcb_t *task)
     }
 }
 
+// --------------------------------------------------------
+// ==================    GICC 状态保存     ==================
+// --------------------------------------------------------
 void gicc_save_core_state()
 {
     tcb_t *curr = (tcb_t *)read_tpidr_el2();
@@ -1184,7 +1281,7 @@ void vgic_sw_inject_test(uint32_t vector)
         return;
     }
 
-    uint32_t mask = gic_make_virtual_software_sgi(vector, vector, /*cpu_id=*/0, 0);
+    uint32_t mask = gic_make_virtual_software_sgi(vector, /*cpu_id=*/0, 0, 0);
 
     uint32_t elsr0 = gic_elsr0();
     uint32_t elsr1 = gic_elsr1();

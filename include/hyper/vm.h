@@ -12,6 +12,7 @@
 
 typedef struct _tcb_t tcb_t;
 typedef struct _vgic_t vgic_t;
+typedef struct _vtimer_t vtimer_t;
 
 struct _vm_t
 {
@@ -26,6 +27,7 @@ struct _vm_t
     tcb_t *primary_vcpu; // 主 vcpu
 
     vgic_t *vgic;
+    vtimer_t *vtimer;  // 虚拟定时器
 };
 
 static inline uint64_t read_sctlr_el2()
