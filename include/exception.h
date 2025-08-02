@@ -102,6 +102,22 @@ union hsr
         unsigned long len : 1;   /* Instruction length */
         unsigned long ec : 6;    /* Exception Class */
     } dabt;                      /* HSR_EC_DATA_ABORT_* */
+
+    struct hsr_sysreg
+    {
+        unsigned long op2 : 3;       /* Op2 */
+        unsigned long op1 : 3;       /* Op1 */
+        unsigned long crn : 4;       /* CRn */
+        unsigned long rt : 5;        /* Rt */
+        unsigned long crm : 4;       /* CRm */
+        unsigned long direction : 1; /* Direction (0=MRS, 1=MSR) */
+        unsigned long op0 : 2;       /* Op0 */
+        unsigned long res0 : 3;      /* Reserved */
+        unsigned long cc : 4;        /* Condition Code */
+        unsigned long ccvalid : 1;   /* CC Valid */
+        unsigned long len : 1;       /* Instruction length */
+        unsigned long ec : 6;        /* Exception Class */
+    } sysreg;                        /* HSR_EC_SYSREG */
 };
 
 enum stage2_fault_reson_t

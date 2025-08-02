@@ -1021,13 +1021,13 @@ void vgic_inject_sgi(tcb_t *task, int32_t int_id)
     // 如果已 pending，不重复注入
     if (vgic_is_irq_pending(vgicc, int_id))
     {
-        logger_warn("SGI %d already pending on vCPU %d, skip inject.\n", int_id, task->task_id);
+        // logger_warn("SGI %d already pending on vCPU %d, skip inject.\n", int_id, task->task_id);
         return;
     }
 
     // 检查中断是否使能
     if (!(vgicc->sgi_ppi_isenabler & (1U << int_id))) {
-        logger_warn("SGI %d is disabled on vCPU %d, still inject to pending.\n", int_id, task->task_id);
+        // logger_warn("SGI %d is disabled on vCPU %d, still inject to pending.\n", int_id, task->task_id);
     }
 
     // 标记为 pending
@@ -1075,25 +1075,25 @@ void vgic_inject_ppi(tcb_t *task, int32_t irq_id) {
 
     // 检查中断是否已经 pending
     if (vgic_is_irq_pending(vgicc, irq_id)) {
-        logger_warn("PPI %d already pending on vCPU %d, skip inject.\n", irq_id, task->task_id);
+        // logger_warn("PPI %d already pending on vCPU %d, skip inject.\n", irq_id, task->task_id);
         return;
     }
 
     // 检查中断是否使能
     if (!(vgicc->sgi_ppi_isenabler & (1U << irq_id))) {
-        logger_warn("PPI %d is disabled on vCPU %d, still inject to pending.\n", irq_id, task->task_id);
+        // logger_warn("PPI %d is disabled on vCPU %d, still inject to pending.\n", irq_id, task->task_id);
     }
 
     // 标记为 pending
     vgic_set_irq_pending(vgicc, irq_id);
 
-    logger_info("[pcpu: %d]: Inject PPI id: %d to vCPU: %d(task: %d)\n",
-        get_current_cpu_id(), irq_id, get_vcpuid(task), task->task_id);
+    // logger_info("[pcpu: %d]: Inject PPI id: %d to vCPU: %d(task: %d)\n",
+    //     get_current_cpu_id(), irq_id, get_vcpuid(task), task->task_id);
 
     // 如果当前正在运行此 vCPU，尝试立即注入到 GICH_LR
     if (task == (tcb_t *)read_tpidr_el2()) {
-        logger_info("[pcpu: %d]: (Is running)Try to inject pending PPI for vCPU: %d (task: %d)\n",
-                    get_current_cpu_id(), get_vcpuid(task), task->task_id);
+        // logger_info("[pcpu: %d]: (Is running)Try to inject pending PPI for vCPU: %d (task: %d)\n",
+        //             get_current_cpu_id(), get_vcpuid(task), task->task_id);
         vgic_try_inject_pending(task);
     }
 }
@@ -1133,7 +1133,7 @@ void vgic_try_inject_pending(tcb_t *task)
 
         if (freelr < 0)
         {
-            logger_warn("No free LR for IRQ %d (in memory), delay inject.\n", i);
+            // logger_warn("No free LR for IRQ %d (in memory), delay inject.\n", i);
             break;
         }
 
@@ -1158,8 +1158,8 @@ void vgic_try_inject_pending(tcb_t *task)
         vgic_clear_irq_pending(vgicc, i);
 
         const char *irq_type = (i < 16) ? "SGI" : "PPI";
-        logger_info("[pcpu: %d]: Injected %s %d into LR%d for vCPU: %d (task: %d), LR value: 0x%x\n",
-                    get_current_cpu_id(), irq_type, i, freelr, vcpu_id, task->task_id, lr_val);
+        // logger_info("[pcpu: %d]: Injected %s %d into LR%d for vCPU: %d (task: %d), LR value: 0x%x\n",
+        //             get_current_cpu_id(), irq_type, i, freelr, vcpu_id, task->task_id, lr_val);
 
         // dev use
         // gicc_restore_core_state();

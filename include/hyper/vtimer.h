@@ -4,6 +4,7 @@
 
 #include <aj_types.h>
 #include "task/task.h"
+#include "exception.h"
 
 typedef struct _tcb_t tcb_t;
 
@@ -45,6 +46,48 @@ static inline uint64_t read_cntvct_el0(void)
     return val;
 }
 
+// 写 CNTV_CTL_EL0 （虚拟定时器控制寄存器）
+static inline void write_cntv_ctl_el0(uint64_t val)
+{
+    asm volatile("msr cntv_ctl_el0, %0" : : "r"(val));
+}
+
+// 读 CNTV_CTL_EL0
+static inline uint64_t read_cntv_ctl_el0(void)
+{
+    uint64_t val;
+    asm volatile("mrs %0, cntv_ctl_el0" : "=r"(val));
+    return val;
+}
+
+// 写 CNTV_TVAL_EL0 （虚拟定时器定时值寄存器）
+static inline void write_cntv_tval_el0(uint64_t val)
+{
+    asm volatile("msr cntv_tval_el0, %0" : : "r"(val));
+}
+
+// 读 CNTV_TVAL_EL0
+static inline uint64_t read_cntv_tval_el0(void)
+{
+    uint64_t val;
+    asm volatile("mrs %0, cntv_tval_el0" : "=r"(val));
+    return val;
+}
+
+// 写 CNTV_CVAL_EL0 （虚拟定时器比较值寄存器）
+static inline void write_cntv_cval_el0(uint64_t val)
+{
+    asm volatile("msr cntv_cval_el0, %0" : : "r"(val));
+}
+
+// 读 CNTV_CVAL_EL0
+static inline uint64_t read_cntv_cval_el0(void)
+{
+    uint64_t val;
+    asm volatile("mrs %0, cntv_cval_el0" : "=r"(val));
+    return val;
+}
+
 
 // 函数声明
 void vtimer_global_init(void);
@@ -67,5 +110,8 @@ uint32_t vtimer_read_cntv_ctl(vtimer_core_state_t *vt);
 
 // 主机定时器中断处理（保持原有签名）
 void v_timer_handler(uint64_t * nouse);
+
+// 系统寄存器访问处理
+bool handle_vtimer_sysreg_access(stage2_fault_info_t *info, trap_frame_t *ctx);
 
 #endif // __VTIMER_H__
