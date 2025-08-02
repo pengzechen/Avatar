@@ -37,6 +37,56 @@ vgic_core_state_t *get_vgicc_by_vcpu(tcb_t *task); // if task==NULL, return curr
 int32_t get_vcpuid(tcb_t *task);                   // if task==NULL, return current task's vcpu id
 list_t *get_vcpus(tcb_t *task);                    // if task==NULL, return current vm's vcpus
 
+// 辅助函数：操作 irq_pending_mask 位图
+static inline bool vgic_is_irq_pending(vgic_core_state_t *vgicc, uint32_t irq_id)
+{
+    uint32_t word_idx = irq_id / 32;
+    uint32_t bit_idx = irq_id % 32;
+    return (vgicc->irq_pending_mask[word_idx] & (1U << bit_idx)) != 0;
+}
+
+static inline void vgic_set_irq_pending(vgic_core_state_t *vgicc, uint32_t irq_id)
+{
+    uint32_t word_idx = irq_id / 32;
+    uint32_t bit_idx = irq_id % 32;
+    vgicc->irq_pending_mask[word_idx] |= (1U << bit_idx);
+}
+
+static inline void vgic_clear_irq_pending(vgic_core_state_t *vgicc, uint32_t irq_id)
+{
+    uint32_t word_idx = irq_id / 32;
+    uint32_t bit_idx = irq_id % 32;
+    vgicc->irq_pending_mask[word_idx] &= ~(1U << bit_idx);
+}
+
+// 获取 SGI/PPI 的完整 pending 状态（软件 + 硬件）
+static uint32_t vgic_get_sgi_ppi_pending_status(vgic_core_state_t *vgicc)
+{
+    uint32_t pending_status = 0;
+
+    // 1. 从软件设置的 pending 状态开始
+    pending_status = vgicc->irq_pending_mask[0];
+
+    // 2. 检查 GICH_LR 中的硬件注入 pending 状态
+    for (int32_t lr = 0; lr < GICH_LR_NUM; lr++)
+    {
+        uint32_t lr_val = vgicc->saved_lr[lr];
+        if (lr_val != 0) // LR 不为空
+        {
+            uint32_t vid = lr_val & 0x3ff; // Virtual ID
+            uint32_t state = (lr_val >> 28) & 0x3; // State field
+
+            // 如果是 SGI/PPI 且处于 pending 状态
+            if (vid < 32 && (state == 1)) // state=1 表示 pending
+            {
+                pending_status |= (1U << vid);
+            }
+        }
+    }
+
+    return pending_status;
+}
+
 vgic_t *alloc_vgic()
 {
     if (_vgic_num >= VM_NUM_MAX)
@@ -220,35 +270,80 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             }
 
             /* is pend reg*/
+            // SGI+PPI set pending (GICD_ISPENDER(0)) - W1S
             else if (gpa == GICD_ISPENDER(0))
             {
-                logger_info("      <<< gicd emu write GICD_ISPENDER(0)\n");
-            }
-            else if (GICD_ISPENDER(1) <= gpa && gpa < GICD_ICPENDER(0))
-            {
-                logger_info("      <<< gicd emu write GICD_ISPENDER(i)\n");
+                int32_t reg_num = info->hsr.dabt.reg;
+                uint32_t r = el2_ctx->r[reg_num];
+                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
+
+                vgic_core_state_t *vgicc = get_vgicc_by_vcpu(curr);
+
+                // W1S: 写1置位，写0无效果
+                // 对每个要设置的位进行处理
+                for (int32_t bit = 0; bit < 32; bit++)
+                {
+                    if (r & (1U << bit))
+                    {
+                        vgic_set_irq_pending(vgicc, bit);
+                        logger_info("Set SGI/PPI %d pending\n", bit);
+                    }
+                }
+
+                logger_info("      <<< gicd emu write GICD_ISPENDER(0): ");
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d\n", gpa, r, len);
             }
             /* ic pend reg*/
+            // SGI+PPI clear pending (GICD_ICPENDER(0)) - W1C
             else if (gpa == GICD_ICPENDER(0))
             {
                 int32_t reg_num = info->hsr.dabt.reg;
-                int32_t r = el2_ctx->r[reg_num];
+                uint32_t r = el2_ctx->r[reg_num];
                 int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
 
-                gic_set_pending(HIGHEST_BIT_POSITION(r), 0, 0);
+                vgic_core_state_t *vgicc = get_vgicc_by_vcpu(curr);
+
+                // W1C: 写1清零，写0无效果
+                // 对每个要清除的位进行处理
+                for (int32_t bit = 0; bit < 32; bit++)
+                {
+                    if (r & (1U << bit))
+                    {
+                        vgic_clear_irq_pending(vgicc, bit);
+
+                        // 同时需要清除 GICH_LR 中对应的 pending 状态
+                        for (int32_t lr = 0; lr < GICH_LR_NUM; lr++)
+                        {
+                            uint32_t lr_val = vgicc->saved_lr[lr];
+                            uint32_t vid = lr_val & 0x3ff; // Virtual ID
+                            if (vid == bit && (lr_val & (1U << 28))) // 检查是否是 pending 状态
+                            {
+                                // 清除 LR 中的 pending 位 (bit 28)
+                                vgicc->saved_lr[lr] &= ~(1U << 28);
+                                // 标记该 LR 为空闲
+                                vgicc->saved_elsr0 |= (1U << lr);
+                                logger_info("Cleared LR%d for SGI/PPI %d\n", lr, bit);
+                                break;
+                            }
+                        }
+
+                        logger_info("Clear SGI/PPI %d pending\n", bit);
+                    }
+                }
+
                 logger_info("      <<< gicd emu write GICD_ICPENDER(0): ");
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r));
+                logger("gpa: 0x%llx, r: 0x%llx, len: %d\n", gpa, r, len);
             }
+            
+            // SPI set pending (GICD_ISPENDER(1) and above)
+            else if (GICD_ISPENDER(1) <= gpa && gpa < GICD_ICPENDER(0))
+            {
+                logger_info("      <<< gicd emu write GICD_ISPENDER(spi) - not implemented\n");
+            }
+            // SPI clear pending (GICD_ICPENDER(1) and above)
             else if (GICD_ICPENDER(1) <= gpa && gpa < GICD_ISACTIVER(0))
             {
-                int32_t reg_num = info->hsr.dabt.reg;
-                int32_t r = el2_ctx->r[reg_num];
-                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
-                int32_t id = ((gpa - GICD_ICPENDER(0)) / 0x4) * 32;
-
-                gic_set_pending(HIGHEST_BIT_POSITION(r) + id, 0, 0);
-                logger_info("      <<< gicd emu write GICD_ICPENDER(i): ");
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d, int %d\n", gpa, r, len, HIGHEST_BIT_POSITION(r) + id);
+                logger_info("      <<< gicd emu write GICD_ICPENDER(spi) - not implemented\n");
             }
 
             /* I priority reg*/
@@ -530,22 +625,37 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             }
 
             /* is pend reg*/
+            // SGI+PPI pending read (GICD_ISPENDER(0))
             else if (gpa == GICD_ISPENDER(0))
             {
-                logger_warn("      >>> gicd emu read GICD_ISPENDER(0)\n");
-            }
-            else if (GICD_ISPENDER(1) <= gpa && gpa < GICD_ICPENDER(0))
-            {
-                logger_warn("      >>> gicd emu read GICD_ISPENDER(i)\n");
+                vgic_core_state_t *vgicc = get_vgicc_by_vcpu(curr);
+                uint32_t pending_status = vgic_get_sgi_ppi_pending_status(vgicc);
+                vgicd_read(info, el2_ctx, &pending_status);
+
+                logger_warn("      >>> gicd emu read GICD_ISPENDER(0): ");
+                logger("pending_status: 0x%x\n", pending_status);
             }
             /* ic pend reg*/
+            // SGI+PPI pending read (GICD_ICPENDER(0)) - 返回相同的值
             else if (gpa == GICD_ICPENDER(0))
             {
-                logger_warn("      >>> gicd emu read GICD_ICPENDER(0)\n");
+                vgic_core_state_t *vgicc = get_vgicc_by_vcpu(curr);
+                uint32_t pending_status = vgic_get_sgi_ppi_pending_status(vgicc);
+                vgicd_read(info, el2_ctx, &pending_status);
+
+                logger_warn("      >>> gicd emu read GICD_ICPENDER(0): ");
+                logger("pending_status: 0x%x\n", pending_status);
             }
+            
+            // SPI pending read (GICD_ISPENDER(1) and above)
+            else if (GICD_ISPENDER(1) <= gpa && gpa < GICD_ICPENDER(0))
+            {
+                logger_warn("      >>> gicd emu read GICD_ISPENDER(spi) - not implemented\n");
+            }
+            // SPI pending read (GICD_ICPENDER(1) and above)
             else if (GICD_ICPENDER(1) <= gpa && gpa < GICD_IPRIORITYR(0))
             {
-                logger_warn("      >>> gicd emu read GICD_ICPENDER(i)\n");
+                logger_warn("      >>> gicd emu read GICD_ICPENDER(spi) - not implemented\n");
             }
 
             /* I priority reg*/
@@ -713,9 +823,9 @@ void vgicc_dump(vgic_core_state_t *vgicc)
     logger_info("Pending IRQs:\n");
     for (int32_t i = 0; i < SPI_ID_MAX; i++)
     {
-        if (vgicc->irq_pending_mask[i])
+        if (vgic_is_irq_pending(vgicc, i))
         {
-            logger_info("  IRQ %d is pending (val=0x%08x)\n", i, vgicc->irq_pending_mask[i]);
+            logger_info("  IRQ %d is pending\n", i);
         }
     }
 
@@ -883,14 +993,14 @@ void vgic_inject_sgi(tcb_t *task, uint32_t int_id)
     vgic_core_state_t *vgicc = get_vgicc_by_vcpu(task);
 
     // 如果已 pending，不重复注入
-    if (vgicc->irq_pending_mask[int_id])
+    if (vgic_is_irq_pending(vgicc, int_id))
     {
         logger_warn("SGI %d already pending on vCPU %d, skip inject.\n", int_id, task->task_id);
         return;
     }
 
     // 标记为 pending
-    vgicc->irq_pending_mask[int_id] = 1;
+    vgic_set_irq_pending(vgicc, int_id);
 
     logger_info("[pcpu: %d]: Inject SGI id: %d to vCPU: %d(task: %d)\n",
                 get_current_cpu_id(), int_id, get_vcpuid(task), task->task_id);
@@ -915,7 +1025,7 @@ void vgic_try_inject_pending(tcb_t *task)
 
     for (int i = 0; i < MAX_SGI_ID; ++i)
     {
-        if (!vgicc->irq_pending_mask[i])
+        if (!vgic_is_irq_pending(vgicc, i))
             continue;
 
         int freelr = -1;
@@ -951,7 +1061,8 @@ void vgic_try_inject_pending(tcb_t *task)
         // 标记该 LR 不再空闲（ELSR 置位为 0 表示 occupied）
         vgicc->saved_elsr0 &= ~(1U << freelr);
 
-        vgicc->irq_pending_mask[i] = 0;
+        // 清除 pending 标志
+        vgic_clear_irq_pending(vgicc, i);
 
         logger_info("[pcpu: %d]: Injected SGI %d into LR%d for vCPU: %d (task: %d), LR value: 0x%lx\n",
                     get_current_cpu_id(), i, freelr, vcpu_id, task->task_id, lr_val);
