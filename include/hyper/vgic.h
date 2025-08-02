@@ -61,7 +61,8 @@ void v_timer_handler();
 
 void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx);
 
-void vgic_inject_test(uint32_t vector);
+void vgic_hw_inject_test(uint32_t vector);
+void vgic_sw_inject_test(uint32_t vector);
 
 struct vgic_t *alloc_vgic();
 

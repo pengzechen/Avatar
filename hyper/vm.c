@@ -26,13 +26,13 @@ static uint32_t vm_num = 0;
 void v_timer_handler()
 {
     // logger("v_timer_handler\n");
-    vgic_inject_test(HV_TIMER_VECTOR);
+    vgic_hw_inject_test(HV_TIMER_VECTOR);
 }
 
 void fake_console()
 {
     // logger("fake console\n");
-    vgic_inject_test(PL011_INT);
+    vgic_hw_inject_test(PL011_INT);
 }
 
 void mmio_map_gicd()
@@ -177,7 +177,7 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
             logger_error("Failed to allocate stack for vcpu %d\n", i);
             return;
         }
-        tcb_t *task = create_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 0));
+        tcb_t *task = create_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 1));
         if (task == NULL)
         {
             logger_error("Failed to create vcpu task %d\n", i);
