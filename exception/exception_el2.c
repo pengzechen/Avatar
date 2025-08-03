@@ -17,19 +17,55 @@ void advance_pc(stage2_fault_info_t *info, trap_frame_t *context)
 }
 
 void decode_spsr(uint64_t spsr) {
-    uint64_t el = (spsr >> 2) & 0x3;
-    const char *el_str = (el == 0) ? "EL0" :
-                         (el == 1) ? "EL1t" :
-                         (el == 2) ? "EL1h" :
-                         "EL2h";
+    // M[3:0] - Exception level and SP selection (bits 3:0)
+    uint64_t m_field = spsr & 0xF;
+    const char *el_str;
 
-    logger("SPSR_EL2 decode:\n");
-    logger("  Previous EL: %s\n", el_str);
-    logger("  Execution state: %s\n", ((spsr >> 4) & 1) ? "FIQ masked" : "FIQ enabled");
-    logger("  IRQ masked: %s\n", ((spsr >> 5) & 1) ? "Yes" : "No");
-    logger("  SError masked: %s\n", ((spsr >> 6) & 1) ? "Yes" : "No");
-    logger("  Debug masked: %s\n", ((spsr >> 7) & 1) ? "Yes" : "No");
-    logger("  Instruction set: %s\n", ((spsr >> 8) & 1) ? "AArch32" : "AArch64");
+    switch (m_field) {
+        case 0x0: el_str = "EL0t"; break;      // EL0 using SP_EL0
+        case 0x4: el_str = "EL1t"; break;      // EL1 using SP_EL0
+        case 0x5: el_str = "EL1h"; break;      // EL1 using SP_EL1
+        case 0x8: el_str = "EL2t"; break;      // EL2 using SP_EL0
+        case 0x9: el_str = "EL2h"; break;      // EL2 using SP_EL2
+        case 0xC: el_str = "EL3t"; break;      // EL3 using SP_EL0
+        case 0xD: el_str = "EL3h"; break;      // EL3 using SP_EL3
+        default:  el_str = "Reserved"; break;
+    }
+
+    logger("SPSR_EL2 decode (0x%llx):\n", spsr);
+    logger("  M[3:0]: 0x%x -> %s\n", (uint32_t)m_field, el_str);
+    logger("  M[4] (Execution state): %s\n", ((spsr >> 4) & 1) ? "AArch32" : "AArch64");
+    logger("  F (FIQ masked): %s\n", ((spsr >> 6) & 1) ? "Yes" : "No");
+    logger("  I (IRQ masked): %s\n", ((spsr >> 7) & 1) ? "Yes" : "No");
+    logger("  A (SError masked): %s\n", ((spsr >> 8) & 1) ? "Yes" : "No");
+    logger("  D (Debug masked): %s\n", ((spsr >> 9) & 1) ? "Yes" : "No");
+
+    // 额外的状态位
+    if ((spsr >> 10) & 0x3) {
+        logger("  BTYPE: 0x%x\n", (uint32_t)((spsr >> 10) & 0x3));
+    }
+    if ((spsr >> 20) & 1) {
+        logger("  SS (Software Step): Set\n");
+    }
+    if ((spsr >> 21) & 1) {
+        logger("  PAN (Privileged Access Never): Set\n");
+    }
+    if ((spsr >> 22) & 1) {
+        logger("  UAO (User Access Override): Set\n");
+    }
+    if ((spsr >> 23) & 1) {
+        logger("  DIT (Data Independent Timing): Set\n");
+    }
+    if ((spsr >> 24) & 1) {
+        logger("  TCO (Tag Check Override): Set\n");
+    }
+
+    // 条件标志位
+    logger("  NZCV: N=%d Z=%d C=%d V=%d\n",
+           (int)((spsr >> 31) & 1),  // N
+           (int)((spsr >> 30) & 1),  // Z
+           (int)((spsr >> 29) & 1),  // C
+           (int)((spsr >> 28) & 1)); // V
 }
 
 

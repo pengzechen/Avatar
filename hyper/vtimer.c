@@ -21,6 +21,9 @@ static uint32_t _vtimer_num = 0;
 static vtimer_core_state_t _vtimer_states[VM_NUM_MAX * VCPU_NUM_MAX];
 static uint32_t _vtimer_state_num = 0;
 
+// 每个pcpu的轮循状态：记录下一次应该注入的vcpu索引
+static uint32_t _pcpu_round_robin_index[SMP_NUM] = {0};
+
 // --------------------------------------------------------
 // ==================    初始化函数    ==================
 // --------------------------------------------------------
@@ -29,6 +32,7 @@ void vtimer_global_init(void)
 {
     memset(_vtimers, 0, sizeof(_vtimers));
     memset(_vtimer_states, 0, sizeof(_vtimer_states));
+    memset(_pcpu_round_robin_index, 0, sizeof(_pcpu_round_robin_index));
     _vtimer_num = 0;
     _vtimer_state_num = 0;
     logger_info("Virtual timer global initialized\n");
@@ -355,42 +359,112 @@ bool handle_vtimer_sysreg_access(stage2_fault_info_t *info, trap_frame_t *ctx)
     return false;  // 不是定时器寄存器访问
 }
 
-
+// hack code
 // per-pcpu
 void v_timer_handler(uint64_t * nouse)
 {
     uint64_t now = read_cntvct_el0();
     extern int32_t get_vcpuid(tcb_t *task);
-    
-    // Iterate over all VMs
+    uint32_t current_pcpu = get_current_cpu_id();
+
+    // 收集绑定到当前pcpu的所有vcpu
+    tcb_t *bound_vcpus[VM_NUM_MAX * VCPU_NUM_MAX];
+    uint32_t bound_vcpu_count = 0;
+
+    // Iterate over all VMs to find vCPUs bound to current pCPU
     for (uint32_t vm_idx = 0; vm_idx < _vtimer_num; vm_idx++) {
         vtimer_t *vtimer = &_vtimers[vm_idx];
         if (!vtimer->vm) continue;
 
-        // Iterate over all vCPUs
-        for (uint32_t vcpu_idx = 0; vcpu_idx < vtimer->vcpu_cnt; vcpu_idx++) {
-            vtimer_core_state_t *vt = vtimer->core_state[vcpu_idx];
-            if (!vt) continue;
+        // 直接遍历VM的vcpu列表，避免vcpu id冲突
+        struct _vm_t *vm = vtimer->vm;
+        list_node_t *iter = list_first(&vm->vcpus);
+        while (iter) {
+            tcb_t *task = list_node_parent(iter, tcb_t, vm_node);
 
-            // Find the corresponding task and inject the interrupt
-            tcb_t *task = get_task_by_vcpu_id(vt->id);
-
-            // Inject interrupt only to the vCPU bound to the current pCPU
-            // Each vCPU of every VM is bound to a specific pCPU,
-            // and v_timer_handler is per-pCPU,
-            // so only inject to the vCPU bound to this pCPU
-            if (task->priority - 1 == get_current_cpu_id()) {
-                logger_debug("[pcpu: %d]: Inject Timer event. VM id: %d to vCPU: %d(task: %d)\n",
-                    get_current_cpu_id(), task->curr_vm->vm_id, get_vcpuid(task), task->task_id);
-                vtimer_inject_to_vcpu(task);
-            } else {
-                // Even if the task is not found, update the timer state
-                vt->pending = true;
-                vt->enabled = false;
-                vt->cntv_ctl |= CNTV_CTL_ISTATUS;
-                vt->fire_count++;
-                vt->last_fire_time = now;
+            // Check if this vCPU is bound to the current pCPU
+            if (task->priority - 1 == current_pcpu) {
+                bound_vcpus[bound_vcpu_count++] = task;
             }
+
+            iter = list_node_next(iter);
         }
     }
+
+    // 如果没有绑定到当前pcpu的vcpu，直接返回
+    if (bound_vcpu_count == 0) {
+        logger_info("[pcpu: %d]: No vCPUs bound to this pCPU\n", current_pcpu);
+        return;
+    }
+
+    // 第一次收集到vcpu时，显示绑定信息
+    static bool first_time[SMP_NUM] = {false};
+    if (!first_time[current_pcpu]) {
+        logger_info("[pcpu: %d]: Found %d bound vCPUs\n", current_pcpu, bound_vcpu_count);
+        for (uint32_t i = 0; i < bound_vcpu_count; i++) {
+            logger_info("  - VM%d vCPU %d (task %d)\n",
+                       bound_vcpus[i]->curr_vm->vm_id,
+                       get_vcpuid(bound_vcpus[i]),
+                       bound_vcpus[i]->task_id);
+        }
+        first_time[current_pcpu] = true;
+    }
+
+    // 轮循注入：只注入一个vcpu
+    uint32_t *round_robin_idx = &_pcpu_round_robin_index[current_pcpu];
+
+    // 确保索引在有效范围内
+    if (*round_robin_idx >= bound_vcpu_count) {
+        *round_robin_idx = 0;
+    }
+
+    // 注入到当前轮循索引指向的vcpu
+    tcb_t *target_task = bound_vcpus[*round_robin_idx];
+    logger_debug("[pcpu: %d]: Round-robin inject Timer event to VM%d vCPU: %d(task: %d), index: %d/%d\n",
+                current_pcpu, target_task->curr_vm->vm_id, get_vcpuid(target_task), target_task->task_id,
+                *round_robin_idx, bound_vcpu_count);
+
+    vtimer_inject_to_vcpu(target_task);
+
+    // 移动到下一个vcpu
+    *round_robin_idx = (*round_robin_idx + 1) % bound_vcpu_count;
 }
+
+
+// void v_timer_handler(uint64_t * nouse)
+// {
+//     uint64_t now = read_cntvct_el0();
+//     extern int32_t get_vcpuid(tcb_t *task);
+
+//     // Iterate over all VMs
+//     for (uint32_t vm_idx = 0; vm_idx < _vtimer_num; vm_idx++) {
+//         vtimer_t *vtimer = &_vtimers[vm_idx];
+//         if (!vtimer->vm) continue;
+
+//         // Iterate over all vCPUs
+//         for (uint32_t vcpu_idx = 0; vcpu_idx < vtimer->vcpu_cnt; vcpu_idx++) {
+//             vtimer_core_state_t *vt = vtimer->core_state[vcpu_idx];
+//             if (!vt) continue;
+
+//             // Find the corresponding task and inject the interrupt
+//             tcb_t *task = get_task_by_vcpu_id(vt->id);
+
+//             // Inject interrupt only to the vCPU bound to the current pCPU
+//             // Each vCPU of every VM is bound to a specific pCPU,
+//             // and v_timer_handler is per-pCPU,
+//             // so only inject to the vCPU bound to this pCPU
+//             if (task->priority - 1 == get_current_cpu_id()) {
+//                 logger_debug("[pcpu: %d]: Inject Timer event. VM id: %d to vCPU: %d(task: %d)\n",
+//                     get_current_cpu_id(), task->curr_vm->vm_id, get_vcpuid(task), task->task_id);
+//                 vtimer_inject_to_vcpu(task);
+//             } else {
+//                 // Even if the task is not found, update the timer state
+//                 vt->pending = true;
+//                 vt->enabled = false;
+//                 vt->cntv_ctl |= CNTV_CTL_ISTATUS;
+//                 vt->fire_count++;
+//                 vt->last_fire_time = now;
+//             }
+//         }
+//     }
+// }
