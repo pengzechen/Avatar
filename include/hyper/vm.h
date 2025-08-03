@@ -11,6 +11,8 @@
 #define VM_NAME_MAX 64
 
 typedef struct _tcb_t tcb_t;
+typedef struct _vgic_t vgic_t;
+typedef struct _vtimer_t vtimer_t;
 
 struct _vm_t
 {
@@ -20,10 +22,12 @@ struct _vm_t
     void *stage2pg_base; // stage2 页表基地址
 
     uint64_t entry;      // 虚拟机入口地址
+    uint32_t vcpu_cnt;
     list_t vcpus;        // vcpu 列表
     tcb_t *primary_vcpu; // 主 vcpu
 
-    struct vgic_t *vgic;
+    vgic_t *vgic;
+    vtimer_t *vtimer;  // 虚拟定时器
 };
 
 static inline uint64_t read_sctlr_el2()

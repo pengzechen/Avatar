@@ -15,6 +15,22 @@
 #include "mem/mem.h"
 #include "smp.h"
 
+void print_avatar_logo(void)
+{
+    logger_info("                                                     \n");
+    logger_info("         -- Lightweight Virtualization Core --       \n");
+    logger_info("            Version: 0.1.0   Build: %s %s\n", __DATE__, __TIME__);
+    logger_info("\n");
+    logger_info("                    _             \n");
+    logger_info("     /\\            | |            \n");
+    logger_info("    /  \\__   ____ _| |_ __ _ _ __ \n");
+    logger_info("   / /\\ \\ \\ / / _` | __/ _` | '__|\n");
+    logger_info("  / ____ \\ V / (_| | || (_| | |   \n");
+    logger_info(" /_/    \\_\\_/ \\__,_|\\__\\__,_|_|   \n");
+    logger_info("                                  \n");
+}
+
+
 
 void vtcr_init(void)
 {
@@ -58,13 +74,13 @@ void main_entry_el2()
         vm_init(vm, 0); // 初始化一个虚拟机
         run_vm(vm);
 
-        vm = alloc_vm();
-        if (vm == NULL)
-        {            logger_error("Failed to allocate vm\n");
-            return;
-        }
-        vm_init(vm, 1); // 初始化第二个虚拟机
-        run_vm(vm);
+        // vm = alloc_vm();
+        // if (vm == NULL)
+        // {            logger_error("Failed to allocate vm\n");
+        //     return;
+        // }
+        // vm_init(vm, 1); // 初始化第二个虚拟机
+        // run_vm(vm);
 
         logger("\nHello Hyper:\nthere's some hyper tests: \n");
         logger("scrlr_el2: 0x%llx\n", read_sctlr_el2());
@@ -76,6 +92,9 @@ void main_entry_el2()
         print_current_task_list();
     }
 
+    gic_enable_int(27, 1);
+    // asm volatile("msr cntv_ctl_el0, %0" : : "r"(1));
+    
     // *(uint64_t*)0x8040004 = 0x1; // 测试写入 MMIO 区域
 
     el2_idle_init(); // idle 任务每个核都有自己的el1栈， 代码公用
@@ -112,6 +131,7 @@ void hyper_main()
     timer_init();
     logger("cacheline_bytes: %d\n", cacheline_bytes);
     logger_info("core 0 starting is done.\n\n");
+    print_avatar_logo();
 
     spinlock_init(&lock_el2);
     // io_init();

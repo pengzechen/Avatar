@@ -5,6 +5,7 @@
 #include <gic.h>
 #include <mem/stage2page.h>
 #include <hyper/vcpu.h>
+#include <hyper/vtimer.h>
 #include <psci.h>
 #include <hyper/vpsci.h>
 #include "task/task.h"
@@ -65,7 +66,19 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
     }
     else if (ec == 0x18)
     {
+        // 系统指令异常 - 处理 Guest 对定时器寄存器的访问
         logger_info("            This is sys instr handler\n");
+        stage2_fault_info_t info;
+        info.hsr.bits = hsr.bits;
+
+        // 调用虚拟定时器处理函数
+        if (handle_vtimer_sysreg_access(&info, ctx_el2)) {
+            advance_pc(&info, ctx_el2);
+            return;
+        }
+
+        // 如果不是定时器寄存器访问，继续原有处理
+        logger_warn("Unhandled system register access: 0x%x\n", hsr.bits);
     }
     else if (ec == 0x24)
     { // data abort

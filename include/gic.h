@@ -8,7 +8,9 @@
 #define GIC_NR_PRIVATE_IRQS 32
 #define GIC_FIRST_SPI GIC_NR_PRIVATE_IRQS
 
+#define MAX_SGI_ID 16
 #define SPI_ID_MAX 512
+#define PPI_ID_MAX 32
 
 #include "os_cfg.h"
 

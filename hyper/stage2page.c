@@ -214,6 +214,7 @@ void data_abort_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 		info->gpa = info->gpa + 0x30000;
 		handle_mmio(info, el2_ctx);
 		// handle_mmio_hack(info, el2_ctx);
+		gicc_save_core_state();
 		return;
 	}
 
