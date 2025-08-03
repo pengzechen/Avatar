@@ -30,8 +30,6 @@ void print_avatar_logo(void)
     logger_info("                                  \n");
 }
 
-
-
 void vtcr_init(void)
 {
     logger_info("Initialize vtcr...\n");
@@ -45,12 +43,9 @@ void vtcr_init(void)
     write_vtcr_el2(vtcr_val);
 }
 
-
 extern size_t cacheline_bytes;
 int32_t inited_cpu_num_el2 = 0;
 spinlock_t lock_el2;
-
-
 
 void main_entry_el2()
 {
@@ -76,7 +71,8 @@ void main_entry_el2()
 
         // vm = alloc_vm();
         // if (vm == NULL)
-        // {            logger_error("Failed to allocate vm\n");
+        // {
+        //     logger_error("Failed to allocate vm\n");
         //     return;
         // }
         // vm_init(vm, 1); // 初始化第二个虚拟机
@@ -88,13 +84,12 @@ void main_entry_el2()
         logger("read_vttbr_el2: 0x%llx\n", read_vttbr_el2());
         logger("\n");
 
-
         print_current_task_list();
     }
 
     gic_enable_int(27, 1);
     // asm volatile("msr cntv_ctl_el0, %0" : : "r"(1));
-    
+
     // *(uint64_t*)0x8040004 = 0x1; // 测试写入 MMIO 区域
 
     el2_idle_init(); // idle 任务每个核都有自己的el1栈， 代码公用

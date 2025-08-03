@@ -74,7 +74,7 @@ static uint32_t vgic_get_sgi_ppi_pending_status(vgic_core_state_t *vgicc)
         uint32_t lr_val = vgicc->saved_lr[lr];
         if (lr_val != 0) // LR 不为空
         {
-            uint32_t vid = lr_val & 0x3ff; // Virtual ID
+            uint32_t vid = lr_val & 0x3ff;         // Virtual ID
             uint32_t state = (lr_val >> 28) & 0x3; // State field
 
             // 如果是 SGI/PPI 且处于 pending 状态
@@ -316,7 +316,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                         for (int32_t lr = 0; lr < GICH_LR_NUM; lr++)
                         {
                             uint32_t lr_val = vgicc->saved_lr[lr];
-                            uint32_t vid = lr_val & 0x3ff; // Virtual ID
+                            uint32_t vid = lr_val & 0x3ff;           // Virtual ID
                             if (vid == bit && (lr_val & (1U << 28))) // 检查是否是 pending 状态
                             {
                                 // 清除 LR 中的 pending 位 (bit 28)
@@ -335,7 +335,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 logger_info("      <<< gicd emu write GICD_ICPENDER(0): ");
                 logger("gpa: 0x%llx, r: 0x%llx, len: %d\n", gpa, r, len);
             }
-            
+
             // SPI set pending (GICD_ISPENDER(1) and above)
             else if (GICD_ISPENDER(1) <= gpa && gpa < GICD_ICPENDER(0))
             {
@@ -646,7 +646,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 logger_warn("      >>> gicd emu read GICD_ICPENDER(0): ");
                 logger("pending_status: 0x%x\n", pending_status);
             }
-            
+
             // SPI pending read (GICD_ISPENDER(1) and above)
             else if (GICD_ISPENDER(1) <= gpa && gpa < GICD_ICPENDER(0))
             {
@@ -996,23 +996,27 @@ void vgic_check_injection_status(void)
 void vgic_inject_sgi(tcb_t *task, int32_t int_id)
 {
     // 参数检查
-    if (int_id < 0 || int_id > 15) {
+    if (int_id < 0 || int_id > 15)
+    {
         logger_error("Invalid SGI ID: %d (must be 0-15)\n", int_id);
         return;
     }
 
-    if (!task) {
+    if (!task)
+    {
         logger_error("Invalid task for SGI injection\n");
         return;
     }
 
-    if (!task->curr_vm) {
+    if (!task->curr_vm)
+    {
         logger_error("Task is not a VM task\n");
         return;
     }
 
     vgic_core_state_t *vgicc = get_vgicc_by_vcpu(task);
-    if (!vgicc) {
+    if (!vgicc)
+    {
         logger_error("Failed to get VGICC for task %d\n", task->task_id);
         return;
     }
@@ -1025,7 +1029,8 @@ void vgic_inject_sgi(tcb_t *task, int32_t int_id)
     }
 
     // 检查中断是否使能
-    if (!(vgicc->sgi_ppi_isenabler & (1U << int_id))) {
+    if (!(vgicc->sgi_ppi_isenabler & (1U << int_id)))
+    {
         // logger_warn("SGI %d is disabled on vCPU %d, still inject to pending.\n", int_id, task->task_id);
     }
 
@@ -1047,50 +1052,58 @@ void vgic_inject_sgi(tcb_t *task, int32_t int_id)
 }
 
 // 给指定vcpu注入一个ppi中断
-void vgic_inject_ppi(tcb_t *task, int32_t irq_id) {
+void vgic_inject_ppi(tcb_t *task, int32_t irq_id)
+{
     // irq_id: 16~31
 
     // 参数检查
-    if (irq_id < 16 || irq_id > 31) {
+    if (irq_id < 16 || irq_id > 31)
+    {
         logger_error("Invalid PPI ID: %d (must be 16-31)\n", irq_id);
         return;
     }
 
-    if (!task) {
+    if (!task)
+    {
         logger_error("Invalid task for PPI injection\n");
         return;
     }
 
-    if (!task->curr_vm) {
+    if (!task->curr_vm)
+    {
         logger_error("Task is not a VM task\n");
         return;
     }
 
     vgic_core_state_t *vgicc = get_vgicc_by_vcpu(task);
-    if (!vgicc) {
+    if (!vgicc)
+    {
         logger_error("Failed to get VGICC for task %d\n", task->task_id);
         return;
     }
 
     // 检查中断是否已经 pending
-    if (vgic_is_irq_pending(vgicc, irq_id)) {
+    if (vgic_is_irq_pending(vgicc, irq_id))
+    {
         // logger_warn("PPI %d already pending on vCPU %d, skip inject.\n", irq_id, task->task_id);
         return;
     }
 
     // 检查中断是否使能
-    if (!(vgicc->sgi_ppi_isenabler & (1U << irq_id))) {
+    if (!(vgicc->sgi_ppi_isenabler & (1U << irq_id)))
+    {
         // logger_warn("PPI %d is disabled on vCPU %d, still inject to pending.\n", irq_id, task->task_id);
     }
 
     // 标记为 pending
     vgic_set_irq_pending(vgicc, irq_id);
 
-    // logger_info("[pcpu: %d]: Inject PPI id: %d to vCPU: %d(task: %d)\n",
-    //     get_current_cpu_id(), irq_id, get_vcpuid(task), task->task_id);
+    logger_debug("[pcpu: %d]: Inject PPI id: %d to vCPU: %d(task: %d)\n",
+                 get_current_cpu_id(), irq_id, get_vcpuid(task), task->task_id);
 
     // 如果当前正在运行此 vCPU，尝试立即注入到 GICH_LR
-    if (task == (tcb_t *)read_tpidr_el2()) {
+    if (task == (tcb_t *)read_tpidr_el2())
+    {
         // logger_info("[pcpu: %d]: (Is running)Try to inject pending PPI for vCPU: %d (task: %d)\n",
         //             get_current_cpu_id(), get_vcpuid(task), task->task_id);
         vgic_try_inject_pending(task);
@@ -1140,10 +1153,13 @@ void vgic_try_inject_pending(tcb_t *task)
         uint32_t lr_val;
 
         // 根据中断类型创建不同的 LR 值
-        if (i < 16) {
+        if (i < 16)
+        {
             // SGI: 使用软件中断格式
             lr_val = gic_make_virtual_software_sgi(i, /*cpu_id=*/vcpu_id, 0, 0);
-        } else {
+        }
+        else
+        {
             // PPI: 使用硬件中断格式
             lr_val = gic_make_virtual_hardware_interrupt(i, i, 0, 0);
         }

@@ -360,6 +360,7 @@ bool handle_vtimer_sysreg_access(stage2_fault_info_t *info, trap_frame_t *ctx)
 void v_timer_handler(uint64_t * nouse)
 {
     uint64_t now = read_cntvct_el0();
+    extern int32_t get_vcpuid(tcb_t *task);
     
     // Iterate over all VMs
     for (uint32_t vm_idx = 0; vm_idx < _vtimer_num; vm_idx++) {
@@ -379,6 +380,8 @@ void v_timer_handler(uint64_t * nouse)
             // and v_timer_handler is per-pCPU,
             // so only inject to the vCPU bound to this pCPU
             if (task->priority - 1 == get_current_cpu_id()) {
+                logger_debug("[pcpu: %d]: Inject Timer event. VM id: %d to vCPU: %d(task: %d)\n",
+                    get_current_cpu_id(), task->curr_vm->vm_id, get_vcpuid(task), task->task_id);
                 vtimer_inject_to_vcpu(task);
             } else {
                 // Even if the task is not found, update the timer state

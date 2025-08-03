@@ -199,6 +199,7 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
     {
         taskt = list_node_parent(iter, tcb_t, vm_node);
         logger_info("vcpu task id: %d, mpidr_el1: 0x%x\n", taskt->task_id, taskt->cpu_info->sys_reg->mpidr_el1);
+        logger_debug("vcpu task id: %d, sp_elx: 0x%x\n", taskt->task_id, taskt->ctx.sp_elx);
 
         iter = list_node_next(iter);
     }

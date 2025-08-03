@@ -16,6 +16,23 @@ void advance_pc(stage2_fault_info_t *info, trap_frame_t *context)
     context->elr += info->hsr.len ? 4 : 2;
 }
 
+void decode_spsr(uint64_t spsr) {
+    uint64_t el = (spsr >> 2) & 0x3;
+    const char *el_str = (el == 0) ? "EL0" :
+                         (el == 1) ? "EL1t" :
+                         (el == 2) ? "EL1h" :
+                         "EL2h";
+
+    logger("SPSR_EL2 decode:\n");
+    logger("  Previous EL: %s\n", el_str);
+    logger("  Execution state: %s\n", ((spsr >> 4) & 1) ? "FIQ masked" : "FIQ enabled");
+    logger("  IRQ masked: %s\n", ((spsr >> 5) & 1) ? "Yes" : "No");
+    logger("  SError masked: %s\n", ((spsr >> 6) & 1) ? "Yes" : "No");
+    logger("  Debug masked: %s\n", ((spsr >> 7) & 1) ? "Yes" : "No");
+    logger("  Instruction set: %s\n", ((spsr >> 8) & 1) ? "AArch32" : "AArch64");
+}
+
+
 // 示例使用方式：处理同步异常
 void handle_sync_exception_el2(uint64_t *stack_pointer)
 {
@@ -79,6 +96,28 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
 
         // 如果不是定时器寄存器访问，继续原有处理
         logger_warn("Unhandled system register access: 0x%x\n", hsr.bits);
+    }
+    else if (ec == 0x20) 
+    {
+        logger_info("            This is illegal exec state handler\n");
+        stage2_fault_info_t info;
+        info.hsr.bits = hsr.bits;
+        logger("Guest exception: FAR_EL2=0x%lx\n", read_far_el2());
+        logger("        el2 esr: %llx, ec: %llx\n", el2_esr, ec);
+        decode_spsr(ctx_el2->spsr);
+
+        uint64_t sp_el1;   // el1 h
+        asm volatile("mrs %0, sp_el1" : "=r"(sp_el1));
+        logger("sp_el1: 0x%lx\n", sp_el1);
+
+        uint64_t sp_el0;  // el1 t
+        asm volatile("mrs %0, sp_el0" : "=r"(sp_el0));
+        logger("sp_el0: 0x%lx\n", sp_el0);
+
+        
+        advance_pc(&info, ctx_el2);
+        // while(1);
+        // return;
     }
     else if (ec == 0x24)
     { // data abort
