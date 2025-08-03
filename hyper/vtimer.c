@@ -355,32 +355,33 @@ bool handle_vtimer_sysreg_access(stage2_fault_info_t *info, trap_frame_t *ctx)
     return false;  // 不是定时器寄存器访问
 }
 
-static spinlock_t vtimer_handler_lock;
 
+// per-pcpu
 void v_timer_handler(uint64_t * nouse)
 {
     uint64_t now = read_cntvct_el0();
     
-    // 只让一个 pCPU 执行，其他直接返回
-    if (!spin_trylock(&vtimer_handler_lock)) {
-        return;
-    }
-
-    // 检查所有 VM 的所有 vCPU 的虚拟定时器
+    // Iterate over all VMs
     for (uint32_t vm_idx = 0; vm_idx < _vtimer_num; vm_idx++) {
         vtimer_t *vtimer = &_vtimers[vm_idx];
         if (!vtimer->vm) continue;
 
+        // Iterate over all vCPUs
         for (uint32_t vcpu_idx = 0; vcpu_idx < vtimer->vcpu_cnt; vcpu_idx++) {
             vtimer_core_state_t *vt = vtimer->core_state[vcpu_idx];
             if (!vt) continue;
 
-            // 找到对应的 task 并注入中断
+            // Find the corresponding task and inject the interrupt
             tcb_t *task = get_task_by_vcpu_id(vt->id);
-            if (task) {
+
+            // Inject interrupt only to the vCPU bound to the current pCPU
+            // Each vCPU of every VM is bound to a specific pCPU,
+            // and v_timer_handler is per-pCPU,
+            // so only inject to the vCPU bound to this pCPU
+            if (task->priority - 1 == get_current_cpu_id()) {
                 vtimer_inject_to_vcpu(task);
             } else {
-                // 即使找不到 task，也要更新定时器状态
+                // Even if the task is not found, update the timer state
                 vt->pending = true;
                 vt->enabled = false;
                 vt->cntv_ctl |= CNTV_CTL_ISTATUS;
@@ -389,6 +390,4 @@ void v_timer_handler(uint64_t * nouse)
             }
         }
     }
-    
-    spin_unlock(&vtimer_handler_lock);
 }
