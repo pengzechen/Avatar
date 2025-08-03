@@ -92,8 +92,7 @@ void main_entry_el2()
         print_current_task_list();
     }
 
-    
-    // gic_enable_int(27, 1);
+    gic_enable_int(27, 1);
     // asm volatile("msr cntv_ctl_el0, %0" : : "r"(1));
     
     // *(uint64_t*)0x8040004 = 0x1; // 测试写入 MMIO 区域

@@ -471,7 +471,6 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                     case 0: // 指定目标 CPU
                         if ((cpu_target_list >> vcpuid) & 1)
                         {
-                            logger("case 0\n");
                             vgic_inject_sgi(task, sgi_int_id);
                         }
                         break;
@@ -1206,7 +1205,7 @@ void gicc_restore_core_state()
     // vgicc_dump_if_changed(state, get_vcpuid(curr), curr->task_id, curr->curr_vm->vm_id);
 }
 
-// vgic inject
+// vgic inject test
 void vgic_hw_inject_test(uint32_t vector)
 {
     logger_info("vgic inject vector: %d\n", vector);

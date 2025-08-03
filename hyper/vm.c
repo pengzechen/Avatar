@@ -224,6 +224,9 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
 
         vm->vgic->core_state[i] = state;
     }
+    
+    for (int32_t i=0; i<vm->vcpu_cnt; i++) 
+        vgicc_dump(vm->vgic->core_state[i]);
 
     // 初始化虚拟定时器
     vm->vtimer->vm = vm;  // 建立双向关联
@@ -238,8 +241,7 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
         }
     }
 
-    for (int32_t i=0; i<vm->vcpu_cnt; i++) 
-        vgicc_dump(vm->vgic->core_state[i]);
+
 
 
     irq_install(HV_TIMER_VECTOR, v_timer_handler);
