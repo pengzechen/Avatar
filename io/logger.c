@@ -10,15 +10,37 @@
 #include <aj_types.h>
 #include <lib/aj_string.h>
 #include <io.h>
+#include <spinlock.h>
+
+#ifndef __LOG_LEVEL
+#define __LOG_LEVEL 3
+#endif
+
+#define LOG_LEVEL_DEBUG   0
+#define LOG_LEVEL_INFO    1
+#define LOG_LEVEL_WARN    2
+#define LOG_LEVEL_ERROR   3
+#define LOG_LEVEL_NONE    4
 
 #define BINSTR_SZ (sizeof(uint32_t) * 8 + sizeof(uint32_t) * 2)
 
 #define BUFSZ 512
 
 #define ANSI_RED     "\x1b[31m"
-#define ANSI_YELLOW  "\x1b[33m"
 #define ANSI_GREEN   "\x1b[32m"
+#define ANSI_YELLOW  "\x1b[33m"
+#define ANSI_BLUE    "\x1b[34m"
 #define ANSI_RESET   "\x1b[0m"
+
+
+static spinlock_t print_lock;
+
+static uint64_t missed_log_plain = 0;
+static uint64_t missed_log_debug = 0;
+static uint64_t missed_log_info = 0;
+static uint64_t missed_log_warn = 0;
+static uint64_t missed_log_error = 0;
+
 
 static char digits[16] = "0123456789abcdef";
 
@@ -304,70 +326,176 @@ int32_t my_vprintf(const char *fmt, va_list va)
     return r;
 }
 
+static int32_t logger_impl(const char *color, const char *fmt, va_list va)
+{
+    spin_lock(&print_lock);
+    char buf[BUFSZ];
+    int32_t r = my_vsnprintf(buf, sizeof buf, fmt, va);
+
+    if (color) uart_putstr(color);
+    uart_putstr(buf);
+    if (color) uart_putstr(ANSI_RESET);
+    spin_unlock(&print_lock);
+
+    return r;
+}
+
+static int32_t try_logger_impl(const char *color, uint64_t *missed_counter, const char *fmt, va_list va)
+{
+    if (!spin_trylock(&print_lock)) {
+        if (missed_counter) (*missed_counter)++;
+        return -1;
+    }
+
+    char buf[BUFSZ];
+    int32_t r = my_vsnprintf(buf, sizeof buf, fmt, va);
+
+    if (color) uart_putstr(color);
+    uart_putstr(buf);
+    if (color) uart_putstr(ANSI_RESET);
+
+    spin_unlock(&print_lock);
+    return r;
+}
+
+// --------- 普通阻塞接口 ---------
+
+
 int32_t logger(const char *fmt, ...)
 {
     va_list va;
-    char buf[BUFSZ];
-    int32_t r;
-
     va_start(va, fmt);
-    r = my_vsnprintf(buf, sizeof buf, fmt, va);
+    int32_t r = logger_impl(NULL, fmt, va);
     va_end(va);
-
-    uart_putstr(buf);
-
     return r;
 }
 
-int32_t logger_warn(const char *fmt, ...)
+#if __LOG_LEVEL <= LOG_LEVEL_DEBUG
+int32_t logger_debug(const char *fmt, ...)
 {
     va_list va;
-    char buf[BUFSZ];
-    int32_t r;
-
     va_start(va, fmt);
-    r = my_vsnprintf(buf, sizeof buf, fmt, va);
+    int32_t r = logger_impl(ANSI_BLUE, fmt, va);
     va_end(va);
-
-    uart_putstr(ANSI_YELLOW);
-    uart_putstr(buf);
-    uart_putstr(ANSI_RESET);
-
     return r;
 }
+#else
+int32_t logger_debug(const char *fmt, ...) { (void)fmt; return 0; }
+#endif
 
-int32_t logger_error(const char *fmt, ...)
-{
-    va_list va;
-    char buf[BUFSZ];
-    int32_t r;
-
-    va_start(va, fmt);
-    r = my_vsnprintf(buf, sizeof buf, fmt, va);
-    va_end(va);
-
-    uart_putstr(ANSI_RED);
-    uart_putstr(buf);
-    uart_putstr(ANSI_RESET);
-
-    return r;
-}
-
+#if __LOG_LEVEL <= LOG_LEVEL_INFO
 int32_t logger_info(const char *fmt, ...)
 {
     va_list va;
-    char buf[BUFSZ];
-    int32_t r;
-
     va_start(va, fmt);
-    r = my_vsnprintf(buf, sizeof buf, fmt, va);
+    int32_t r = logger_impl(ANSI_GREEN, fmt, va);
     va_end(va);
-
-    uart_putstr(ANSI_GREEN);
-    uart_putstr(buf);
-    uart_putstr(ANSI_RESET);
-
     return r;
+}
+#else
+int32_t logger_info(const char *fmt, ...) { (void)fmt; return 0; }
+#endif
+
+#if __LOG_LEVEL <= LOG_LEVEL_WARN
+int32_t logger_warn(const char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    int32_t r = logger_impl(ANSI_YELLOW, fmt, va);
+    va_end(va);
+    return r;
+}
+#else
+int32_t logger_warn(const char *fmt, ...) { (void)fmt; return 0; }
+#endif
+
+#if __LOG_LEVEL <= LOG_LEVEL_ERROR
+int32_t logger_error(const char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    int32_t r = logger_impl(ANSI_RED, fmt, va);
+    va_end(va);
+    return r;
+}
+#else
+int32_t logger_error(const char *fmt, ...) { (void)fmt; return 0; }
+#endif
+
+
+
+// --------- 非阻塞 try_logger 接口 ---------
+
+
+int32_t try_logger(const char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    int32_t r = try_logger_impl(NULL, &missed_log_plain, fmt, va);
+    va_end(va);
+    return r;
+}
+
+#if __LOG_LEVEL <= LOG_LEVEL_DEBUG
+int32_t try_logger_debug(const char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    int32_t r = try_logger_impl(ANSI_BLUE, &missed_log_debug, fmt, va);
+    va_end(va);
+    return r;
+}
+#else
+int32_t try_logger_debug(const char *fmt, ...) { (void)fmt; return 0; }
+#endif
+
+#if __LOG_LEVEL <= LOG_LEVEL_INFO
+int32_t try_logger_info(const char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    int32_t r = try_logger_impl(ANSI_GREEN, &missed_log_info, fmt, va);
+    va_end(va);
+    return r;
+}
+#else
+int32_t try_logger_info(const char *fmt, ...) { (void)fmt; return 0; }
+#endif
+
+#if __LOG_LEVEL <= LOG_LEVEL_WARN
+int32_t try_logger_warn(const char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    int32_t r = try_logger_impl(ANSI_YELLOW, &missed_log_warn, fmt, va);
+    va_end(va);
+    return r;
+}
+#else
+int32_t try_logger_warn(const char *fmt, ...) { (void)fmt; return 0; }
+#endif
+
+#if __LOG_LEVEL <= LOG_LEVEL_ERROR
+int32_t try_logger_error(const char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    int32_t r = try_logger_impl(ANSI_RED, &missed_log_error, fmt, va);
+    va_end(va);
+    return r;
+}
+#else
+int32_t try_logger_error(const char *fmt, ...) { (void)fmt; return 0; }
+#endif
+
+
+
+
+// Dump the missed log stats
+void log_stats_dump(void)
+{
+    logger("Missed logs: plain=%lu, info=%lu, warn=%lu, error=%lu\n",
+        missed_log_plain, missed_log_info, missed_log_warn, missed_log_error);
 }
 
 void binstr(uint32_t x, char out[BINSTR_SZ])

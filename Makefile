@@ -10,8 +10,9 @@ INCLUDE = -I $(realpath ./include)
 
 SMP = 1
 HV  = 0
+LOGGER = 1  # 显示 info warn error
 
-CFLAGS = -g -c -O0 -fno-pie  -mgeneral-regs-only -fno-builtin -nostdinc -fno-stack-protector -DSMP_NUM=$(SMP) -DHV=$(HV)
+CFLAGS = -g -c -O0 -fno-pie  -mgeneral-regs-only -fno-builtin -nostdinc -fno-stack-protector -DSMP_NUM=$(SMP) -DHV=$(HV) -D__LOG_LEVEL=$(LOGGER)
 
 LDFLAGS += -nostdlib
 
@@ -82,8 +83,8 @@ $(BUILD_DIR)/syscall.o: syscall/syscall.c
 #  io
 $(BUILD_DIR)/io.o: io/io.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) io/io.c $(INCLUDE) -o $(BUILD_DIR)/io.o
-$(BUILD_DIR)/printf.o: io/printf.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) io/printf.c $(INCLUDE) -o $(BUILD_DIR)/printf.o
+$(BUILD_DIR)/logger.o: io/logger.c
+	$(TOOL_PREFIX)gcc $(CFLAGS) io/logger.c $(INCLUDE) -o $(BUILD_DIR)/logger.o
 
 $(BUILD_DIR)/uart_pl011.o: io/uart_pl011.c
 	$(TOOL_PREFIX)gcc $(CFLAGS) io/uart_pl011.c $(INCLUDE) -o $(BUILD_DIR)/uart_pl011.o  
@@ -163,7 +164,7 @@ $(BUILD_DIR)/app.s.o: app/app.S
 
 $(BUILD_DIR)/kernel.elf: $(BUILD_DIR) $(BUILD_DIR)/main.o $(BUILD_DIR)/smp.o $(BUILD_DIR)/main_hyper.o \
 $(BUILD_DIR)/boot.s.o $(BUILD_DIR)/guests.s.o $(BUILD_DIR)/test_guest.s.o $(BUILD_DIR)/app.s.o $(BUILD_DIR)/exception.s.o $(BUILD_DIR)/exception.o \
-$(BUILD_DIR)/io.o $(BUILD_DIR)/uart_pl011.o $(BUILD_DIR)/uart_pl011_early.o $(BUILD_DIR)/printf.o $(BUILD_DIR)/mmu.s.o \
+$(BUILD_DIR)/io.o $(BUILD_DIR)/uart_pl011.o $(BUILD_DIR)/uart_pl011_early.o $(BUILD_DIR)/logger.o $(BUILD_DIR)/mmu.s.o \
 $(BUILD_DIR)/page.o $(BUILD_DIR)/stage2page.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o $(BUILD_DIR)/exception_el3.s.o \
 $(BUILD_DIR)/exception_el3.o $(BUILD_DIR)/exception_el2.o $(BUILD_DIR)/exception_el2.s.o $(BUILD_DIR)/gic.o  \
 $(BUILD_DIR)/syscall.o $(BUILD_DIR)/timer.o $(BUILD_DIR)/task.o $(BUILD_DIR)/context.s.o $(BUILD_DIR)/spinlock.s.o \
@@ -188,7 +189,7 @@ $(BUILD_DIR)/mutex.o $(BUILD_DIR)/process.o $(BUILD_DIR)/ramfs.o
 	$(BUILD_DIR)/io.o 				\
 	$(BUILD_DIR)/uart_pl011.o       \
 	$(BUILD_DIR)/uart_pl011_early.o \
-	$(BUILD_DIR)/printf.o 			\
+	$(BUILD_DIR)/logger.o 			\
 	$(BUILD_DIR)/mmu.s.o 			\
 	$(BUILD_DIR)/page.o 			\
 	$(BUILD_DIR)/bitmap.o           \

@@ -30,6 +30,14 @@ extern int32_t logger(const char *fmt, ...);
 extern int32_t logger_info(const char *fmt, ...);
 extern int32_t logger_warn(const char *fmt, ...);
 extern int32_t logger_error(const char *fmt, ...);
+extern int32_t logger_debug(const char *fmt, ...);
+
+extern int32_t try_logger(const char *fmt, ...);
+extern int32_t try_logger_info(const char *fmt, ...);
+extern int32_t try_logger_warn(const char *fmt, ...);
+extern int32_t try_logger_error(const char *fmt, ...);
+extern int32_t try_logger_debug(const char *fmt, ...);
+
 
 extern void run_printf_tests();
 #endif
