@@ -1098,8 +1098,8 @@ void vgic_inject_ppi(tcb_t *task, int32_t irq_id)
     // 标记为 pending
     vgic_set_irq_pending(vgicc, irq_id);
 
-    logger_debug("[pcpu: %d]: Inject PPI id: %d to vCPU: %d(task: %d)\n",
-                 get_current_cpu_id(), irq_id, get_vcpuid(task), task->task_id);
+    // logger_debug("[pcpu: %d]: Inject PPI id: %d to vCPU: %d(task: %d)\n",
+    //              get_current_cpu_id(), irq_id, get_vcpuid(task), task->task_id);
 
     // 如果当前正在运行此 vCPU，尝试立即注入到 GICH_LR
     if (task == (tcb_t *)read_tpidr_el2())

@@ -51,8 +51,16 @@ restore_sysregs:
 	ldp x1, x2, [x0], #16
 	msr tpidr_el1, x1
 	msr tpidrro_el0, x2
-	ldr x1, [x0]
+	ldr x1, [x0], #8
 	msr vbar_el1, x1
+	// Skip to timer registers (skip actlr_el1 and all TID registers)
+	add x0, x0, #(33*8)  // Skip to timer section
+	// Restore virtual timer registers
+	ldp x1, x2, [x0], #16
+	ldp x3, x4, [x0], #16
+	msr cntv_ctl_el0, x2
+	msr cntv_cval_el0, x3
+	msr cntv_tval_el0, x4
 	dsb ish
 	isb
 	ret
@@ -107,7 +115,16 @@ save_sysregs:
 	mrs x2, tpidrro_el0
 	stp x1, x2, [x0], #16
 	mrs x1, vbar_el1
-	str x1, [x0]
+	str x1, [x0], #8
+	// Skip to timer registers (skip actlr_el1 and all TID registers)
+	add x0, x0, #(33*8)  // Skip to timer section
+	// Save virtual timer registers
+	mrs x1, cntkctl_el1
+	mrs x2, cntv_ctl_el0
+	mrs x3, cntv_cval_el0
+	mrs x4, cntv_tval_el0
+	stp x1, x2, [x0], #16
+	stp x3, x4, [x0], #16
 	ret
 
 .globl get_all_sysregs

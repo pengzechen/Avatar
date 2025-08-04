@@ -12,17 +12,15 @@ static uint64_t test_num = 0;
 
 #define TIMER_VECTOR 30
 
+extern void v_timer_tick(uint64_t now);
+
+
 void handle_timer_interrupt(uint64_t *sp)
 {
     // 设置定时值
     write_cntp_tval_el0(625000);
-    // if (test_num++ % 1000 == 0) {
-    //     logger("timer: 10s\n");
-    // }
-    // logger("core: %d, handle irq exception\n", get_current_cpu_id());
-    // logger("get daif: %llx\n", get_daif());
     timer_tick_schedule(sp);
-    // schedule();
+    v_timer_tick(read_cntpct_el0());
 }
 
 void timer_init_second()

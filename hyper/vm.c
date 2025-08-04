@@ -24,7 +24,11 @@ static uint32_t vm_num = 0;
 #define HV_TIMER_VECTOR 27
 #define PL011_INT 33
 
-extern void v_timer_handler(uint64_t * nouse);
+
+void fake_timer() {
+    // logger("fake timer\n");
+    vgic_hw_inject_test(HV_TIMER_VECTOR);
+}
 
 void fake_console()
 {
@@ -150,14 +154,14 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
     // 创建两个 guest 任务
     vm->vcpu_cnt = vcpu_num;
 
-    //(3.1) 首核
+    //(3.1) 首核 - 所有VM的首核都绑定到pCPU 0
     void *stack = kalloc_pages(2);
     if (stack == NULL)
     {
         logger_error("Failed to allocate stack for primary vcpu \n");
         return;
     }
-    tcb_t *task = create_vm_task((void *)entry_addr, (uint64_t)stack + 8192, (1 << 0));
+    tcb_t *task = create_vm_task((void *)entry_addr, (uint64_t)stack + 8192, (1 << 0)); // 绑定到pCPU 0
     if (task == NULL)
     {
         logger_error("Failed to create vcpu task\n");
@@ -168,7 +172,7 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
     task->cpu_info->sys_reg->mpidr_el1 = (1ULL << 31) | (uint64_t)(0 & 0xff);
     vm->primary_vcpu = task; // 设置主 vcpu
 
-    //(3.2) 其它核
+    //(3.2) 其它核 - 所有VM的其他核都绑定到pCPU 1
     for (int32_t i = 1; i < vcpu_num; i++)
     {
         void *stack = kalloc_pages(2);
@@ -177,7 +181,7 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
             logger_error("Failed to allocate stack for vcpu %d\n", i);
             return;
         }
-        tcb_t *task = create_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 1));
+        tcb_t *task = create_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 1)); // 绑定到pCPU 1
         if (task == NULL)
         {
             logger_error("Failed to create vcpu task %d\n", i);
@@ -245,7 +249,7 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
 
 
 
-    irq_install(HV_TIMER_VECTOR, v_timer_handler);
+    irq_install(HV_TIMER_VECTOR, fake_timer);
 
     irq_install(PL011_INT, fake_console);
 }
