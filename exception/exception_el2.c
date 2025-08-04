@@ -253,6 +253,6 @@ void invalid_exception_el2(uint64_t *stack_pointer, uint64_t kind, uint64_t sour
 // 调用 handle_irq_exception_el2
 void current_spxel_irq(uint64_t *stack_pointer)
 {
-    logger("irq stay in same el\n");
+    // logger("irq stay in same el\n");
     handle_irq_exception_el2(stack_pointer);
 }

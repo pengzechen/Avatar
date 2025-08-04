@@ -81,9 +81,12 @@
 #define SPSR_EL1_FIQ BIT(6)	   /* FIQ 屏蔽（FIQ mask） */
 #define SPSR_EL1_M BIT(4)	   /* 从 AArch64 发生异常（Exception taken from AArch64） */
 
-#define SPSR_EL1_EL0t 0b0000
+#define SPSR_EL0_EL0t 0b0000
 #define SPSR_EL1_EL1t 0b0100
 #define SPSR_EL1_EL1h 0b0101
+#define SPSR_EL2_EL2t 0b1000
+#define SPSR_EL2_EL2h 0b1001
+
 
 /* SPSR_EL1 DEFAULT */
 #define SPSR_EL1_KERNEL SPSR_EL1_EL1h

@@ -93,7 +93,7 @@ tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
     list_insert_last(&task_manager.task_list, &task->all_node);
 
     task->cpu_info->ctx.elr = (uint64_t)task_func; // elr_el1
-    task->cpu_info->ctx.spsr = SPSR_EL1_USER;      // spsr_el1
+    task->cpu_info->ctx.spsr = SPSR_EL0_EL0t;      // spsr_el1
     task->cpu_info->ctx.usp = (uint64_t)(task_func + 0x4000);
 
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &task->cpu_info->ctx, sizeof(trap_frame_t));
@@ -137,7 +137,7 @@ void reset_task(tcb_t *task, void (*task_func)(), uint64_t stack_top, uint32_t p
     task->priority = priority;
 
     task->cpu_info->ctx.elr = (uint64_t)task_func; // elr_el1
-    task->cpu_info->ctx.spsr = SPSR_EL1_USER;      // spsr_el1
+    task->cpu_info->ctx.spsr = SPSR_EL0_EL0t;      // spsr_el1
     task->cpu_info->ctx.usp = (uint64_t)(task_func + 0x4000);
 
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &task->cpu_info->ctx, sizeof(trap_frame_t));
@@ -212,10 +212,8 @@ void schedule()
         return;
     }
 
-    spin_lock(&print_lock);
-    // logger("core %d switch prev_task %d to next_task %d\n",
+    // logger_debug("core %d switch prev_task %d to next_task %d\n",
     //     get_current_cpu_id(), prev_task->task_id, next_task->task_id);
-    spin_unlock(&print_lock);
 
     // logger("next_task page dir: 0x%llx\n", next_task->pgdir);
     next_task->state = TASK_STATE_RUNNING;
@@ -310,6 +308,8 @@ void vm_out()
     extern void vtimer_core_save(tcb_t *task);
     save_sysregs(curr->cpu_info->sys_reg);
 
+    if (!curr->curr_vm)
+        return;
     // 保存虚拟定时器状态
     vtimer_core_save(curr);
 
@@ -373,14 +373,14 @@ void el1_idle_init()
     idel->counter = 10;
     idel->cpu_info = &task_manager.idle_cpu[core_id];
     idel->cpu_info->ctx.elr = (uint64_t)idle_task_el1; // elr_el1
-    idel->cpu_info->ctx.spsr = SPSR_EL1_KERNEL;        // spsr_el1
+    idel->cpu_info->ctx.spsr = SPSR_EL1_EL1h;        // spsr_el1
     idel->cpu_info->ctx.usp = 0;
     idel->pgdir = get_kpgdir(); // pgdir
 
     uint64_t stack_top = get_idle_sp_top();
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &idel->cpu_info->ctx, sizeof(trap_frame_t));
-    extern void el0_task_entry();
-    idel->ctx.x30 = (uint64_t)el0_task_entry;
+    extern void el1_task_entry();
+    idel->ctx.x30 = (uint64_t)el1_task_entry;
     idel->ctx.sp_elx = stack_top - sizeof(trap_frame_t);
     idel->ctx.tpidr_elx = (uint64_t)idel;
 }
@@ -392,15 +392,16 @@ void el2_idle_init()
     idel->task_id = -(core_id + 1);
     idel->counter = 10;
     idel->cpu_info = &task_manager.idle_cpu[core_id];
-    idel->cpu_info->ctx.elr = (uint64_t)idle_task_el1; // elr_el1
-    idel->cpu_info->ctx.spsr = SPSR_EL1_KERNEL;        // spsr_el1
+    idel->cpu_info->ctx.elr = (uint64_t)idle_task_el1; // elr_el2
+    idel->cpu_info->ctx.spsr = SPSR_EL2_EL2h;        // spsr_el2
     idel->cpu_info->ctx.usp = 0;
     idel->pgdir = get_kpgdir(); // pgdir
 
     uint64_t stack_top = get_idle_sp_top();
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &idel->cpu_info->ctx, sizeof(trap_frame_t));
-    extern void el1_tesk_entry();
-    idel->ctx.x30 = (uint64_t)el1_tesk_entry;
+    logger_warn("core: %d, idle task stack top: 0x%llx\n", core_id, stack_top);
+    extern void el2_tesk_entry();
+    idel->ctx.x30 = (uint64_t)el2_tesk_entry;
     idel->ctx.sp_elx = stack_top - sizeof(trap_frame_t);
     idel->ctx.tpidr_elx = (uint64_t)idel;
 }
