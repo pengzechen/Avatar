@@ -213,7 +213,6 @@ void data_abort_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 	{
 		info->gpa = info->gpa + 0x30000;
 		handle_mmio(info, el2_ctx);
-		// handle_mmio_hack(info, el2_ctx);
 		gicc_save_core_state();
 		return;
 	}
@@ -243,171 +242,87 @@ void data_abort_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 	// }
 }
 
-// 用这个函数可以在smp=1 hack的跑起linux
-int32_t handle_mmio_hack(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
-{
-	paddr_t gpa = info->gpa;
-	if (gpa == 0x8040000)
-		return 0;
-	
-	// 防止霸屏，eoir 和 iar 不输出
-	if (gpa != 0x8040010 && gpa != 0x804000c)
-		logger("====> [vgicc: ]operation gpa: 0x%llx\n", gpa);
-
-	if (info->hsr.dabt.write)
-	{
-		unsigned long reg_num;
-		volatile uint64_t *r;
-		volatile void *buf;
-		volatile unsigned long len;
-		volatile unsigned long *dst;
-
-		// 获取寄存器编号和 MMIO 操作的大小
-		reg_num = info->hsr.dabt.reg;
-		len = 1 << (info->hsr.dabt.size & 0x00000003);
-
-		// 计算目标缓冲区
-		r = &el2_ctx->r[reg_num];
-		buf = (void *)r;
-
-		// 从 MMIO 地址读取数据
-		dst = (unsigned long *)(unsigned long)gpa;
-		// logger("(%d bytes) 0x%llx  R%d\n", (unsigned long)len, *dst, (unsigned long)reg_num);
-
-		// logger("old data: 0x%llx\n", *dst);
-		//  将数据写入寄存器或进行其他必要的操作
-		if (reg_num != 30)
-		{
-			*dst = *(unsigned long *)buf;
-		}
-		// 确保所有更改都能被看到
-		dsb(sy);
-		isb();
-		// logger("new data: 0x%llx\n", *dst);
-	}
-	else
-	{
-		unsigned long reg_num;
-		volatile uint64_t *r;
-		volatile void *buf;
-		volatile unsigned long *src;
-		volatile unsigned long len;
-		volatile unsigned long dat;
-		// spin_lock(&vcpu.lock);
-
-		reg_num = info->hsr.dabt.reg;
-		// r = (uint64_t *)select_user_reg(reg_num);
-		// r = &vcpu.pctx->r[reg_num];
-		r = &el2_ctx->r[reg_num];
-		len = 1 << (info->hsr.dabt.size & 0x00000003);
-		buf = (void *)r;
-
-		src = (unsigned long *)(unsigned long)gpa;
-		dat = *src;
-		// logger("(%d bytes) 0x%llx R%d\n", (unsigned long)len, *src, (unsigned long)reg_num);
-
-		// logger("old data: 0x%llx\n", *r);
-		if (reg_num != 30)
-		{
-			*(unsigned long *)buf = dat;
-		}
-		dsb(sy);
-		isb();
-		// logger("new data: 0x%llx\n", *r);
-
-		// spin_unlock(&vcpu.lock);
-	}
-	return 1;
-	// }
-
-	// return 0;
-}
 
 int32_t handle_mmio(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 {
 	paddr_t gpa = info->gpa;
-	
-	// 防止霸屏，eoir 和 iar 和 dir 不输出
-	if (gpa != 0x8040010 && gpa != 0x804000c && gpa != 0x8041000)
-		logger("====> [vgicc: ]operation gpa: 0x%llx\n", gpa);
-	
+	uint32_t reg_num;
+	volatile uint64_t *r;
+	uint32_t len;
+	uint64_t reg_data;
+
+	logger_debug("MMIO operation gpa: 0x%llx\n", gpa);
+
+	reg_num = info->hsr.dabt.reg;
+	len = 1U << (info->hsr.dabt.size & 0x3U); // 1, 2, 4, or 8 bytes
+	r = &el2_ctx->r[reg_num];
+
 	if (info->hsr.dabt.write)
 	{
-		unsigned long reg_num;
-		volatile uint64_t *r;
-		volatile void *buf;
-		volatile unsigned long len;
-		volatile unsigned long *dst;
-
-		// 获取寄存器编号和 MMIO 操作的大小
-		reg_num = info->hsr.dabt.reg;
-		len = 1UL << (info->hsr.dabt.size & 0x3); // size = 0(b) 1(h) 2(w) 3(x)
-
-		// 计算源缓冲区（从寄存器读取数据）
-		r = &el2_ctx->r[reg_num];
-		buf = (void *)r;
-
-		// 目标地址：Guest Physical Address
-		dst = (unsigned long *)(unsigned long)gpa;
-
-		// 安全写入
-		if (reg_num != 30)
+		// MMIO Write: Register -> Memory
+		if (reg_num != 30U)
 		{
-			if (((unsigned long)dst % len) == 0)
+			reg_data = *r;
+
+			switch (len)
 			{
-				// 对齐，直接写入
-				memcpy((void *)dst, (void *)buf, len);
-			}
-			else
-			{
-				// 不对齐，安全写入
-				uint8_t tmp[8];
-				memcpy(tmp, (const void *)buf, len);
-				memcpy((void *)dst, (const void *)tmp, len);
+			case 1U:
+				*(volatile uint8_t *)gpa = (uint8_t)reg_data;
+				break;
+			case 2U:
+				*(volatile uint16_t *)gpa = (uint16_t)reg_data;
+				break;
+			case 4U:
+				*(volatile uint32_t *)gpa = (uint32_t)reg_data;
+				break;
+			case 8U:
+				*(volatile uint64_t *)gpa = reg_data;
+				break;
+			default:
+				logger_warn("Unsupported MMIO write size: %u\n", len);
+				return 0;
 			}
 		}
-
-		// 确保所有更改都能被看到
-		dsb(sy);
-		isb();
+		logger_debug("MMIO write: R%u -> 0x%llx (%u bytes)\n", reg_num, gpa, len);
 	}
-
 	else
 	{
-		unsigned long reg_num;
-		volatile uint64_t *r;
-		volatile void *buf;
-		volatile unsigned long *src;
-		volatile unsigned long len;
-		unsigned long dat = 0;
-
-		reg_num = info->hsr.dabt.reg;
-		r = &el2_ctx->r[reg_num];
-		len = 1UL << (info->hsr.dabt.size & 0x3); // 1, 2, 4, or 8
-		buf = (void *)r;
-
-		src = (unsigned long *)(unsigned long)gpa;
-
-		if (((unsigned long)src % len) == 0)
+		// MMIO Read: Memory -> Register
+		if (reg_num != 30U)
 		{
-			// 对齐访问，安全读取
-			memcpy(&dat, (const void *)src, len);
-		}
-		else
-		{
-			// 非对齐访问，使用 memcpy 避免崩溃
-			uint8_t tmp[8] = {0};
-			memcpy(tmp, (const void *)src, len);
-			memcpy(&dat, tmp, len);
-		}
+			switch (len)
+			{
+			case 1U:
+				reg_data = *(volatile uint8_t *)gpa;
+				break;
+			case 2U:
+				reg_data = *(volatile uint16_t *)gpa;
+				break;
+			case 4U:
+				reg_data = *(volatile uint32_t *)gpa;
+				// For 32-bit reads, clear upper 32 bits
+				*r = (uint32_t)reg_data;
+				break;
+			case 8U:
+				reg_data = *(volatile uint64_t *)gpa;
+				*r = reg_data;
+				break;
+			default:
+				logger_warn("Unsupported MMIO read size: %u\n", len);
+				return 0;
+			}
 
-		if (reg_num != 30)
-		{
-			memcpy((void *)buf, &dat, len);
+			// For 8, 16, and 32-bit reads, update the register
+			if (len < 8U)
+			{
+				*r = reg_data;
+			}
 		}
-
-		dsb(sy);
-		isb();
+		logger_debug("MMIO read: 0x%llx -> R%u (data: 0x%llx, %u bytes)\n",
+					 gpa, reg_num, reg_data, len);
 	}
+
+	dsb(sy);
+	isb();
 	return 1;
 }

@@ -105,62 +105,105 @@ vgic_core_state_t *alloc_gicc()
     return &_state[_state_num++];
 }
 
+/**
+ * @brief 处理虚拟GIC分发器(VGICD)的写操作
+ *
+ * 当Guest尝试写入GIC分发器寄存器时，会触发Stage-2页表异常，
+ * 该函数负责模拟这些写操作，将Guest寄存器中的数据写入到虚拟GIC状态中
+ *
+ * @param info Stage-2异常信息，包含异常原因、地址等
+ * @param el2_ctx EL2异常上下文，包含Guest的寄存器状态
+ * @param paddr 目标物理地址（虚拟GIC寄存器地址）
+ */
 void vgicd_write(stage2_fault_info_t *info, trap_frame_t *el2_ctx, void *paddr)
 {
-    unsigned long reg_num;
-    volatile uint64_t *r;
-    volatile void *buf;
-    volatile unsigned long len;
-    volatile unsigned long *dst;
+    uint32_t reg_num;           // Guest寄存器编号 (X0-X30)
+    volatile uint64_t *r;       // 指向Guest寄存器的指针
+    volatile void *buf;         // 寄存器数据缓冲区
+    uint32_t len;              // MMIO操作的数据长度
+    volatile uint32_t *dst;     // 目标地址指针
 
-    // 获取寄存器编号和 MMIO 操作的大小
-    reg_num = info->hsr.dabt.reg;
-    len = 1 << (info->hsr.dabt.size & 0x00000003);
+    // 从HSR寄存器中提取寄存器编号和操作大小
+    reg_num = info->hsr.dabt.reg;                    // 获取源寄存器编号
+    len = 1U << (info->hsr.dabt.size & 0x3U);       // 计算数据长度: 1,2,4,8字节
 
-    // 计算目标缓冲区
-    r = &el2_ctx->r[reg_num];
-    buf = (void *)r;
-
-    // 从 MMIO 地址读取数据
-    dst = (unsigned long *)(unsigned long)paddr;
-    logger("(%d bytes) 0x%llx  R%d\n", (unsigned long)len, *dst, (unsigned long)reg_num);
-
-    logger("old data: 0x%llx\n", *dst);
-    // 将数据写入寄存器或进行其他必要的操作
-    if (reg_num != 30)
-    {
-        *dst = *(unsigned long *)buf;
+    // VGICD寄存器通常是32位的，检查操作大小
+    if (len != 4U) {
+        logger_warn("VGICD write size is not 4, but %u\n", len);
     }
-    // 确保所有更改都能被看到
-    dsb(sy);
-    isb();
-    logger("new data: 0x%llx\n", *dst);
+
+    // 获取Guest寄存器的地址和数据
+    r = &el2_ctx->r[reg_num];   // 指向Guest寄存器
+    buf = (void *)r;            // 寄存器数据缓冲区
+
+    // 设置目标地址（虚拟GIC寄存器）
+    dst = (uint32_t *)paddr;
+    logger_debug("VGICD write: (%u bytes) 0x%x R%u\n", len, *dst, reg_num);
+
+    logger_debug("old data: 0x%x\n", *dst);
+
+    // 执行写操作：将Guest寄存器数据写入虚拟GIC寄存器
+    // 跳过X30寄存器（链接寄存器），避免破坏返回地址
+    if (reg_num != 30U)
+    {
+        *dst = *(uint32_t *)buf;    // 只写入32位数据
+    }
+
+    // 内存屏障：确保写操作对所有CPU核心可见
+    dsb(sy);    // 数据同步屏障
+    isb();      // 指令同步屏障
+
+    logger_debug("new data: 0x%x\n", *dst);
 }
 
+/**
+ * @brief 处理虚拟GIC分发器(VGICD)的读操作
+ *
+ * 当Guest尝试读取GIC分发器寄存器时，会触发Stage-2页表异常，
+ * 该函数负责模拟这些读操作，从虚拟GIC状态中读取数据并写入Guest寄存器
+ *
+ * @param info Stage-2异常信息，包含异常原因、地址等
+ * @param el2_ctx EL2异常上下文，包含Guest的寄存器状态
+ * @param paddr 源物理地址（虚拟GIC寄存器地址）
+ */
 void vgicd_read(stage2_fault_info_t *info, trap_frame_t *el2_ctx, void *paddr)
 {
-    unsigned long reg_num;
-    volatile uint64_t *r;
-    volatile void *buf;
-    volatile unsigned long *src;
-    volatile unsigned long len;
-    volatile unsigned long dat;
+    uint32_t reg_num;           // Guest目标寄存器编号 (X0-X30)
+    volatile uint64_t *r;       // 指向Guest寄存器的指针
+    volatile void *buf;         // 寄存器数据缓冲区
+    volatile uint32_t *src;     // 源地址指针（虚拟GIC寄存器）
+    uint32_t len;              // MMIO操作的数据长度
+    uint32_t dat;              // 从虚拟GIC寄存器读取的数据
 
-    reg_num = info->hsr.dabt.reg;
-    len = 1 << (info->hsr.dabt.size & 0x3);
+    // 从HSR寄存器中提取寄存器编号和操作大小
+    reg_num = info->hsr.dabt.reg;                    // 获取目标寄存器编号
+    len = 1U << (info->hsr.dabt.size & 0x3U);       // 计算数据长度: 1,2,4,8字节
 
-    r = &el2_ctx->r[reg_num];
-    buf = (void *)r;
-
-    src = (unsigned long *)(unsigned long)paddr;
-    dat = *src;
-
-    if (reg_num != 30)
-    {
-        *(unsigned long *)buf = dat;
+    // VGICD寄存器通常是32位的，检查操作大小
+    if (len != 4U) {
+        logger_warn("VGICD read size is not 4, but %u\n", len);
     }
-    dsb(sy);
-    isb();
+
+    // 获取Guest寄存器的地址
+    r = &el2_ctx->r[reg_num];   // 指向Guest目标寄存器
+    buf = (void *)r;            // 寄存器数据缓冲区
+
+    // 从虚拟GIC寄存器读取数据
+    src = (uint32_t *)paddr;    // 源地址（虚拟GIC寄存器）
+    dat = *src;                 // 读取32位数据
+
+    logger_debug("VGICD read: 0x%llx -> R%u (data: 0x%x)\n", (uint64_t)paddr, reg_num, dat);
+
+    // 将读取的数据写入Guest寄存器
+    // 跳过X30寄存器（链接寄存器），避免破坏返回地址
+    if (reg_num != 30U)
+    {
+        *(uint32_t *)buf = dat;     // 写入寄存器低32位，高32位自动清零
+    }
+
+    // 内存屏障：确保读操作和寄存器更新的顺序
+    dsb(sy);    // 数据同步屏障
+    isb();      // 指令同步屏障
 }
 
 // handle gicd emu
@@ -1085,14 +1128,15 @@ void vgic_inject_ppi(tcb_t *task, int32_t irq_id)
     // 检查中断是否已经 pending
     if (vgic_is_irq_pending(vgicc, irq_id))
     {
-        // logger_warn("PPI %d already pending on vCPU %d, skip inject.\n", irq_id, task->task_id);
+        logger_warn("PPI %d already pending on vCPU %d, skip inject.\n", irq_id, task->task_id);
         return;
     }
 
     // 检查中断是否使能
     if (!(vgicc->sgi_ppi_isenabler & (1U << irq_id)))
     {
-        // logger_warn("PPI %d is disabled on vCPU %d, still inject to pending.\n", irq_id, task->task_id);
+        logger_warn("PPI %d is disabled on vCPU %d, abort inject.\n", irq_id, task->task_id);
+        return;
     }
 
     // 标记为 pending

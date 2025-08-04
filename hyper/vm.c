@@ -222,6 +222,7 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
 
         state->id = i;
         state->vmcr = mmio_read32((void *)GICH_VMCR);
+        // state->vmcr = 0x1;
         state->saved_elsr0 = mmio_read32((void *)GICH_ELSR0);
         state->saved_apr = mmio_read32((void *)GICH_APR);
         // state->saved_hcr = mmio_read32((void *)GICH_HCR);
