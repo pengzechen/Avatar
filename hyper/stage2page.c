@@ -251,7 +251,7 @@ int32_t handle_mmio(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 	uint32_t len;
 	uint64_t reg_data;
 
-	logger_debug("MMIO operation gpa: 0x%llx\n", gpa);
+	// logger_debug("MMIO operation gpa: 0x%llx\n", gpa);
 
 	reg_num = info->hsr.dabt.reg;
 	len = 1U << (info->hsr.dabt.size & 0x3U); // 1, 2, 4, or 8 bytes
@@ -283,7 +283,7 @@ int32_t handle_mmio(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 				return 0;
 			}
 		}
-		logger_debug("MMIO write: R%u -> 0x%llx (%u bytes)\n", reg_num, gpa, len);
+		// logger_debug("MMIO write: R%u -> 0x%llx (%u bytes)\n", reg_num, gpa, len);
 	}
 	else
 	{
@@ -318,8 +318,8 @@ int32_t handle_mmio(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 				*r = reg_data;
 			}
 		}
-		logger_debug("MMIO read: 0x%llx -> R%u (data: 0x%llx, %u bytes)\n",
-					 gpa, reg_num, reg_data, len);
+		// logger_debug("MMIO read: 0x%llx -> R%u (data: 0x%llx, %u bytes)\n",
+		// 			 gpa, reg_num, reg_data, len);
 	}
 
 	dsb(sy);

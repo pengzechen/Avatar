@@ -88,9 +88,6 @@
 #define SPSR_EL2_EL2h 0b1001
 
 
-/* SPSR_EL1 DEFAULT */
-#define SPSR_EL1_KERNEL SPSR_EL1_EL1h
-#define SPSR_EL1_USER SPSR_EL1_EL0t
 
 /* =====================   SCTLR_EL2 ======================= */
 

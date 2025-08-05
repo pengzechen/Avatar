@@ -33,7 +33,8 @@ void fake_timer() {
 void fake_console()
 {
     // logger("fake console\n");
-    vgic_hw_inject_test(PL011_INT);
+    // vgic_hw_inject_test(PL011_INT);
+    vgic_passthrough_irq(PL011_INT);
 }
 
 void mmio_map_gicd()

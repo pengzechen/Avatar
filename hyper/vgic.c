@@ -255,7 +255,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 int32_t base_id = reg_idx * 32;
 
                 // W1S: 写1置位
-                vgic->gicd_scenabler[reg_idx] |= r;
+                vgic->gicd_scenabler[reg_idx-1] |= r;
 
                 // 对每个置位的中断调用硬件使能
                 for (int bit = 0; bit < 32; bit++)
@@ -297,7 +297,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 int32_t base_id = reg_idx * 32;
 
                 // W1C: 写1清零
-                vgic->gicd_scenabler[reg_idx] &= ~r;
+                vgic->gicd_scenabler[reg_idx-1] &= ~r;
 
                 // 对每个要清零的中断调用硬件禁用
                 for (int bit = 0; bit < 32; bit++)
@@ -1154,6 +1154,64 @@ void vgic_inject_ppi(tcb_t *task, int32_t irq_id)
     }
 }
 
+// 给指定vcpu注入一个spi中断
+void vgic_inject_spi(tcb_t *task, int32_t irq_id)
+{
+    // irq_id: 32~1019
+    if (irq_id < 32 || irq_id > 1019)
+    {
+        logger_error("Invalid SPI ID: %d (must be 32-1019)\n", irq_id);
+        return;
+    }
+    if (!task)
+    {
+        logger_error("Invalid task for SPI injection\n");
+        return;
+    }
+    if (!task->curr_vm)
+    {
+        logger_error("Task is not a VM task\n");
+        return;
+    }
+
+    vgic_t *vgic = task->curr_vm->vgic;
+    // 检查中断是否使能
+    if (!(vgic->gicd_scenabler[(irq_id / 32) - 1] & (1U << (irq_id % 32))))
+    {
+        logger_warn("SPI %d is disabled on vCPU %d, abort inject.\n", irq_id, task->task_id);
+        // return;
+    }
+
+    vgic_core_state_t *vgicc = get_vgicc_by_vcpu(task);
+    if (!vgicc)
+    {
+        logger_error("Failed to get VGICC for task %d\n", task->task_id);
+        return;
+    }
+
+    // 检查中断是否已经 pending
+    if (vgic_is_irq_pending(vgicc, irq_id))
+    {
+        logger_warn("SPI %d already pending on vCPU %d, skip inject.\n", irq_id, task->task_id);
+        return;
+    }
+
+    // 标记为 pending
+    vgic_set_irq_pending(vgicc, irq_id);
+
+    // logger_debug("[pcpu: %d]: Inject SPI id: %d to vCPU: %d(task: %d)\n",
+    //              get_current_cpu_id(), irq_id, get_vcpuid(task), task->task_id);
+
+    // 如果当前正在运行此 vCPU，尝试立即注入到 GICH_LR
+    if (task == (tcb_t *)read_tpidr_el2())
+    {
+        // logger_info("[pcpu: %d]: (Is running)Try to inject pending SPI for vCPU: %d (task: %d)\n",
+        //             get_current_cpu_id(), get_vcpuid(task), task->task_id);
+        vgic_try_inject_pending(task);
+    }
+}
+
+
 // vm进入的时候把 pending 的中断注入到 GICH_LR
 void vgic_try_inject_pending(tcb_t *task)
 {
@@ -1264,6 +1322,19 @@ void gicc_restore_core_state()
 
     // vgicc_dump_if_changed(state, get_vcpuid(curr), curr->task_id, curr->curr_vm->vm_id);
 }
+
+
+// --------------------------------------------------------
+// ==================    直通中断操作     ===================
+// --------------------------------------------------------
+void vgic_passthrough_irq(int32_t irq_id)
+{
+    // find vms and vcpus need to inject 
+    // todo
+    tcb_t * task = (tcb_t *)read_tpidr_el2();
+    vgic_inject_spi(task, irq_id);
+}
+
 
 // vgic inject test
 void vgic_hw_inject_test(uint32_t vector)

@@ -70,5 +70,6 @@ extern void gicc_save_core_state();
 extern void gicc_restore_core_state();
 
 void vgic_inject_ppi(tcb_t *task, int32_t irq_id);
+void vgic_passthrough_irq(int32_t irq_id);
 
 #endif // __VGIC_H__
