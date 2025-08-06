@@ -143,7 +143,8 @@ void gic_enable_int(int32_t vector, int32_t enabled)
         write32(mask, (void *)GICD_ISENABLER(reg));
     else
         write32(mask, (void *)GICD_ICENABLER(reg));
-    logger("set enable: reg: %d, mask: 0x%llx\n", reg, mask);
+    // logger("set enable: reg: %d, mask: 0x%llx\n", reg, mask);
+    logger("gic %s int: %d\n", enabled ? "enable" : "disable", vector);
 }
 
 // Check the given interrupt.
@@ -153,7 +154,8 @@ int32_t gic_get_enable(int32_t vector)
     int32_t mask = 1 << (vector & ((1 << 5) - 1)); //  vec % 32
     uint32_t val = read32((void *)GICD_ISENABLER(reg));
 
-    logger("get enable: reg: %llx, mask: %llx, value: %llx\n", reg, mask, val);
+    // logger("get enable: reg: %llx, mask: %llx, value: %llx\n", reg, mask, val);
+    logger("gic %d is %s\n", vector, val & mask ? "enabled" : "disabled");
     return val & mask != 0;
 }
 
@@ -254,6 +256,7 @@ void gic_set_target(int32_t int_id, uint8_t target) {
 
     uint32_t old_val = read32((void *)(GICD_ITARGETSR(idx)));
     uint32_t new_val = (old_val & ~mask) | ((target << off) & mask);
+    logger("gic set %d to target %x\n", int_id, target);
     write32(new_val, (void *)(GICD_ITARGETSR(idx)));
 }
 

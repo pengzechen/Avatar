@@ -35,7 +35,7 @@ extern char __guest_fs_start_1[], __guest_fs_end_1[];
 #define VM0_BIN_LOADADDR  0x70200000UL
 #define VM0_DTB_LOADADDR  0x70000000UL
 #define VM0_FS_LOADADDR   0x78000000UL
-#define VM0_SMP_NUM       2
+#define VM0_SMP_NUM       1
 
 #define VM1_BIN_LOADADDR  0x50200000UL
 #define VM1_DTB_LOADADDR  0x50000000UL

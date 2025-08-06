@@ -69,14 +69,14 @@ void main_entry_el2()
         vm_init(vm, 0); // 初始化一个虚拟机
         run_vm(vm);
 
-        vm = alloc_vm();
-        if (vm == NULL)
-        {
-            logger_error("Failed to allocate vm\n");
-            return;
-        }
-        vm_init(vm, 1); // 初始化第二个虚拟机
-        run_vm(vm);
+        // vm = alloc_vm();
+        // if (vm == NULL)
+        // {
+        //     logger_error("Failed to allocate vm\n");
+        //     return;
+        // }
+        // vm_init(vm, 1); // 初始化第二个虚拟机
+        // run_vm(vm);
 
         logger("\nHello Hyper:\nthere's some hyper tests: \n");
         logger("scrlr_el2: 0x%llx\n", read_sctlr_el2());
@@ -128,7 +128,7 @@ void hyper_main()
     print_avatar_logo();
 
     spinlock_init(&lock_el2);
-    // io_init();
+    io_init();
 
     start_secondary_cpus();
 

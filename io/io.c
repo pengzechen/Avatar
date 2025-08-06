@@ -3,24 +3,21 @@
 #include <spinlock.h>
 #include <io.h>
 #include <gic.h>
-#include <exception.h>
+
 
 struct uart_ops_t
 {
     void (*uart_putc)(char);
-    char (*uart_getc)(void);
 };
 
 static const struct uart_ops_t *uart_op = NULL;
 
 static const struct uart_ops_t early_ops = {
     .uart_putc = uart_early_putc,
-    .uart_getc = uart_early_getc,
 };
 
 static const struct uart_ops_t advance_ops = {
-    .uart_putc = uart_advance_putc,
-    .uart_getc = uart_advance_getc,
+    .uart_putc = uart_putchar,
 };
 
 // 初期使用的串口
@@ -32,22 +29,13 @@ void io_early_init()
 
 void io_init()
 {
-    extern void uart_interrupt_handler(uint64_t *);
-    irq_install(33, uart_interrupt_handler);
-    gic_enable_int(33, 1);
-
-    if (gic_get_enable(33))
-    {
-        logger("uart enabled successfully ...\n");
-    }
-
-    uart_advance_init();
+    uart_init();
     uart_op = &advance_ops;
 }
 
 char getc()
 {
-    return uart_op->uart_getc();
+    return uart_early_getc();
 }
 
 void putc(char c)

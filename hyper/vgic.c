@@ -1128,14 +1128,14 @@ void vgic_inject_ppi(tcb_t *task, int32_t irq_id)
     // 检查中断是否已经 pending
     if (vgic_is_irq_pending(vgicc, irq_id))
     {
-        logger_warn("PPI %d already pending on vCPU %d, skip inject.\n", irq_id, task->task_id);
+        // logger_warn("PPI %d already pending on vCPU %d, skip inject.\n", irq_id, task->task_id);
         return;
     }
 
     // 检查中断是否使能
     if (!(vgicc->sgi_ppi_isenabler & (1U << irq_id)))
     {
-        logger_warn("PPI %d is disabled on vCPU %d, abort inject.\n", irq_id, task->task_id);
+        // logger_warn("PPI %d is disabled on vCPU %d, abort inject.\n", irq_id, task->task_id);
         return;
     }
 
@@ -1192,7 +1192,7 @@ void vgic_inject_spi(tcb_t *task, int32_t irq_id)
     // 检查中断是否已经 pending
     if (vgic_is_irq_pending(vgicc, irq_id))
     {
-        logger_warn("SPI %d already pending on vCPU %d, skip inject.\n", irq_id, task->task_id);
+        // logger_warn("SPI %d already pending on vCPU %d, skip inject.\n", irq_id, task->task_id);
         return;
     }
 

@@ -9,12 +9,10 @@ void uart_early_init();
 void uart_early_putc(char c);
 char uart_early_getc();
 
-void uart_advance_init();
-char uart_advance_getc(void);
-void uart_advance_putc(char c);
 
 void io_early_init();
 void io_init();
+
 char getc();
 void putc(char c);
 
