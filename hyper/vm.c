@@ -33,7 +33,6 @@ void fake_timer() {
 void fake_console()
 {
     // logger("fake console\n");
-    // vgic_hw_inject_test(PL011_INT);
     vgic_passthrough_irq(PL011_INT);
 }
 
@@ -248,12 +247,9 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
         }
     }
 
-
-
-
-    irq_install(HV_TIMER_VECTOR, fake_timer);
-
-    irq_install(PL011_INT, fake_console);
+    // 这两个 fake 都可以去掉了！
+    // irq_install(HV_TIMER_VECTOR, fake_timer);
+    // irq_install(PL011_INT, fake_console);
 }
 
 void run_vm(struct _vm_t *vm)

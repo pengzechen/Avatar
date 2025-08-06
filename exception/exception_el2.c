@@ -203,15 +203,13 @@ void handle_irq_exception_el2(uint64_t *stack_pointer)
     int32_t vector = gic_iar_irqnr(iar);
     gic_write_eoir(iar);
 
-    if (vector != 27)
-    {
-        /*
-         * 你手动注入给 guest 的 virtual interrupt（虚拟硬件中断），不能在 EL2 写 DIR！
-         * 否则会直接把这个中断标记为 inactive，guest 就根本收不到。
-         * 需要透穿的不写 dir
-         */
-        gic_write_dir(iar);
-    }
+    /*
+        * 你手动注入给 guest 的 virtual interrupt（虚拟硬件中断），不能在 EL2 写 DIR！
+        * 否则会直接把这个中断标记为 inactive，guest 就根本收不到。
+        * 需要透穿的不写 dir
+        */
+    gic_write_dir(iar);
+    
 
     save_cpu_ctx(context);
 

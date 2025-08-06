@@ -7,8 +7,8 @@
 #include <exception.h>
 
 // Circular buffer for transmit data
-#define UART_TX_BUFFER_SIZE 1024
-#define UART_RX_BUFFER_SIZE 1024
+#define UART_TX_BUFFER_SIZE 32
+#define UART_RX_BUFFER_SIZE 32
 
 typedef struct
 {
@@ -63,44 +63,44 @@ static bool buffer_get(uart_buffer_t *buf, char *c)
 // UART hardware operations
 static void uart_enable_tx_interrupt(void)
 {
-    uint32_t imsc = read32((void *)UART_IMSC);
+    uint32_t imsc = mmio_read32((void *)UART_IMSC);
     imsc |= UART_INT_TX;
-    write32(imsc, (void *)UART_IMSC);
+    mmio_write32(imsc, (void *)UART_IMSC);
 }
 
 static void uart_disable_tx_interrupt(void)
 {
-    uint32_t imsc = read32((void *)UART_IMSC);
+    uint32_t imsc = mmio_read32((void *)UART_IMSC);
     imsc &= ~UART_INT_TX;
-    write32(imsc, (void *)UART_IMSC);
+    mmio_write32(imsc, (void *)UART_IMSC);
 }
 
 static void uart_enable_rx_interrupt(void)
 {
-    uint32_t imsc = read32((void *)UART_IMSC);
+    uint32_t imsc = mmio_read32((void *)UART_IMSC);
     imsc |= (UART_INT_RX | UART_INT_RT);
-    write32(imsc, (void *)UART_IMSC);
+    mmio_write32(imsc, (void *)UART_IMSC);
 }
 
 static bool uart_tx_fifo_full(void)
 {
-    return (read32((void *)UART_FR) & UART_FR_TXFF) != 0;
+    return (mmio_read32((void *)UART_FR) & UART_FR_TXFF) != 0;
 }
 
 static bool uart_rx_fifo_empty(void)
 {
-    return (read32((void *)UART_FR) & UART_FR_RXFE) != 0;
+    return (mmio_read32((void *)UART_FR) & UART_FR_RXFE) != 0;
 }
 
 // UART interrupt handler
 void uart_interrupt_handler(uint64_t *stack_pointer)
 {
-    uint32_t mis = read32((void *)UART_MIS);
+    uint32_t mis = mmio_read32((void *)UART_MIS);
 
     // Handle transmit interrupt
     if (mis & UART_INT_TX)
     {
-        spin_lock(&tx_buffer.lock);
+        // spin_lock(&tx_buffer.lock);
 
         // Send as many characters as possible
         while (!uart_tx_fifo_full() && !buffer_is_empty(&tx_buffer))
@@ -108,7 +108,7 @@ void uart_interrupt_handler(uint64_t *stack_pointer)
             char c;
             if (buffer_get(&tx_buffer, &c))
             {
-                write32((uint32_t)c, (void *)UART_DR);
+                mmio_write32((uint32_t)c, (void *)UART_DR);
             }
         }
 
@@ -118,21 +118,21 @@ void uart_interrupt_handler(uint64_t *stack_pointer)
             uart_disable_tx_interrupt();
         }
 
-        spin_unlock(&tx_buffer.lock);
+        // spin_unlock(&tx_buffer.lock);
 
         // Clear TX interrupt
-        write32(UART_INT_TX, (void *)UART_ICR);
+        mmio_write32(UART_INT_TX, (void *)UART_ICR);
     }
 
     // Handle receive interrupt
     if (mis & (UART_INT_RX | UART_INT_RT))
     {
-        spin_lock(&rx_buffer.lock);
+        // spin_lock(&rx_buffer.lock);
 
         // Read all available characters
         while (!uart_rx_fifo_empty())
         {
-            char c = (char)read32((void *)UART_DR);
+            char c = (char)mmio_read32((void *)UART_DR);
             if (!buffer_is_full(&rx_buffer))
             {
                 buffer_put(&rx_buffer, c);
@@ -140,10 +140,10 @@ void uart_interrupt_handler(uint64_t *stack_pointer)
             // If buffer is full, we drop the character
         }
 
-        spin_unlock(&rx_buffer.lock);
+        // spin_unlock(&rx_buffer.lock);
 
         // Clear RX interrupts
-        write32(UART_INT_RX | UART_INT_RT, (void *)UART_ICR);
+        mmio_write32(UART_INT_RX | UART_INT_RT, (void *)UART_ICR);
     }
 }
 
@@ -162,22 +162,22 @@ void uart_init(void)
     rx_buffer.head = rx_buffer.tail = rx_buffer.count = 0;
 
     // Disable UART first
-    write32(0, (void *)UART_CR);
+    mmio_write32(0, (void *)UART_CR);
 
     // Clear all interrupts
-    write32(0x7FF, (void *)UART_ICR);
+    mmio_write32(0x7FF, (void *)UART_ICR);
 
     // Configure UART (115200 baud, 8N1)
     // For 24MHz clock: IBRD = 24000000 / (16 * 115200) = 13
     // FBRD = (0.0208 * 64) + 0.5 = 1
-    write32(13, (void *)UART_IBRD);
-    write32(1, (void *)UART_FBRD);
+    mmio_write32(13, (void *)UART_IBRD);
+    mmio_write32(1, (void *)UART_FBRD);
 
     // 8 bits, no parity, 1 stop bit, enable FIFOs
-    write32((3 << 5) | (1 << 4), (void *)UART_LCR_H);
+    mmio_write32((3 << 5) | (1 << 4), (void *)UART_LCR_H);
 
     // Enable UART, TX, RX
-    write32(UART_CR_UARTEN | UART_CR_TXE | UART_CR_RXE, (void *)UART_CR);
+    mmio_write32(UART_CR_UARTEN | UART_CR_TXE | UART_CR_RXE, (void *)UART_CR);
 
     // Enable RX interrupts (TX interrupts enabled on demand)
     uart_enable_rx_interrupt();
@@ -203,14 +203,14 @@ bool uart_putchar_nb(char c)
         return false;
     }
 
-    spin_lock(&tx_buffer.lock);
+    // spin_lock(&tx_buffer.lock);
 
     bool success = false;
 
     // Try to put directly to FIFO if buffer is empty and FIFO not full
     if (buffer_is_empty(&tx_buffer) && !uart_tx_fifo_full())
     {
-        write32((uint32_t)c, (void *)UART_DR);
+        mmio_write32((uint32_t)c, (void *)UART_DR);
         success = true;
     }
     else
@@ -224,7 +224,7 @@ bool uart_putchar_nb(char c)
         }
     }
 
-    spin_unlock(&tx_buffer.lock);
+    // spin_unlock(&tx_buffer.lock);
     return success;
 }
 
@@ -272,9 +272,9 @@ bool uart_getchar_nb(char *c)
         return false;
     }
 
-    spin_lock(&rx_buffer.lock);
+    // spin_lock(&rx_buffer.lock);
     bool success = buffer_get(&rx_buffer, c);
-    spin_unlock(&rx_buffer.lock);
+    // spin_unlock(&rx_buffer.lock);
 
     return success;
 }
@@ -287,9 +287,9 @@ bool uart_rx_available(void)
         return false;
     }
 
-    spin_lock(&rx_buffer.lock);
+    // spin_lock(&rx_buffer.lock);
     bool available = !buffer_is_empty(&rx_buffer);
-    spin_unlock(&rx_buffer.lock);
+    // spin_unlock(&rx_buffer.lock);
 
     return available;
 }
@@ -302,9 +302,9 @@ uint32_t uart_tx_buffer_usage(void)
         return 0;
     }
 
-    spin_lock(&tx_buffer.lock);
+    // spin_lock(&tx_buffer.lock);
     uint32_t usage = tx_buffer.count;
-    spin_unlock(&tx_buffer.lock);
+    // spin_unlock(&tx_buffer.lock);
 
     return usage;
 }

@@ -14,6 +14,7 @@
 #include "thread.h"
 #include "mem/mem.h"
 #include "smp.h"
+#include "uart_pl011.h"
 
 void print_avatar_logo(void)
 {
@@ -110,6 +111,19 @@ void main_entry_el2()
     uint64_t __sp = get_idle_sp_top() - sizeof(trap_frame_t);
     void *_sp = (void *)__sp;
     schedule_init_local(get_idle(), NULL); // 任务管理器任务当前在跑idle任务
+
+    enable_interrupts();
+
+    while(1) {
+        if (uart_rx_available()) {
+            char c;
+            while (uart_getchar_nb(&c)) {
+                logger_info("(cpu: %d) Received char: '%c' (0x%02x)\n", get_current_cpu_id(), c, (unsigned char)c);
+            }
+        }
+        // 让出CPU给其他任务
+        wfi();
+    }
 
     asm volatile("mov sp, %0" ::"r"(_sp));
     extern void guest_entry();
