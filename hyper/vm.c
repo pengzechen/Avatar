@@ -1,6 +1,7 @@
 
 #include <hyper/vgic.h>
 #include <hyper/vtimer.h>
+#include <hyper/vpl011.h>
 #include <hyper/hyper_cfg.h>
 #include <aj_types.h>
 #include "gic.h"
@@ -55,6 +56,18 @@ void mmio_map_gicc()
         avr_entry->p2m.read = 0;
         avr_entry->p2m.write = 0;
         apply_ept(avr_entry);
+    }
+}
+
+void mmio_map_pl011()
+{   
+    for (int32_t i = 0; i < 1; i++)
+    {
+        lpae_t *avr_entry = get_ept_entry((uint64_t)0x9000000 + 0x1000 * i); // 0800 0000 - 0801 0000  gicd
+        avr_entry->p2m.read = 0;
+        avr_entry->p2m.write = 0;
+        apply_ept(avr_entry);
+        logger_info("mmio_map_pl011: 0x%lx\n", (uint64_t)0x9000000 + 0x1000 * i);
     }
 }
 
@@ -118,6 +131,9 @@ struct _vm_t *alloc_vm()
 
     // 获取对应的 vtimer 结构体
     vm->vtimer = alloc_vtimer();
+
+    // 获取对应的 vpl011 结构体
+    vm->vpl011 = alloc_vpl011();
 
     logger_warn("alloc vm: %d\n", vm->vm_id);
     return vm;
@@ -214,6 +230,7 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
     // 映射 MMIO 区域
     mmio_map_gicd();
     mmio_map_gicc();
+    mmio_map_pl011();
 
     // 初始化虚拟 GIC
     vm->vgic->vm = vm;
@@ -245,6 +262,16 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
         } else {
             logger_error("Failed to allocate vtimer core state for vCPU %d\n", i);
         }
+    }
+
+    // 初始化虚拟串口
+    vm->vpl011->vm = vm;  // 建立双向关联
+    vpl011_state_t *vpl011_state = alloc_vpl011_state();
+    if (vpl011_state) {
+        vm->vpl011->state = vpl011_state;
+        logger_info("Allocated vpl011 state for VM %d\n", vm->vm_id);
+    } else {
+        logger_error("Failed to allocate vpl011 state for VM %d\n", vm->vm_id);
     }
 
     // 这两个 fake 都可以去掉了！

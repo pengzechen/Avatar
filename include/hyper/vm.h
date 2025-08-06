@@ -13,6 +13,7 @@
 typedef struct _tcb_t tcb_t;
 typedef struct _vgic_t vgic_t;
 typedef struct _vtimer_t vtimer_t;
+typedef struct _vpl011_t vpl011_t;
 
 struct _vm_t
 {
@@ -28,6 +29,7 @@ struct _vm_t
 
     vgic_t *vgic;
     vtimer_t *vtimer;  // 虚拟定时器
+    vpl011_t *vpl011;  // 虚拟串口
 };
 
 static inline uint64_t read_sctlr_el2()

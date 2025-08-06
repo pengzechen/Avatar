@@ -10,6 +10,8 @@
 #include "task/task.h"
 #include "lib/aj_string.h"
 #include "hyper/vm.h"
+#include "hyper/vtimer.h"
+#include "hyper/vpl011.h"
 #include "os_cfg.h"
 #include "thread.h"
 #include "mem/mem.h"
@@ -60,6 +62,10 @@ void main_entry_el2()
         schedule_init();
         alloctor_init();
         task_manager_init();
+
+        // 初始化虚拟化组件
+        vtimer_global_init();
+        vpl011_global_init();
 
         struct _vm_t *vm = alloc_vm();
         if (vm == NULL)
@@ -114,16 +120,16 @@ void main_entry_el2()
 
     enable_interrupts();
 
-    while(1) {
-        if (uart_rx_available()) {
-            char c;
-            while (uart_getchar_nb(&c)) {
-                logger_info("(cpu: %d) Received char: '%c' (0x%02x)\n", get_current_cpu_id(), c, (unsigned char)c);
-            }
-        }
-        // 让出CPU给其他任务
-        wfi();
-    }
+    // while(1) {
+    //     if (uart_rx_available()) {
+    //         char c;
+    //         while (uart_getchar_nb(&c)) {
+    //             logger_info("(cpu: %d) Received char: '%c' (0x%02x)\n", get_current_cpu_id(), c, (unsigned char)c);
+    //         }
+    //     }
+    //     // 让出CPU给其他任务
+    //     wfi();
+    // }
 
     asm volatile("mov sp, %0" ::"r"(_sp));
     extern void guest_entry();

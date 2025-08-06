@@ -6,6 +6,7 @@
 #include <exception.h>
 #include <hyper/vcpu.h>
 #include <hyper/vgic.h>
+#include <hyper/vpl011.h>
 #include <lib/aj_string.h>
 
 extern lpae_t ept_L1[];
@@ -215,6 +216,26 @@ void data_abort_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 		handle_mmio(info, el2_ctx);
 		gicc_save_core_state();
 		return;
+	}
+
+	// Handle PL011 UART MMIO access
+	if (UART0_BASE <= info->gpa && info->gpa < (UART0_BASE + 0x1000))
+	{
+		uint32_t reg_num = info->hsr.dabt.reg;
+		uint32_t len = 1U << (info->hsr.dabt.size & 0x3U);
+		uint64_t reg_data = 0;
+		bool is_write = info->hsr.dabt.write;
+
+		if (is_write && reg_num != 30U) {
+			reg_data = el2_ctx->r[reg_num];
+		}
+
+		if (vpl011_mmio_handler(info->gpa, reg_num, len, &reg_data, is_write)) {
+			if (!is_write && reg_num != 30U) {
+				el2_ctx->r[reg_num] = reg_data;
+			}
+			return;
+		}
 	}
 
 	/* Do not delete following code block */
