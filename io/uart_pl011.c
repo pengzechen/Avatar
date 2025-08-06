@@ -100,7 +100,7 @@ void uart_interrupt_handler(uint64_t *stack_pointer)
     // Handle transmit interrupt
     if (mis & UART_INT_TX)
     {
-        // spin_lock(&tx_buffer.lock);
+        spin_lock(&tx_buffer.lock);
 
         // Send as many characters as possible
         while (!uart_tx_fifo_full() && !buffer_is_empty(&tx_buffer))
@@ -118,7 +118,7 @@ void uart_interrupt_handler(uint64_t *stack_pointer)
             uart_disable_tx_interrupt();
         }
 
-        // spin_unlock(&tx_buffer.lock);
+        spin_unlock(&tx_buffer.lock);
 
         // Clear TX interrupt
         mmio_write32(UART_INT_TX, (void *)UART_ICR);
@@ -127,7 +127,7 @@ void uart_interrupt_handler(uint64_t *stack_pointer)
     // Handle receive interrupt
     if (mis & (UART_INT_RX | UART_INT_RT))
     {
-        // spin_lock(&rx_buffer.lock);
+        spin_lock(&rx_buffer.lock);
 
         // Read all available characters
         while (!uart_rx_fifo_empty())
@@ -140,7 +140,7 @@ void uart_interrupt_handler(uint64_t *stack_pointer)
             // If buffer is full, we drop the character
         }
 
-        // spin_unlock(&rx_buffer.lock);
+        spin_unlock(&rx_buffer.lock);
 
         // Clear RX interrupts
         mmio_write32(UART_INT_RX | UART_INT_RT, (void *)UART_ICR);
@@ -203,7 +203,7 @@ bool uart_putchar_nb(char c)
         return false;
     }
 
-    // spin_lock(&tx_buffer.lock);
+    spin_lock(&tx_buffer.lock);
 
     bool success = false;
 
@@ -224,7 +224,7 @@ bool uart_putchar_nb(char c)
         }
     }
 
-    // spin_unlock(&tx_buffer.lock);
+    spin_unlock(&tx_buffer.lock);
     return success;
 }
 
@@ -272,9 +272,9 @@ bool uart_getchar_nb(char *c)
         return false;
     }
 
-    // spin_lock(&rx_buffer.lock);
+    spin_lock(&rx_buffer.lock);
     bool success = buffer_get(&rx_buffer, c);
-    // spin_unlock(&rx_buffer.lock);
+    spin_unlock(&rx_buffer.lock);
 
     return success;
 }
@@ -287,9 +287,9 @@ bool uart_rx_available(void)
         return false;
     }
 
-    // spin_lock(&rx_buffer.lock);
+    spin_lock(&rx_buffer.lock);
     bool available = !buffer_is_empty(&rx_buffer);
-    // spin_unlock(&rx_buffer.lock);
+    spin_unlock(&rx_buffer.lock);
 
     return available;
 }
@@ -302,9 +302,9 @@ uint32_t uart_tx_buffer_usage(void)
         return 0;
     }
 
-    // spin_lock(&tx_buffer.lock);
+    spin_lock(&tx_buffer.lock);
     uint32_t usage = tx_buffer.count;
-    // spin_unlock(&tx_buffer.lock);
+    spin_unlock(&tx_buffer.lock);
 
     return usage;
 }
