@@ -1,5 +1,6 @@
 #include "mem/mmu.h"
 #include "sys/sys.h"
+#include "os_cfg.h"
 
 // startup.S
 .section .text
@@ -228,23 +229,25 @@ from_el3_to_el1:
 
 .global _stack_top_second
 .global _stack_top
+.global _stack_bottom_second
+.global _stack_bottom
+.global _stack_top_el3
+.global _stack_bottom_el3
 
 // 栈空间
 .section .bss
 
 .align 14
 _stack_bottom_el3:
-    .skip 0x4000  // 16KB 的栈空间
+    .skip BOOT_STACK_SIZE  // EL3启动栈
 _stack_top_el3:
 
 .align 14
 _stack_bottom:
-    .skip 0x4000  // 16KB 的栈空间
+    .skip BOOT_STACK_SIZE  // 主核启动栈
 _stack_top:
-
-
 
 .align 14
 _stack_bottom_second:
-    .skip 0x4000 * 4 // 16KB 的栈空间
+    .skip SECONDARY_STACK_TOTAL  // 从核栈总大小，根据SMP_NUM动态计算
 _stack_top_second:

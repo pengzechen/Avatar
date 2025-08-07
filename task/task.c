@@ -340,7 +340,7 @@ void switch_context_el(tcb_t *old, tcb_t *new, uint64_t *sp)
 
 // ================= 任务管理 =================
 
-static uint8_t idle_task_stack[SMP_NUM][4096] __attribute__((aligned(4096)));
+static uint8_t idle_task_stack[SMP_NUM][IDLE_STACK_SIZE] __attribute__((aligned(4096)));
 
 void idle_task_el1()
 {
@@ -362,7 +362,7 @@ tcb_t *get_idle()
 uint64_t get_idle_sp_top(void)
 {
     uint64_t core_id = get_current_cpu_id();
-    return (uint64_t)&idle_task_stack[core_id][4096];
+    return (uint64_t)&idle_task_stack[core_id][IDLE_STACK_SIZE];
 }
 
 void el1_idle_init()
