@@ -21,6 +21,26 @@ typedef struct _tcb_t tcb_t;
 #define VUART_MIS       0x040   /* Masked Interrupt Status Register */
 #define VUART_ICR       0x044   /* Interrupt Clear Register */
 
+/* PL011 Identification Registers */
+#define VUART_PERIPHID0 0xFE0   /* Peripheral ID Register 0 */
+#define VUART_PERIPHID1 0xFE4   /* Peripheral ID Register 1 */
+#define VUART_PERIPHID2 0xFE8   /* Peripheral ID Register 2 */
+#define VUART_PERIPHID3 0xFEC   /* Peripheral ID Register 3 */
+#define VUART_PCELLID0  0xFF0   /* PrimeCell ID Register 0 */
+#define VUART_PCELLID1  0xFF4   /* PrimeCell ID Register 1 */
+#define VUART_PCELLID2  0xFF8   /* PrimeCell ID Register 2 */
+#define VUART_PCELLID3  0xFFC   /* PrimeCell ID Register 3 */
+
+/* PL011 Identification Register Values */
+#define VUART_PERIPHID0_VAL 0x11    /* Part number [7:0] */
+#define VUART_PERIPHID1_VAL 0x10    /* Part number [11:8] and Designer [3:0] */
+#define VUART_PERIPHID2_VAL 0x14    /* Revision [7:4] and Designer [7:4] */
+#define VUART_PERIPHID3_VAL 0x00    /* Configuration */
+#define VUART_PCELLID0_VAL  0x0D    /* PrimeCell ID */
+#define VUART_PCELLID1_VAL  0xF0    /* PrimeCell ID */
+#define VUART_PCELLID2_VAL  0x05    /* PrimeCell ID */
+#define VUART_PCELLID3_VAL  0xB1    /* PrimeCell ID */
+
 /* PL011 Flag Register bits */
 #define VUART_FR_TXFE   (1 << 7)  /* Transmit FIFO empty */
 #define VUART_FR_RXFF   (1 << 6)  /* Receive FIFO full */

@@ -1,12 +1,14 @@
 
 /* VM 0 BIN（强定义，必须存在） */
 .section .data.guest_bin.0
-    .incbin "../guest/testos/build/guest0_kernel.bin"
+    // .incbin "../guest/testos/build/guest0_kernel.bin"
+    .incbin "../guest/linux/linux.bin"
 
 /* VM 0 DTB（弱定义，可选） */
 .section .data.guest_dtb.0, "a"
     .weak __guest_dtb_start_0
     .weak __guest_dtb_end_0
+    .incbin "../guest/linux/linux.dtb"
 __guest_dtb_start_0:
 __guest_dtb_end_0:
 
@@ -14,6 +16,7 @@ __guest_dtb_end_0:
 .section .data.guest_fs.0, "a"
     .weak __guest_fs_start_0
     .weak __guest_fs_end_0
+    .incbin "../guest/linux/initrd.gz"
 __guest_fs_start_0:
 __guest_fs_end_0:
 

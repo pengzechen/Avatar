@@ -120,8 +120,7 @@ uint32_t vpl011_read(vpl011_state_t *vuart, uint32_t offset)
             }
             vuart->fr &= ~VUART_FR_RXFF;
 
-            logger_debug("VUART read DR: 0x%x ('%c'), rx_count=%d\n",
-                        data, (char)data, vuart->rx_count);
+            // logger_debug("VUART read DR: 0x%x ('%c'), rx_count=%d\n", data, (char)data, vuart->rx_count);
 
             /* Update interrupts after reading */
             vpl011_update_interrupts(vuart);
@@ -172,7 +171,27 @@ uint32_t vpl011_read(vpl011_state_t *vuart, uint32_t offset)
         /* Masked interrupt status = raw & mask */
         vuart->mis = vuart->ris & vuart->imsc;
         return vuart->mis;
-        
+
+    /* Peripheral ID Registers */
+    case VUART_PERIPHID0:
+        return VUART_PERIPHID0_VAL;
+    case VUART_PERIPHID1:
+        return VUART_PERIPHID1_VAL;
+    case VUART_PERIPHID2:
+        return VUART_PERIPHID2_VAL;
+    case VUART_PERIPHID3:
+        return VUART_PERIPHID3_VAL;
+
+    /* PrimeCell ID Registers */
+    case VUART_PCELLID0:
+        return VUART_PCELLID0_VAL;
+    case VUART_PCELLID1:
+        return VUART_PCELLID1_VAL;
+    case VUART_PCELLID2:
+        return VUART_PCELLID2_VAL;
+    case VUART_PCELLID3:
+        return VUART_PCELLID3_VAL;
+
     default:
         logger_warn("VUART read unknown offset: 0x%x\n", offset);
         return 0;
@@ -187,7 +206,7 @@ void vpl011_write(vpl011_state_t *vuart, uint32_t offset, uint32_t value)
     
     switch (offset) {
     case VUART_DR:
-        logger_debug("VUART write DR: 0x%x (char: '%c')\n", value, (char)(value & 0xFF));
+        // logger_debug("VUART write DR: 0x%x (char: '%c')\n", value, (char)(value & 0xFF));
 
         /* Add to TX FIFO if not full */
         if (vuart->tx_count < 16) {
@@ -294,12 +313,12 @@ int32_t vpl011_mmio_handler(uint64_t gpa, uint32_t reg_num, uint32_t len,
         /* MMIO Write */
         uint32_t value = (uint32_t)(*reg_data);
         vpl011_write(vuart, offset, value);
-        logger_debug("VUART MMIO write: offset=0x%x, value=0x%x\n", offset, value);
+        // logger_debug("VUART MMIO write: offset=0x%x, value=0x%x\n", offset, value);
     } else {
         /* MMIO Read */
         uint32_t value = vpl011_read(vuart, offset);
         *reg_data = value;
-        logger_debug("VUART MMIO read: offset=0x%x, value=0x%x\n", offset, value);
+        // logger_debug("VUART MMIO read: offset=0x%x, value=0x%x\n", offset, value);
     }
 
     return 1;  /* Successfully handled */
@@ -339,7 +358,7 @@ void vpl011_update_interrupts(vpl011_state_t *vuart)
                 /* Get the primary vCPU of this VM */
                 tcb_t *primary_vcpu = _vpl011s[i].vm->primary_vcpu;
                 if (primary_vcpu) {
-                    logger_info("VUART: Injecting SPI 33 to VM %d\n", _vpl011s[i].vm->vm_id);
+                    // logger_info("VUART: Injecting SPI 33 to VM %d\n", _vpl011s[i].vm->vm_id);
                     vgic_inject_spi(primary_vcpu, 33);  /* PL011 IRQ is 33 */
                 }
                 break;
@@ -364,8 +383,7 @@ void vpl011_inject_rx_char(vpl011_state_t *vuart, char c)
             vuart->fr |= VUART_FR_RXFF;
         }
 
-        logger_debug("VUART: Injected char '%c' (0x%02x), rx_count=%d\n",
-                    c, (unsigned char)c, vuart->rx_count);
+        logger_debug("VUART: Injected char '%c' (0x%02x), rx_count=%d\n", c, (unsigned char)c, vuart->rx_count);
 
         /* Update interrupts */
         vpl011_update_interrupts(vuart);

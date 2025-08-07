@@ -142,7 +142,7 @@ void uart_interrupt_handler(uint64_t *stack_pointer)
             // If buffer is full, we drop the character
             
             // 测试使用 不要常开着
-            logger_info("uart_interrupt_handler\n");
+            // logger_info("uart_interrupt_handler\n");
             
             /* Forward character to virtual UARTs */
             vpl011_handle_physical_uart_rx(c);
