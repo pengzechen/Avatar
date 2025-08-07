@@ -13,7 +13,9 @@ VERSION := $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)
 BUILD_DATE := $(shell date +"%Y-%m-%d %H:%M:%S")
 BUILD_USER := $(shell whoami)
 BUILD_HOST := $(shell hostname)
+#如果当前 Git 仓库的状态是 dirty（即有改动未提交），就输出 -dirty
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+#获取当前HEAD（最新提交）的哈希值（短格式）
 GIT_DIRTY := $(shell git diff-index --quiet HEAD -- 2>/dev/null || echo "-dirty")
 
 # 定义空格变量用于字符串替换
@@ -35,8 +37,6 @@ DEBUG ?= 1
 OPTIMIZATION ?= 0
 VERBOSE ?= 0
 
-# 包含高级构建配置
--include build.mk
 
 # 目录配置
 SRC_DIRS := . boot exception io mem timer task process spinlock \
