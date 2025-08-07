@@ -1216,6 +1216,7 @@ void vgic_inject_spi(tcb_t *task, int32_t irq_id)
 void vgic_try_inject_pending(tcb_t *task)
 {
     vgic_core_state_t *vgicc = get_vgicc_by_vcpu(task);
+    vgic_t *vgic = task->curr_vm->vgic;
 
     // 使用软件保存的 ELSR0 来判断空闲的 LR
     uint64_t elsr = vgicc->saved_elsr0; // 目前你只有 ELSR0，够用（最多 32 个 LR）
@@ -1274,9 +1275,68 @@ void vgic_try_inject_pending(tcb_t *task)
         // 清除 pending 标志
         vgic_clear_irq_pending(vgicc, i);
 
-        const char *irq_type = (i < 16) ? "SGI" : "PPI";
+        // const char *irq_type = (i < 16) ? "SGI" : "PPI";
         // logger_info("[pcpu: %d]: Injected %s %d into LR%d for vCPU: %d (task: %d), LR value: 0x%x\n",
         //             get_current_cpu_id(), irq_type, i, freelr, vcpu_id, task->task_id, lr_val);
+
+        // dev use
+        // gicc_restore_core_state();
+        // vgicc_hw_dump();
+        // vgic_sw_inject_test(i);
+        // vgicc_hw_dump();
+    }
+
+    // 处理 SPI (32-SPI_ID_MAX)
+    for (int i = 32; i < SPI_ID_MAX; ++i)
+    {
+        if (!vgic_is_irq_pending(vgicc, i))
+            continue;
+
+        // 检查 SPI 是否使能
+        if (!(vgic->gicd_scenabler[(i / 32) - 1] & (1U << (i % 32))))
+        {
+            // SPI 未使能，跳过注入
+            continue;
+        }
+
+        int freelr = -1;
+        for (int lr = 0; lr < GICH_LR_NUM; lr++)
+        {
+            if ((elsr >> lr) & 0x1)
+            {
+                freelr = lr;
+                break;
+            }
+
+            // 防止重复注入：判断 saved_lr 中是否已经有相同中断
+            uint32_t val = vgicc->saved_lr[lr];
+            uint32_t vid = (val >> GICH_LR_PID_SHIFT) & 0x3ff;
+            if (vid == i)
+            {
+                freelr = -1;
+                break;
+            }
+        }
+
+        if (freelr < 0)
+        {
+            // logger_warn("No free LR for SPI %d (in memory), delay inject.\n", i);
+            break;
+        }
+
+        // SPI: 使用硬件中断格式
+        uint32_t lr_val = gic_make_virtual_hardware_interrupt(i, i, 0, 0);
+
+        // 将虚拟中断写入到内存中的 LR
+        vgicc->saved_lr[freelr] = lr_val;
+        // 标记该 LR 不再空闲（ELSR 置位为 0 表示 occupied）
+        vgicc->saved_elsr0 &= ~(1U << freelr);
+
+        // 清除 pending 标志
+        vgic_clear_irq_pending(vgicc, i);
+
+        // logger_info("[pcpu: %d]: Injected SPI %d into LR%d for vCPU: %d (task: %d), LR value: 0x%x\n",
+        //             get_current_cpu_id(), i, freelr, get_vcpuid(task), task->task_id, lr_val);
 
         // dev use
         // gicc_restore_core_state();
