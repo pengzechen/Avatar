@@ -263,7 +263,7 @@ $(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel.elf
 # ============================================================================
 
 app:
-	@$(MAKE) -C app APP_NAME=$(APP_NAME) CFLAGS="$(CFLAGS_APP)" INCLUDE="$(INCLUDE)"
+	@$(MAKE) -C app APP_NAME=$(APP_NAME) CFLAGS="$(CFLAGS_APP)" INCLUDE="$(INCLUDE) -I../../include"
 
 app_clean:
 	@$(MAKE) -C app clean APP_NAME=$(APP_NAME) CFLAGS="$(CFLAGS_APP)" INCLUDE="$(INCLUDE)"
