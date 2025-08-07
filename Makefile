@@ -1,243 +1,337 @@
 
+# ============================================================================
+# Avatar Hypervisor Makefile
+# ============================================================================
+
+# 版本信息
+VERSION_MAJOR := 0
+VERSION_MINOR := 1
+VERSION_PATCH := 0
+VERSION := $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)
+
+# 构建信息
+BUILD_DATE := $(shell date +"%Y-%m-%d %H:%M:%S")
+BUILD_USER := $(shell whoami)
+BUILD_HOST := $(shell hostname)
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+GIT_DIRTY := $(shell git diff-index --quiet HEAD -- 2>/dev/null || echo "-dirty")
+
+# 定义空格变量用于字符串替换
+empty :=
+space := $(empty) $(empty)
+
+# 配置变量
 APP_NAME ?=
+TOOL_PREFIX ?= aarch64-linux-musl-
+BUILD_DIR ?= build
+CONFIG ?= debug
+PLATFORM ?= qemu-virt
 
-TOOL_PREFIX=aarch64-linux-musl-
-# TOOL_PREFIX=aarch64-none-elf-
+# 编译配置
+SMP ?= 1
+HV ?= 0
+LOGGER ?= 1
+DEBUG ?= 1
+OPTIMIZATION ?= 0
+VERBOSE ?= 0
 
-BUILD_DIR=build
+# 包含高级构建配置
+-include build.mk
 
-INCLUDE = -I $(realpath ./include)
+# 目录配置
+SRC_DIRS := . boot exception io mem timer task process spinlock \
+            hyper lib fs app syscall
+INCLUDE_DIRS := include guest
+INCLUDE := $(addprefix -I, $(INCLUDE_DIRS))
 
-SMP = 1
-HV  = 0
-LOGGER = 1  # 显示 info warn error
+# 编译器标志
+CFLAGS_BASE := -fno-pie -mgeneral-regs-only -fno-builtin -nostdinc -fno-stack-protector
+CFLAGS_DEBUG := $(if $(filter 1,$(DEBUG)),-g -DDEBUG,)
+CFLAGS_OPT := -O$(OPTIMIZATION)
+CFLAGS_DEFINES := -DSMP_NUM=$(SMP) -DHV=$(HV) -D__LOG_LEVEL=$(LOGGER)
+CFLAGS_VERSION := -DVERSION_STRING=\"$(VERSION)\" -DBUILD_DATE=\"$(subst $(space),_,$(BUILD_DATE))\" \
+                  -DGIT_COMMIT=\"$(GIT_COMMIT)$(GIT_DIRTY)\"
+CFLAGS_EXTRA ?=
+CFLAGS := $(CFLAGS_BASE) $(CFLAGS_DEBUG) $(CFLAGS_OPT) $(CFLAGS_DEFINES) \
+          $(CFLAGS_VERSION) $(CFLAGS_EXTRA) $(FEATURES) -c
 
-CFLAGS = -g -c -O0 -fno-pie  -mgeneral-regs-only -fno-builtin -nostdinc -fno-stack-protector -DSMP_NUM=$(SMP) -DHV=$(HV) -D__LOG_LEVEL=$(LOGGER)
+# App构建使用的简化CFLAGS（避免带空格的参数）
+CFLAGS_APP := $(CFLAGS_BASE) $(CFLAGS_DEBUG) $(CFLAGS_OPT) $(CFLAGS_DEFINES) -c
 
-LDFLAGS += -nostdlib
+ASFLAGS := $(CFLAGS)
+LDFLAGS := -nostdlib $(LDFLAGS_EXTRA)
 
-QEMU_ARGS = -m 4G -smp $(SMP) -cpu cortex-a72 -nographic 
-
-QEMU_ARGS += -M virt
-
-QEMU_ARGS += -M gic_version=2
-
-# QEMU_ARGS += -M secure=on
-
-ifeq ($(HV),1)
-QEMU_ARGS += -M virtualization=on
-LD = link_hyper.lds
+# 静默输出控制
+ifeq ($(VERBOSE),1)
+Q :=
 else
-LD = link.lds
+Q := @
 endif
 
+# QEMU配置
+QEMU_ARGS := -m 4G -smp $(SMP) -cpu cortex-a72 -nographic -M virt -M gic_version=2
+ifeq ($(HV),1)
+QEMU_ARGS += -M virtualization=on
+LD := link_hyper.lds
+else
+LD := link.lds
+endif
+
+# 工具链
+CC := $(TOOL_PREFIX)gcc
+AS := $(TOOL_PREFIX)gcc
+LD_TOOL := $(TOOL_PREFIX)ld
+OBJDUMP := $(TOOL_PREFIX)objdump
+OBJCOPY := $(TOOL_PREFIX)objcopy
+READELF := $(TOOL_PREFIX)readelf
 
 
+# ============================================================================
+# 源文件自动发现
+# ============================================================================
+
+# 自动发现源文件（排除guest和clib目录）
+# 分别处理根目录和其他目录，确保完全排除clib
+ROOT_C_SOURCES := $(shell find . -maxdepth 1 -name "*.c" 2>/dev/null)
+OTHER_C_SOURCES := $(shell find boot exception io mem timer task process spinlock hyper lib fs syscall -name "*.c" 2>/dev/null)
+# 手动添加app目录中的非main.c文件（避免包含app子目录中的main.c）
+APP_C_SOURCES := $(shell find app -maxdepth 1 -name "*.c" 2>/dev/null)
+C_SOURCES := $(ROOT_C_SOURCES) $(OTHER_C_SOURCES) $(APP_C_SOURCES)
+
+ROOT_S_SOURCES := $(shell find . -maxdepth 1 -name "*.S" 2>/dev/null)
+OTHER_S_SOURCES := $(shell find boot exception io mem timer task process spinlock hyper lib fs syscall -name "*.S" 2>/dev/null)
+# 手动添加app目录中需要的汇编文件（排除syscall.S）
+APP_S_SOURCES := $(shell find app -maxdepth 1 -name "*.S" 2>/dev/null | grep -v syscall.S)
+S_SOURCES := $(ROOT_S_SOURCES) $(OTHER_S_SOURCES) $(APP_S_SOURCES)
+
+# 手动添加guest相关文件（只包含需要的两个汇编文件）
+GUEST_SOURCES := guest/guests.S guest/test_guest.S
+
+# 合并所有汇编源文件（注意app/app.S已经在S_SOURCES中了）
+ALL_S_SOURCES := $(S_SOURCES) $(GUEST_SOURCES)
+
+# 生成目标文件列表
+C_OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(C_SOURCES)))
+S_OBJECTS := $(patsubst %.S,$(BUILD_DIR)/%.s.o,$(notdir $(ALL_S_SOURCES)))
+ALL_OBJECTS := $(C_OBJECTS) $(S_OBJECTS)
+
+# 依赖文件
+DEPS := $(C_OBJECTS:.o=.d)
+
+# ============================================================================
+# 构建规则
+# ============================================================================
+
+# 默认目标
+.DEFAULT_GOAL := all
+all: $(BUILD_DIR)/kernel.bin
+
+# 创建构建目录
 $(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)
 
-#  kernel main
-$(BUILD_DIR)/main.o: main.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) main.c $(INCLUDE) -o $(BUILD_DIR)/main.o
+# 根目录C文件编译规则
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-#  kernel smp
-$(BUILD_DIR)/smp.o: smp.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) smp.c $(INCLUDE) -o $(BUILD_DIR)/smp.o
+# 特定目录的C文件编译规则（避免匹配clib目录）
+$(BUILD_DIR)/%.o: boot/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-#  kernel main hyper
-$(BUILD_DIR)/main_hyper.o: main_hyper.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) main_hyper.c $(INCLUDE) -o $(BUILD_DIR)/main_hyper.o
+$(BUILD_DIR)/%.o: exception/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-#  boot 
-$(BUILD_DIR)/boot.s.o: boot/boot.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) boot/boot.S $(INCLUDE) -o $(BUILD_DIR)/boot.s.o
+$(BUILD_DIR)/%.o: exception/gic/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-#  exception
-$(BUILD_DIR)/exception.o: exception/exception.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) exception/exception.c $(INCLUDE) -o $(BUILD_DIR)/exception.o
+$(BUILD_DIR)/%.o: io/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/exception_el3.o: exception/exception_el3.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) exception/exception_el3.c $(INCLUDE) -o $(BUILD_DIR)/exception_el3.o
+$(BUILD_DIR)/%.o: mem/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/exception_el2.o: exception/exception_el2.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) exception/exception_el2.c $(INCLUDE) -o $(BUILD_DIR)/exception_el2.o
+$(BUILD_DIR)/%.o: timer/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/exception.s.o: exception/exception.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) exception/exception.S $(INCLUDE) -o $(BUILD_DIR)/exception.s.o
+$(BUILD_DIR)/%.o: task/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/exception_el3.s.o: exception/exception_el3.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) exception/exception_el3.S $(INCLUDE) -o $(BUILD_DIR)/exception_el3.s.o
+$(BUILD_DIR)/%.o: process/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/exception_el2.s.o: exception/exception_el2.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) exception/exception_el2.S $(INCLUDE) -o $(BUILD_DIR)/exception_el2.s.o
+$(BUILD_DIR)/%.o: hyper/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/gic.o: exception/gic/gic.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) exception/gic/gic.c $(INCLUDE) -o $(BUILD_DIR)/gic.o
+$(BUILD_DIR)/%.o: lib/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
+$(BUILD_DIR)/%.o: fs/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-#  syscall
-$(BUILD_DIR)/syscall.o: syscall/syscall.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) syscall/syscall.c $(INCLUDE) -o $(BUILD_DIR)/syscall.o
+$(BUILD_DIR)/%.o: syscall/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
+# 根目录汇编文件编译规则
+$(BUILD_DIR)/%.s.o: %.S | $(BUILD_DIR)
+	$(Q)echo "  AS      $<"
+	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
-#  io
-$(BUILD_DIR)/io.o: io/io.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) io/io.c $(INCLUDE) -o $(BUILD_DIR)/io.o
-$(BUILD_DIR)/logger.o: io/logger.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) io/logger.c $(INCLUDE) -o $(BUILD_DIR)/logger.o
+# 特定目录的汇编文件编译规则
+$(BUILD_DIR)/%.s.o: boot/%.S | $(BUILD_DIR)
+	$(Q)echo "  AS      $<"
+	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
-$(BUILD_DIR)/uart_pl011.o: io/uart_pl011.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) io/uart_pl011.c $(INCLUDE) -o $(BUILD_DIR)/uart_pl011.o  
-$(BUILD_DIR)/uart_pl011_early.o: io/uart_pl011_early.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) io/uart_pl011_early.c $(INCLUDE) -o $(BUILD_DIR)/uart_pl011_early.o
-#  mem
-$(BUILD_DIR)/mmu.s.o: mem/mmu.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) mem/mmu.S $(INCLUDE) -o $(BUILD_DIR)/mmu.s.o
-$(BUILD_DIR)/page.o: mem/page.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) mem/page.c $(INCLUDE) -o $(BUILD_DIR)/page.o
-$(BUILD_DIR)/bitmap.o: mem/bitmap.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) mem/bitmap.c $(INCLUDE) -o $(BUILD_DIR)/bitmap.o
-$(BUILD_DIR)/mem.o: mem/mem.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) mem/mem.c $(INCLUDE) -o $(BUILD_DIR)/mem.o
+$(BUILD_DIR)/%.s.o: exception/%.S | $(BUILD_DIR)
+	$(Q)echo "  AS      $<"
+	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
-#  timer
-$(BUILD_DIR)/timer.o: timer/timer.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) timer/timer.c $(INCLUDE) -o $(BUILD_DIR)/timer.o
+$(BUILD_DIR)/%.s.o: mem/%.S | $(BUILD_DIR)
+	$(Q)echo "  AS      $<"
+	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
-#  task
-$(BUILD_DIR)/task.o: task/task.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) task/task.c $(INCLUDE) -o $(BUILD_DIR)/task.o
-$(BUILD_DIR)/context.s.o: task/context.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) task/context.S $(INCLUDE) -o $(BUILD_DIR)/context.s.o
-$(BUILD_DIR)/mutex.o: task/mutex.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) task/mutex.c $(INCLUDE) -o $(BUILD_DIR)/mutex.o
+$(BUILD_DIR)/%.s.o: task/%.S | $(BUILD_DIR)
+	$(Q)echo "  AS      $<"
+	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
+$(BUILD_DIR)/%.s.o: spinlock/%.S | $(BUILD_DIR)
+	$(Q)echo "  AS      $<"
+	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
-#  process
-$(BUILD_DIR)/process.o: process/pro.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) process/pro.c $(INCLUDE) -o $(BUILD_DIR)/process.o
+$(BUILD_DIR)/%.s.o: hyper/%.S | $(BUILD_DIR)
+	$(Q)echo "  AS      $<"
+	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
-#  spinlock 
-$(BUILD_DIR)/spinlock.s.o: spinlock/spinlock.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) spinlock/spinlock.S $(INCLUDE) -o $(BUILD_DIR)/spinlock.s.o
+$(BUILD_DIR)/%.s.o: app/%.S | $(BUILD_DIR)
+	$(Q)echo "  AS      $<"
+	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
+$(BUILD_DIR)/%.s.o: guest/%.S | $(BUILD_DIR)
+	$(Q)echo "  AS      $<"
+	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
-#  hyper 
-$(BUILD_DIR)/vcpu.o: hyper/vcpu.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/vcpu.c $(INCLUDE) -o $(BUILD_DIR)/vcpu.o
-$(BUILD_DIR)/hyper_ctx.s.o: hyper/hyper_ctx.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/hyper_ctx.S $(INCLUDE) -o $(BUILD_DIR)/hyper_ctx.s.o
-$(BUILD_DIR)/vgic.o: hyper/vgic.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/vgic.c $(INCLUDE) -o $(BUILD_DIR)/vgic.o
-$(BUILD_DIR)/vtimer.o: hyper/vtimer.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/vtimer.c $(INCLUDE) -o $(BUILD_DIR)/vtimer.o
-$(BUILD_DIR)/vpl011.o: hyper/vpl011.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/vpl011.c $(INCLUDE) -o $(BUILD_DIR)/vpl011.o
-$(BUILD_DIR)/vm.o: hyper/vm.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/vm.c $(INCLUDE) -o $(BUILD_DIR)/vm.o
-$(BUILD_DIR)/stage2page.o: hyper/stage2page.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/stage2page.c $(INCLUDE) -o $(BUILD_DIR)/stage2page.o
-$(BUILD_DIR)/vpsci.o: hyper/vpsci.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) hyper/vpsci.c $(INCLUDE) -o $(BUILD_DIR)/vpsci.o
-
-#  lib/list
-$(BUILD_DIR)/list.o: lib/list.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) lib/list.c $(INCLUDE) -o $(BUILD_DIR)/list.o
-$(BUILD_DIR)/string.o: lib/string.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) lib/string.c $(INCLUDE) -o $(BUILD_DIR)/string.o
-
-#  ramfs
-$(BUILD_DIR)/ramfs.o: fs/ramfs.c
-	$(TOOL_PREFIX)gcc $(CFLAGS) fs/ramfs.c $(INCLUDE) -o $(BUILD_DIR)/ramfs.o
+# 特殊处理：确保某些文件的编译顺序
+$(BUILD_DIR)/main_hyper.o: main_hyper.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $< (hypervisor main)"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/main_hyper.d $< -o $@
 
 
+# ============================================================================
+# 链接和最终目标
+# ============================================================================
 
-#  guest
-$(BUILD_DIR)/guests.s.o: guest/guests.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) guest/guests.S $(INCLUDE) -o $(BUILD_DIR)/guests.s.o
-$(BUILD_DIR)/test_guest.s.o: guest/test_guest.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) guest/test_guest.S $(INCLUDE) -o $(BUILD_DIR)/test_guest.s.o
+# 确保boot.s.o在最前面（链接脚本要求）
+LINK_ORDER := $(BUILD_DIR)/boot.s.o
+LINK_ORDER += $(filter-out $(BUILD_DIR)/boot.s.o, $(ALL_OBJECTS))
 
-#  app
-$(BUILD_DIR)/app.s.o: app/app.S
-	$(TOOL_PREFIX)gcc $(CFLAGS) app/app.S $(INCLUDE) -o $(BUILD_DIR)/app.s.o
+# 链接生成ELF文件
+$(BUILD_DIR)/kernel.elf: $(ALL_OBJECTS) $(LD) | $(BUILD_DIR)
+	$(Q)echo "  LD      $@"
+	$(Q)$(LD_TOOL) $(LDFLAGS) -T $(LD) -o $@ $(LINK_ORDER)
+	$(Q)echo "  SIZE    $@"
+	$(Q)$(TOOL_PREFIX)size $@
 
+# 生成二进制文件和反汇编
+$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel.elf
+	$(Q)echo "  OBJCOPY $@"
+	$(Q)$(OBJCOPY) -O binary $< $@
+	$(Q)echo "  OBJDUMP $(BUILD_DIR)/dis.txt"
+	$(Q)$(OBJDUMP) -x -d -S $< > $(BUILD_DIR)/dis.txt
+	$(Q)echo "  READELF $(BUILD_DIR)/elf.txt"
+	$(Q)$(READELF) -a $< > $(BUILD_DIR)/elf.txt
+	$(Q)echo ""
+	$(Q)echo "Kernel built successfully:"
+	$(Q)echo "  Version: $(VERSION)"
+	$(Q)echo "  Config:  $(CONFIG)"
+	$(Q)echo "  Size:    $$(stat -c%s $@) bytes"
+	$(Q)echo "  Binary:  $@"
 
-
-$(BUILD_DIR)/kernel.elf: $(BUILD_DIR) $(BUILD_DIR)/main.o $(BUILD_DIR)/smp.o $(BUILD_DIR)/main_hyper.o \
-$(BUILD_DIR)/boot.s.o $(BUILD_DIR)/guests.s.o $(BUILD_DIR)/test_guest.s.o $(BUILD_DIR)/app.s.o $(BUILD_DIR)/exception.s.o $(BUILD_DIR)/exception.o \
-$(BUILD_DIR)/io.o $(BUILD_DIR)/uart_pl011.o $(BUILD_DIR)/uart_pl011_early.o $(BUILD_DIR)/logger.o $(BUILD_DIR)/mmu.s.o \
-$(BUILD_DIR)/page.o $(BUILD_DIR)/stage2page.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o $(BUILD_DIR)/exception_el3.s.o \
-$(BUILD_DIR)/exception_el3.o $(BUILD_DIR)/exception_el2.o $(BUILD_DIR)/exception_el2.s.o $(BUILD_DIR)/gic.o  \
-$(BUILD_DIR)/syscall.o $(BUILD_DIR)/timer.o $(BUILD_DIR)/task.o $(BUILD_DIR)/context.s.o $(BUILD_DIR)/spinlock.s.o \
-$(BUILD_DIR)/vcpu.o $(BUILD_DIR)/hyper_ctx.s.o $(BUILD_DIR)/vgic.o  $(BUILD_DIR)/vtimer.o $(BUILD_DIR)/vpl011.o $(BUILD_DIR)/vpsci.o $(BUILD_DIR)/vm.o $(BUILD_DIR)/list.o $(BUILD_DIR)/mem.o \
-$(BUILD_DIR)/mutex.o $(BUILD_DIR)/process.o $(BUILD_DIR)/ramfs.o
-	$(TOOL_PREFIX)ld $(LDFLAGS) -T $(LD) -o $(BUILD_DIR)/kernel.elf \
-	$(BUILD_DIR)/boot.s.o 			\
-	$(BUILD_DIR)/guests.s.o         \
-	$(BUILD_DIR)/test_guest.s.o     \
-	$(BUILD_DIR)/app.s.o            \
-	$(BUILD_DIR)/main.o 			\
-	$(BUILD_DIR)/smp.o              \
-	$(BUILD_DIR)/main_hyper.o 		\
-	$(BUILD_DIR)/exception.s.o 		\
-	$(BUILD_DIR)/exception_el3.s.o  \
-	$(BUILD_DIR)/exception.o 		\
-	$(BUILD_DIR)/exception_el3.o 	\
-	$(BUILD_DIR)/exception_el2.o    \
-	$(BUILD_DIR)/exception_el2.s.o  \
-	$(BUILD_DIR)/syscall.o          \
-	$(BUILD_DIR)/gic.o 				\
-	$(BUILD_DIR)/io.o 				\
-	$(BUILD_DIR)/uart_pl011.o       \
-	$(BUILD_DIR)/uart_pl011_early.o \
-	$(BUILD_DIR)/logger.o 			\
-	$(BUILD_DIR)/mmu.s.o 			\
-	$(BUILD_DIR)/page.o 			\
-	$(BUILD_DIR)/bitmap.o           \
-	$(BUILD_DIR)/mem.o              \
-	$(BUILD_DIR)/stage2page.o              \
-	$(BUILD_DIR)/string.o 			\
-	$(BUILD_DIR)/timer.o  			\
-	$(BUILD_DIR)/task.o 			\
-	$(BUILD_DIR)/process.o          \
-	$(BUILD_DIR)/context.s.o 		\
-	$(BUILD_DIR)/mutex.o            \
-	$(BUILD_DIR)/spinlock.s.o       \
-	$(BUILD_DIR)/vcpu.o             \
-	$(BUILD_DIR)/vgic.o             \
-	$(BUILD_DIR)/vtimer.o           \
-	$(BUILD_DIR)/vpl011.o           \
-	$(BUILD_DIR)/vpsci.o			\
-	$(BUILD_DIR)/vm.o               \
-	$(BUILD_DIR)/hyper_ctx.s.o      \
-	$(BUILD_DIR)/list.o             \
-	$(BUILD_DIR)/ramfs.o
-
-deasm_get_bin: $(BUILD_DIR)/kernel.elf
-	$(TOOL_PREFIX)objdump -x -d -S $(BUILD_DIR)/kernel.elf > $(BUILD_DIR)/dis.txt
-	$(TOOL_PREFIX)readelf -a $(BUILD_DIR)/kernel.elf > $(BUILD_DIR)/elf.txt
-	$(TOOL_PREFIX)objcopy -O binary $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/kernel.bin
+# ============================================================================
+# 应用程序构建
+# ============================================================================
 
 app:
-	$(MAKE) -C app APP_NAME=$(APP_NAME) CFLAGS="$(CFLAGS)" INCLUDE="$(INCLUDE)"
+	@$(MAKE) -C app APP_NAME=$(APP_NAME) CFLAGS="$(CFLAGS_APP)" INCLUDE="$(INCLUDE)"
 
 app_clean:
-	$(MAKE) -C app clean APP_NAME=$(APP_NAME) CFLAGS="$(CFLAGS)" INCLUDE="$(INCLUDE)"
+	@$(MAKE) -C app clean APP_NAME=$(APP_NAME) CFLAGS="$(CFLAGS_APP)" INCLUDE="$(INCLUDE)"
 
-.PHONY: app app_clean
+# ============================================================================
+# 运行和调试目标
+# ============================================================================
 
+run: $(BUILD_DIR)/kernel.bin
+	@echo "Starting QEMU..."
+	@qemu-system-aarch64 $(QEMU_ARGS) -kernel $<
 
+debug: $(BUILD_DIR)/kernel.bin
+	@echo "Starting QEMU in debug mode..."
+	@qemu-system-aarch64 $(QEMU_ARGS) -kernel $< -s -S
 
-debug: deasm_get_bin
-	qemu-system-aarch64 $(QEMU_ARGS) -kernel $(BUILD_DIR)/kernel.bin -s -S
-
-run: deasm_get_bin
-	qemu-system-aarch64 $(QEMU_ARGS) -kernel $(BUILD_DIR)/kernel.bin
-
+# ============================================================================
+# 清理和维护
+# ============================================================================
 
 clean:
-	rm -f build/*.o
-	rm -f build/*.bin
-	rm -f build/*.txt
-	rm -f build/*.elf
+	@echo "Cleaning build directory..."
+	@rm -rf $(BUILD_DIR)
+
+distclean: clean app_clean
+	@echo "Deep cleaning..."
+
+# 显示配置信息
+info:
+	@echo "=== Avatar Build Configuration ==="
+	@echo "SMP:          $(SMP)"
+	@echo "HV:           $(HV)"
+	@echo "LOGGER:       $(LOGGER)"
+	@echo "DEBUG:        $(DEBUG)"
+	@echo "OPTIMIZATION: $(OPTIMIZATION)"
+	@echo "TOOL_PREFIX:  $(TOOL_PREFIX)"
+	@echo "BUILD_DIR:    $(BUILD_DIR)"
+	@echo "LINKER:       $(LD)"
+	@echo "C_SOURCES:    $(words $(C_SOURCES)) files"
+	@echo "S_SOURCES:    $(words $(ALL_S_SOURCES)) files"
+	@echo "OBJECTS:      $(words $(ALL_OBJECTS)) files"
+
+# 显示帮助信息
+help:
+	@echo "Avatar Hypervisor Build System"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all          - Build kernel binary (default)"
+	@echo "  run          - Build and run in QEMU"
+	@echo "  debug        - Build and run in QEMU debug mode"
+	@echo "  app          - Build applications"
+	@echo "  clean        - Clean build files"
+	@echo "  distclean    - Deep clean including apps"
+	@echo "  info         - Show build configuration"
+	@echo "  help         - Show this help"
+	@echo ""
+	@echo "Configuration variables:"
+	@echo "  SMP=<n>      - Number of CPU cores (default: 1)"
+	@echo "  HV=<0|1>     - Hypervisor mode (default: 0)"
+	@echo "  LOGGER=<n>   - Log level (default: 1)"
+	@echo "  DEBUG=<0|1>  - Debug build (default: 1)"
+	@echo "  OPTIMIZATION=<n> - Optimization level (default: 0)"
+
+# ============================================================================
+# 特殊目标和依赖
+# ============================================================================
+
+.PHONY: all run debug clean distclean app app_clean info help
+
+# 包含依赖文件
+-include $(DEPS)

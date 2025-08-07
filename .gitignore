@@ -4,6 +4,7 @@ build/**/*.txt
 build/**/*.elf
 build/**/*.bin
 build/**/*.o
+build/**/*.d
 
 # this file is too big.
 /guest/linux/vmlinux
