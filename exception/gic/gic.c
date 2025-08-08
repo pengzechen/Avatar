@@ -11,10 +11,10 @@ struct gic_t _gicv2;
 
 void gic_test_init(void)
 {
-    logger("    gicd enable %s\n", read32((void *)GICD_CTLR) ? "ok" : "error");
-    logger("    gicc enable %s\n", read32((void *)GICC_CTLR) ? "ok" : "error");
-    logger("    irq numbers: %d\n", _gicv2.irq_nr);
-    logger("    cpu num: %d\n", cpu_num());
+    logger_info("GIC: GICD enable %s\n", read32((void *)GICD_CTLR) ? "ok" : "error");
+    logger_info("GIC: GICC enable %s\n", read32((void *)GICC_CTLR) ? "ok" : "error");
+    logger_info("GIC: IRQ numbers: %d\n", _gicv2.irq_nr);
+    logger_info("GIC: CPU count: %d\n", cpu_num());
 }
 
 // ===========================================
@@ -24,64 +24,88 @@ void gic_test_init(void)
 // el1 kernel gicc的初始化。smp启动副核执行
 void gicc_init()
 {
+    logger_gic_debug("GIC: Initializing GICC for EL1 kernel\n");
+
     // 设置优先级 为 0xf8
     write32(0xff - 7, (void *)GICC_PMR);
+    logger_gic_debug("GIC: Set PMR to 0x%x\n", 0xff - 7);
+
     // EOImodeNS, bit [9] Controls the behavior of Non-secure accesses to GICC_EOIR GICC_AEOIR, and GICC_DIR
     write32(GICC_CTRL_ENABLE_GROUP0, (void *)GICC_CTLR);
+    logger_gic_debug("GIC: GICC enabled for Group0\n");
 }
 
 // el2 hypervisor gicc的初始化。smp启动副核执行
 void gicc_el2_init()
 {
+    logger_gic_debug("GIC: Initializing GICC for EL2 hypervisor\n");
+
     // 设置优先级 为 0xf8
     write32(0xff - 7, (void *)GICC_PMR);
+    logger_gic_debug("GIC: Set PMR to 0x%x\n", 0xff - 7);
+
     // EOImodeNS, bit [9] Controls the behavior of Non-secure accesses to GICC_EOIR GICC_AEOIR, and GICC_DIR
     // 写 EOI 只清除 pending，需要写 DIR 手动清除 active
     write32(GICC_CTRL_ENABLE_GROUP0 | (1 << 9), (void *)GICC_CTLR);
+    logger_gic_debug("GIC: GICC enabled for Group0 with EOI mode\n");
 
     // bit [2] 当虚拟中断列表寄存器中没有条目时，会产生中断。
     write32((1 << 0), (void *)GICH_HCR);
     write32((1 << 0)|(1 << 1), (void *)GICH_VMCR);
+    logger_gic_debug("GIC: GICH initialized for virtualization\n");
 }
 
 // gicd g0, g1  gicc enable。smp启动首核执行
 void gic_init(void)
 {
+    logger_info("GIC: Initializing GIC distributor and CPU interface\n");
+
     _gicv2.irq_nr = GICD_TYPER_IRQS(read32((void *)GICD_TYPER));
     if (_gicv2.irq_nr > 1020)
     {
+        logger_warn("GIC: IRQ number %d exceeds maximum, capping to 1020\n", _gicv2.irq_nr);
         _gicv2.irq_nr = 1020;
     }
+    logger_gic_debug("GIC: Detected %d IRQ lines\n", _gicv2.irq_nr);
 
     // GICD 启用组0中断、组1中断转发，服从优先级规则
     write32(GICD_CTRL_ENABLE_GROUP0 | GICD_CTRL_ENABLE_GROUP1, (void *)GICD_CTLR);
+    logger_gic_debug("GIC: GICD enabled for Group0 and Group1\n");
 
     gicc_init();
 
     gic_test_init();
+    logger_info("GIC: Initialization completed successfully\n");
 }
 
 // gicd g0, g1  gicc,  gich enable。 smp启动首核执行
 void gic_virtual_init(void)
 {
+    logger_info("GIC: Initializing GIC for virtualization\n");
+
     // 获得 gicd irq numbers
     _gicv2.irq_nr = GICD_TYPER_IRQS(read32((void *)GICD_TYPER));
     if (_gicv2.irq_nr > 1020)
     {
+        logger_warn("GIC: IRQ number %d exceeds maximum, capping to 1020\n", _gicv2.irq_nr);
         _gicv2.irq_nr = 1020;
     }
+    logger_gic_debug("GIC: Detected %d IRQ lines for virtualization\n", _gicv2.irq_nr);
 
     // GICD 启用组0中断、组1中断转发，服从优先级规则
     write32(GICD_CTRL_ENABLE_GROUP0 | GICD_CTRL_ENABLE_GROUP1, (void *)GICD_CTLR);
+    logger_gic_debug("GIC: GICD enabled for Group0 and Group1 (virtual)\n");
 
     gicc_el2_init();
 
+    logger_gic_debug("GIC: Disabling all private IRQs\n");
     for (int32_t i = 0; i < GIC_NR_PRIVATE_IRQS; i++)
         gic_enable_int(i, 0);
 
     gic_test_init();
 
-    logger("    gich enable %s\n", read32((void *)GICH_HCR) ? "ok" : "error");
+    logger_info("GIC: GICH enable %s\n", read32((void *)GICH_HCR) ? "ok" : "error");
+    logger_info("GIC: Virtualization initialization completed\n");
 }
 
 // ===========================================
@@ -100,7 +124,16 @@ uint32_t gic_get_iidr(void)
 
 uint32_t gic_read_iar(void)
 {
-    return read32((void *)GICC_IAR);
+    uint32_t iar = read32((void *)GICC_IAR);
+    uint32_t irq_id = iar & GICC_IAR_INT_ID_MASK;
+
+    // 只在非虚假中断时记录调试信息
+    if (irq_id != GICC_INT_SPURIOUS) {
+        // 这个太多了
+        // logger_gic_debug("GIC: Read IAR=0x%x, IRQ=%d\n", iar, irq_id);
+    }
+
+    return iar;
 }
 
 uint32_t gic_iar_irqnr(uint32_t iar)
@@ -110,20 +143,34 @@ uint32_t gic_iar_irqnr(uint32_t iar)
 
 void gic_write_eoir(uint32_t irqstat)
 {
+    uint32_t irq_id = irqstat & GICC_IAR_INT_ID_MASK;
     write32(irqstat, (void *)GICC_EOIR);
+    // 这个太多了
+    // logger_gic_debug("GIC: Write EOIR for IRQ %d\n", irq_id);
 }
 
 void gic_write_dir(uint32_t irqstat)
 {
+    uint32_t irq_id = irqstat & GICC_IAR_INT_ID_MASK;
     write32(irqstat, (void *)GICC_DIR);
+    // 这个太多了
+    // logger_gic_debug("GIC: Write DIR for IRQ %d\n", irq_id);
 }
 
 // 发送给特定的核（某个核）
 void gic_ipi_send_single(int32_t irq, int32_t cpu)
 {
-    // assert(cpu < 8);
-    // assert(irq < 16);
+    if (cpu >= 8) {
+        logger_error("GIC: Invalid CPU ID %d for IPI (max 7)\n", cpu);
+        return;
+    }
+    if (irq >= 16) {
+        logger_error("GIC: Invalid SGI IRQ %d for IPI (max 15)\n", irq);
+        return;
+    }
+
     write32(1 << (cpu + 16) | irq, (void *)GICD_SGIR);
+    logger_gic_debug("GIC: Sent IPI %d to CPU %d\n", irq, cpu);
 }
 
 // The number of implemented CPU interfaces.
@@ -167,6 +214,11 @@ static int32_t gic_is_sgi(int32_t int_id) {
 // Set the Active status of the interrupt. act=1 activates, act=0 clears the activation
 void gic_set_active(int32_t int_id, int32_t act)
 {
+    if (int_id < 0 || int_id >= _gicv2.irq_nr) {
+        logger_error("GIC: Invalid interrupt ID %d for set_active\n", int_id);
+        return;
+    }
+
     int32_t reg = int_id / 32;
     int32_t mask = 1 << (int_id % 32);
 
@@ -175,18 +227,23 @@ void gic_set_active(int32_t int_id, int32_t act)
     } else {
         write32(mask, (void *)GICD_ICACTIVER(reg));
     }
-    logger("set active: reg: %d, mask: 0x%x, act: %d\n", reg, mask, act);
+    logger_gic_debug("GIC: Set IRQ %d active state to %d\n", int_id, act);
 }
 
 // Set the Pending status of the interrupt. pend=1 sets Pending, pend=0 clears Pending
 void gic_set_pending(int32_t int_id, int32_t pend, int32_t target_cpu)
 {
+    if (int_id < 0 || int_id >= _gicv2.irq_nr) {
+        logger_error("GIC: Invalid interrupt ID %d for set_pending\n", int_id);
+        return;
+    }
+
     if (gic_is_sgi(int_id)) {
         int32_t reg = int_id / 4;             // 每个 GICD_SPENDSGIR 管 4 个 SGI
         int32_t off = (int_id % 4) * 8;       // 每个 SGI 占 8 bit（一个字节，每个 bit 表示一个 CPU）
 
         if (target_cpu < 0 || target_cpu >= 8) {
-            logger("Invalid CPU ID: %d\n", target_cpu);
+            logger_error("GIC: Invalid CPU ID %d for SGI pending\n", target_cpu);
             return;
         }
 
@@ -198,7 +255,7 @@ void gic_set_pending(int32_t int_id, int32_t pend, int32_t target_cpu)
             write32(1 << (off + target_cpu), (void *)GICD_CPENDSGIR(reg));
         }
 
-        logger("set SGI pending: int_id: %d, reg: %d, off: %d, cpu: %d, pend: %d\n", int_id, reg, off, target_cpu, pend);
+        logger_gic_debug("GIC: Set SGI %d pending=%d for CPU %d\n", int_id, pend, target_cpu);
     } else {
         int32_t reg = int_id / 32;
         int32_t mask = 1 << (int_id % 32);
@@ -209,7 +266,7 @@ void gic_set_pending(int32_t int_id, int32_t pend, int32_t target_cpu)
             write32(mask, (void *)GICD_ICPENDER(reg));
         }
 
-        logger("set pending: int_id: %d, reg: %d, mask: 0x%x, pend: %d\n", int_id, reg, mask, pend);
+        logger_gic_debug("GIC: Set IRQ %d pending=%d\n", int_id, pend);
     }
 }
 
@@ -250,19 +307,38 @@ int32_t gic_get_target(int32_t int_id) {
 
 // Set the target CPU for a specific interrupt
 void gic_set_target(int32_t int_id, uint8_t target) {
+    if (int_id < GIC_FIRST_SPI || int_id >= _gicv2.irq_nr) {
+        logger_error("GIC: Invalid SPI interrupt ID %d for set_target\n", int_id);
+        return;
+    }
+
+    if (target == 0) {
+        logger_warn("GIC: Setting target to 0 for IRQ %d (no CPU selected)\n", int_id);
+    }
+
     int32_t idx = (int_id * 8) / 32;
     int32_t off = (int_id * 8) % 32;
     uint32_t mask = 0xFF << off;
 
     uint32_t old_val = read32((void *)(GICD_ITARGETSR(idx)));
     uint32_t new_val = (old_val & ~mask) | ((target << off) & mask);
-    logger("gic set %d to target %x\n", int_id, target);
+    logger_gic_debug("GIC: Set IRQ %d target to 0x%x\n", int_id, target);
     write32(new_val, (void *)(GICD_ITARGETSR(idx)));
 }
 
 // Set the interrupt configuration (edge/level)
 void gic_set_icfgr(uint32_t int_id, uint8_t cfg)
 {
+    if (int_id < 16) {
+        logger_warn("GIC: Cannot configure SGI %d (SGIs are always edge-triggered)\n", int_id);
+        return;
+    }
+
+    if (int_id >= _gicv2.irq_nr) {
+        logger_error("GIC: Invalid interrupt ID %d for configuration\n", int_id);
+        return;
+    }
+
     uint32_t reg_index = (int_id * 2) / 32;
     uint32_t bit_offset = (int_id * 2) % 32;
     uint32_t mask = 0b11 << bit_offset;
@@ -272,6 +348,9 @@ void gic_set_icfgr(uint32_t int_id, uint8_t cfg)
 
     val = (val & ~mask) | (((uint32_t)(cfg & 0x3) << bit_offset) & mask);
     *reg = val;
+
+    logger_gic_debug("GIC: Set IRQ %d configuration to %s\n",
+                     int_id, (cfg & 0x2) ? "edge-triggered" : "level-sensitive");
 }
 
 uint32_t gic_make_virtual_hardware_interrupt(uint32_t vector, uint32_t pintvec, int32_t pri, bool grp1)
@@ -331,17 +410,27 @@ uint32_t gic_elsr1()
 
 void gic_write_lr(int32_t n, uint32_t mask)
 {
+    if (n < 0 || n >= GICH_LR_NUM) {
+        logger_error("GIC: Invalid LR index %d (max %d)\n", n, GICH_LR_NUM - 1);
+        return;
+    }
+
     write32(mask, (void *)GICH_LR(n));
+    uint32_t vid = gic_lr_read_vid(mask);
+    // 这个太多了
+    // logger_gic_debug("GIC: Write LR[%d] with vIRQ %d\n", n, vid);
 }
 
 // 启用非优先级中断，这种中断允许在虚拟化环境下处理一些低优先级的中断。
 void gic_set_np_int(void)
 {
     write32(read32((void *)GICH_HCR) | (1 << 3), (void *)GICH_HCR);
+    logger_gic_debug("GIC: Enabled non-priority interrupts in hypervisor\n");
 }
 
 // 禁用非优先级中断，确保虚拟机只处理优先级较高的中断。
 void gic_clear_np_int(void)
 {
     write32(read32((void *)GICH_HCR) & ~(1 << 3), (void *)GICH_HCR);
+    logger_gic_debug("GIC: Disabled non-priority interrupts in hypervisor\n");
 }

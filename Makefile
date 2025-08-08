@@ -305,6 +305,7 @@ info:
 	@echo "HV:           $(HV)"
 	@echo "LOGGER:       $(LOGGER)"
 	@echo "DEBUG:        $(DEBUG)"
+	@echo "DEBUG_MODULE: $(DEBUG_MODULE)"
 	@echo "OPTIMIZATION: $(OPTIMIZATION)"
 	@echo "TOOL_PREFIX:  $(TOOL_PREFIX)"
 	@echo "BUILD_DIR:    $(BUILD_DIR)"
