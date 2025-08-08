@@ -65,7 +65,6 @@ void mmio_map_pl011()
         avr_entry->p2m.read = 0;
         avr_entry->p2m.write = 0;
         apply_ept(avr_entry);
-        logger_info("mmio_map_pl011: 0x%lx\n", (uint64_t)MMIO_AREA_PL011 + MMIO_PAGE_SIZE * i);
     }
 }
 

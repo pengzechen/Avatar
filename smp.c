@@ -24,7 +24,7 @@ void show_stack_layout(void)
 {
     uint64_t total_secondary_stack = STACK_SIZE * (SMP_NUM - 1);
 
-    logger("=== Stack Layout Information ===\n");
+    logger_info("=== Stack Layout Information ===\n");
     logger("SMP_NUM: %d\n", SMP_NUM);
     logger("STACK_SIZE: %d bytes (%d KB)\n", STACK_SIZE, STACK_SIZE / 1024);
     logger("Primary CPU stack: [%llx - %llx]\n",
@@ -41,7 +41,7 @@ void show_stack_layout(void)
             logger("  CPU %d stack: [%llx - %llx]\n", i, stack_bottom, stack_top);
         }
     }
-    logger("================================\n");
+    logger_info("================================\n\n");
 }
 
 void start_secondary_cpus()

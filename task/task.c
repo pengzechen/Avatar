@@ -198,22 +198,28 @@ void schedule()
     tcb_t *prev_task = curr;
     if (next_task == curr)
     {
-        spin_lock(&print_lock);
-        // logger("[warning]: core: %d, n = c task 0x%llx, id: %d, => ", get_current_cpu_id(), curr, curr->id);
+        char buffer[512];
+        int offset = 0;
+
+        offset += my_snprintf(buffer + offset, sizeof(buffer) - offset,
+                             "[warning]: core: %d, n = c task 0x%llx, id: %d. readylist: ",
+                             get_current_cpu_id(), curr, curr->task_id);
+
         list_node_t *iter = list_first(&task_manager.ready_list[core_id]);
-        while (iter)
+        while (iter && offset < sizeof(buffer) - 50) // 保留足够空间
         {
             tcb_t *task = list_node_parent(iter, tcb_t, run_node);
-            // logger("(id :%d, state: %d), ", task->id, task->state);
+            offset += my_snprintf(buffer + offset, sizeof(buffer) - offset,
+                                 "(id :%d, state: %d), ", task->task_id, task->state);
             iter = list_node_next(iter);
         }
-        // logger("\n");
-        spin_unlock(&print_lock);
+
+        logger_task_debug("%s\n", buffer);
         return;
     }
 
-    // logger_debug("core %d switch prev_task %d to next_task %d\n",
-    //     get_current_cpu_id(), prev_task->task_id, next_task->task_id);
+    logger_task_debug("core %d switch prev_task %d to next_task %d\n",
+        get_current_cpu_id(), prev_task->task_id, next_task->task_id);
 
     // logger("next_task page dir: 0x%llx\n", next_task->pgdir);
     next_task->state = TASK_STATE_RUNNING;

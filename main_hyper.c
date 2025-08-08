@@ -20,9 +20,7 @@
 
 void print_avatar_logo(void)
 {
-    logger_info("                                                     \n");
-    logger_info("         -- Lightweight Virtualization Core --       \n");
-    logger_info("            Version: 0.1.0   Build: %s %s\n", __DATE__, __TIME__);
+
     logger_info("\n");
     logger_info("                    _             \n");
     logger_info("     /\\            | |            \n");
@@ -31,6 +29,11 @@ void print_avatar_logo(void)
     logger_info("  / ____ \\ V / (_| | || (_| | |   \n");
     logger_info(" /_/    \\_\\_/ \\__,_|\\__\\__,_|_|   \n");
     logger_info("                                  \n");
+    logger_info("                                            \n");
+    logger_info("-- Lightweight Virtualization Core --       \n");
+    logger_info("-- Version: 0.1.0     \n");
+    logger_info("-- Build: %s %s \n", __DATE__, __TIME__);
+    logger_info("\n");
 }
 
 void vtcr_init(void)
@@ -52,6 +55,13 @@ spinlock_t lock_el2;
 
 void main_entry_el2()
 {
+    spin_lock(&lock_el2);
+    inited_cpu_num_el2++;
+    spin_unlock(&lock_el2);
+
+    while (inited_cpu_num_el2 != SMP_NUM)
+        wfi();
+    
     logger("main entry: get_current_cpu_id: %d\n", get_current_cpu_id());
 
     vtcr_init();
@@ -61,6 +71,7 @@ void main_entry_el2()
     {
         schedule_init();
         alloctor_init();
+        logger_info("cacheline_bytes: %d\n", cacheline_bytes);
         task_manager_init();
 
         // 初始化虚拟化组件
@@ -94,26 +105,8 @@ void main_entry_el2()
         print_current_task_list();
     }
 
-    // gic_enable_int(27, 1);
-    // asm volatile("msr cntv_ctl_el0, %0" : : "r"(1));
-    // *(uint64_t*)0x8040004 = 0x1; // 测试写入 MMIO 区域
-
     el2_idle_init(); // idle 任务每个核都有自己的el1栈， 代码公用
-    spin_lock(&lock_el2);
-    inited_cpu_num_el2++;
-    spin_unlock(&lock_el2);
-
-    while (inited_cpu_num_el2 != SMP_NUM)
-        wfi();
-
-    // uint64_t __sp = (uint64_t)guest1_el2_stack + 8192 - sizeof(trap_frame_t);
-    // void * _sp = (void *)__sp;
-    // schedule_init_local(task1, _sp);  // 任务管理器任务当前在跑第一个任务
-
-    // asm volatile("mov sp, %0" :: "r"(_sp));
-    // extern void guest_entry();
-    // guest_entry();
-
+    
     uint64_t __sp = get_idle_sp_top() - sizeof(trap_frame_t);
     void *_sp = (void *)__sp;
     schedule_init_local(get_idle(), NULL); // 任务管理器任务当前在跑idle任务
@@ -138,21 +131,23 @@ void main_entry_el2()
 
 void hyper_main()
 {
-    run_printf_tests();
-    logger_info("starting primary core 0 ...\n");
     io_early_init();
-    gic_virtual_init();
-    timer_init();
-    logger("cacheline_bytes: %d\n", cacheline_bytes);
-    logger_info("core 0 starting is done.\n\n");
+    // run_printf_tests();
+    logger_info("starting primary core 0 ...\n");
+    
     print_avatar_logo();
 
+    gic_virtual_init();
+    timer_init();
     spinlock_init(&lock_el2);
+
     io_init();
+    
+    logger_info("core 0 starting is done.\n\n");
 
     start_secondary_cpus();
-
     main_entry_el2();
+    // can't reach here !
 }
 
 void second_kernel_main_el2()
