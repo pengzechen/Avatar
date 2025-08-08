@@ -334,7 +334,7 @@ help:
 	@echo "  LOGGER=<n>   - Log level (default: 1)"
 	@echo "  DEBUG=<0|1>  - Debug build (default: 1)"
 	@echo "  DEBUG_MODULE=<n> - Debug module mask (default: 0)"
-	@echo "                   0=none, 1=GIC, 2=TASK, 4=VGIC, 8=TIMER, 16=MEM, 255=ALL"
+	@echo "                   0=none, 2=GIC, 4=TASK, 8=VGIC, 16=VTIMER, 32=VPL011, 255=ALL"
 	@echo "  OPTIMIZATION=<n> - Optimization level (default: 0)"
 
 # ============================================================================

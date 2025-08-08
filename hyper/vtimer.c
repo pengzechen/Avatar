@@ -457,9 +457,9 @@ void v_timer_tick(uint64_t now)
 
             // Check if timer should fire based on guest settings
             // if (vtimer_should_fire(vt, now)) {
-                // logger_debug("[pcpu: %d]: Timer fired for VM%d vCPU %d(task: %d) - CVAL=0x%llx, now=0x%llx\n",
-                //     get_current_cpu_id(), task->curr_vm->vm_id, get_vcpuid(task), task->task_id,
-                //     vt->cntv_cval, now);
+                logger_vtimer_debug("[pcpu: %d]: Timer fired for VM%d vCPU %d(task: %d) - CVAL=0x%llx, now=0x%llx\n",
+                    get_current_cpu_id(), task->curr_vm->vm_id, get_vcpuid(task), task->task_id,
+                    vt->cntv_cval, now);
 
                 // Update timer state
                 vt->pending = true;

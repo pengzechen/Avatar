@@ -138,9 +138,9 @@ void vgicd_write(stage2_fault_info_t *info, trap_frame_t *el2_ctx, void *paddr)
 
     // 设置目标地址（虚拟GIC寄存器）
     dst = (uint32_t *)paddr;
-    logger_debug("VGICD write: (%u bytes) 0x%x R%u\n", len, *dst, reg_num);
+    logger_vgic_debug("VGICD write: (%u bytes) 0x%x R%u\n", len, *dst, reg_num);
 
-    logger_debug("old data: 0x%x\n", *dst);
+    logger_vgic_debug("old data: 0x%x\n", *dst);
 
     // 执行写操作：将Guest寄存器数据写入虚拟GIC寄存器
     // 跳过X30寄存器（链接寄存器），避免破坏返回地址
@@ -153,7 +153,7 @@ void vgicd_write(stage2_fault_info_t *info, trap_frame_t *el2_ctx, void *paddr)
     dsb(sy);    // 数据同步屏障
     isb();      // 指令同步屏障
 
-    logger_debug("new data: 0x%x\n", *dst);
+    logger_vgic_debug("new data: 0x%x\n", *dst);
 }
 
 /**
@@ -192,7 +192,7 @@ void vgicd_read(stage2_fault_info_t *info, trap_frame_t *el2_ctx, void *paddr)
     src = (uint32_t *)paddr;    // 源地址（虚拟GIC寄存器）
     dat = *src;                 // 读取32位数据
 
-    logger_debug("VGICD read: 0x%llx -> R%u (data: 0x%x)\n", (uint64_t)paddr, reg_num, dat);
+    logger_vgic_debug("VGICD read: 0x%llx -> R%u (data: 0x%x)\n", (uint64_t)paddr, reg_num, dat);
 
     // 将读取的数据写入Guest寄存器
     // 跳过X30寄存器（链接寄存器），避免破坏返回地址
@@ -224,8 +224,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 int32_t r = el2_ctx->r[reg_num];
                 int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
                 vgic->gicd_ctlr = r;
-                logger_info("      <<< gicd emu write GICD_CTLR: ");
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d\n", gpa, r, len);
+                logger_vgic_debug("GICD_CTLR write: gpa=0x%llx, value=0x%llx, len=%d\n", gpa, r, len);
             }
             /* is enable reg - W1S */
             // SGI and PPI enable (GICD_ISENABLER(0))
@@ -242,9 +241,8 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 // SGI 不需要硬件使能，PPI 在启动时已经打开
                 // 这里只是记录虚拟机的使能状态
 
-                logger_info("      <<< gicd emu write GICD_ISENABLER(0): ");
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d, enabled_mask: 0x%x\n",
-                       gpa, r, len, vgicc->sgi_ppi_isenabler);
+                logger_vgic_debug("GICD_ISENABLER(0) write: gpa=0x%llx, value=0x%llx, len=%d, enabled_mask=0x%x\n",
+                                  gpa, r, len, vgicc->sgi_ppi_isenabler);
             }
             else if (GICD_ISENABLER(1) <= gpa && gpa < GICD_ICENABLER(0))
             {
@@ -266,9 +264,8 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                     }
                 }
 
-                logger_info("      <<< gicd emu write GICD_ISENABLER(%d): ", reg_idx);
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d, enabled_mask: 0x%x\n",
-                       gpa, r, len, vgic->gicd_scenabler[reg_idx]);
+                logger_vgic_debug("GICD_ISENABLER(%d) write: gpa=0x%llx, value=0x%llx, len=%d, enabled_mask=0x%x\n",
+                                  reg_idx, gpa, r, len, vgic->gicd_scenabler[reg_idx]);
             }
             // SGI and PPI disable (GICD_ICENABLER(0)) - W1C
             else if (gpa == GICD_ICENABLER(0))
@@ -284,9 +281,8 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 // SGI 不需要硬件禁用，PPI 保持硬件使能状态
                 // 这里只是记录虚拟机的禁用状态
 
-                logger_info("      <<< gicd emu write GICD_ICENABLER(0): ");
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d, enabled_mask: 0x%x\n",
-                       gpa, r, len, vgicc->sgi_ppi_isenabler);
+                logger_vgic_debug("GICD_ICENABLER(0) write: gpa=0x%llx, value=0x%llx, len=%d, enabled_mask=0x%x\n",
+                                  gpa, r, len, vgicc->sgi_ppi_isenabler);
             }
             else if (GICD_ICENABLER(1) <= gpa && gpa < GICD_ISPENDER(0))
             {
@@ -308,9 +304,8 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                     }
                 }
 
-                logger_info("      <<< gicd emu write GICD_ICENABLER(%d): ", reg_idx);
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d, enabled_mask: 0x%x\n",
-                       gpa, r, len, vgic->gicd_scenabler[reg_idx]);
+                logger_vgic_debug("GICD_ICENABLER(%d) write: gpa=0x%llx, value=0x%llx, len=%d, enabled_mask=0x%x\n",
+                                  reg_idx, gpa, r, len, vgic->gicd_scenabler[reg_idx]);
             }
 
             /* is pend reg*/
@@ -330,12 +325,11 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                     if (r & (1U << bit))
                     {
                         vgic_set_irq_pending(vgicc, bit);
-                        logger_info("Set SGI/PPI %d pending\n", bit);
+                        logger_vgic_debug("Set SGI/PPI %d pending\n", bit);
                     }
                 }
 
-                logger_info("      <<< gicd emu write GICD_ISPENDER(0): ");
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d\n", gpa, r, len);
+                logger_vgic_debug("GICD_ISPENDER(0) write: gpa=0x%llx, value=0x%llx, len=%d\n", gpa, r, len);
             }
             /* ic pend reg*/
             // SGI+PPI clear pending (GICD_ICPENDER(0)) - W1C
@@ -366,28 +360,27 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                                 vgicc->saved_lr[lr] &= ~(1U << 28);
                                 // 标记该 LR 为空闲
                                 vgicc->saved_elsr0 |= (1U << lr);
-                                logger_info("Cleared LR%d for SGI/PPI %d\n", lr, bit);
+                                logger_vgic_debug("Cleared LR%d for SGI/PPI %d\n", lr, bit);
                                 break;
                             }
                         }
 
-                        logger_info("Clear SGI/PPI %d pending\n", bit);
+                        logger_vgic_debug("Clear SGI/PPI %d pending\n", bit);
                     }
                 }
 
-                logger_info("      <<< gicd emu write GICD_ICPENDER(0): ");
-                logger("gpa: 0x%llx, r: 0x%llx, len: %d\n", gpa, r, len);
+                logger_vgic_debug("GICD_ICPENDER(0) write: gpa=0x%llx, value=0x%llx, len=%d\n", gpa, r, len);
             }
 
             // SPI set pending (GICD_ISPENDER(1) and above)
             else if (GICD_ISPENDER(1) <= gpa && gpa < GICD_ICPENDER(0))
             {
-                logger_info("      <<< gicd emu write GICD_ISPENDER(spi) - not implemented\n");
+                logger_warn("GICD_ISPENDER(spi) write not implemented\n");
             }
             // SPI clear pending (GICD_ICPENDER(1) and above)
             else if (GICD_ICPENDER(1) <= gpa && gpa < GICD_ISACTIVER(0))
             {
-                logger_info("      <<< gicd emu write GICD_ICPENDER(spi) - not implemented\n");
+                logger_warn("GICD_ICPENDER(spi) write not implemented\n");
             }
 
             /* I priority reg*/
@@ -417,8 +410,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                     }
                 }
 
-                logger_info("      <<< gicd emu write GICD_IPRIORITYR(sgi-ppi): ");
-                logger("offset=%d, len=%d, val=0x%llx\n", offset, len, val);
+                logger_vgic_debug("GICD_IPRIORITYR(sgi-ppi) write: offset=%d, len=%d, val=0x%llx\n", offset, len, val);
             }
             // SPI priority write (VM-wide)
             else if (GICD_IPRIORITYR(GIC_FIRST_SPI / 4) <= gpa && gpa < GICD_IPRIORITYR(SPI_ID_MAX / 4))
@@ -445,8 +437,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                     }
                 }
 
-                logger_info("      <<< gicd emu write GICD_IPRIORITYR(spi): ");
-                logger("offset=%d, len=%d, val=0x%llx\n", offset, len, val);
+                logger_vgic_debug("GICD_IPRIORITYR(spi) write: offset=%d, len=%d, val=0x%llx\n", offset, len, val);
             }
 
             /* I cfg reg*/
@@ -469,9 +460,8 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint32_t masked_value = reg_value & 0xAAAAAAAA; // 只保留奇数位
                 write32(masked_value, (void *)gpa);
 
-                logger_info("      <<< gicd emu write GICD_ICFGR(spi): ");
-                logger("reg_offset=%d, len=%d, reg_value=0x%x, masked=0x%x\n",
-                       reg_offset, len, reg_value, masked_value);
+                logger_vgic_debug("GICD_ICFGR(spi) write: reg_offset=%d, len=%d, reg_value=0x%x, masked=0x%x\n",
+                                  reg_offset, len, reg_value, masked_value);
             }
 
             /* I target reg*/
@@ -485,8 +475,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint32_t word_offset = (gpa - GICD_ITARGETSR(0)) / 4;
                 ((uint32_t *)vgic->gicd_itargetsr)[word_offset] = reg_value;
 
-                logger_info("      <<< gicd emu write GICD_ITARGETSR(spi): ");
-                logger("word_offset=%d, len=%d, reg_value=0x%x\n", word_offset, len, reg_value);
+                logger_vgic_debug("GICD_ITARGETSR(spi) write: word_offset=%d, len=%d, reg_value=0x%x\n", word_offset, len, reg_value);
             }
 
             /* sgi reg*/
@@ -535,7 +524,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                     }
                     iter = list_node_next(iter);
                 }
-                logger_info("      <<< gicd emu write GICD_SGIR(i)\n");
+                logger_vgic_debug("GICD_SGIR write completed\n");
             }
             /* pend sgi reg*/
             else if (GICD_SPENDSGIR(0) <= gpa && gpa < GICD_SPENDSGIR(MAX_SGI_ID / 4))
@@ -562,7 +551,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 //         }
                 //     }
                 // }
-                logger_info("GICD_SPENDSGIR write: reg_idx=%d, value=0x%x\n", sgi_reg_idx, reg_value);
+                logger_vgic_debug("GICD_SPENDSGIR write: reg_idx=%d, value=0x%x\n", sgi_reg_idx, reg_value);
             }
             /* clear pend sgi reg*/
             else if (GICD_CPENDSGIR(0) <= gpa && gpa < GICD_CPENDSGIR(MAX_SGI_ID / 4))
@@ -587,7 +576,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 //         }
                 //     }
                 // }
-                logger_info("GICD_CPENDSGIR write: reg_idx=%d, value=0x%x\n", sgi_reg_idx, reg_value);
+                logger_vgic_debug("GICD_CPENDSGIR write: reg_idx=%d, value=0x%x\n", sgi_reg_idx, reg_value);
             }
             else
             {
@@ -599,8 +588,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             {
                 vgicd_read(info, el2_ctx, &vgic->gicd_ctlr);
 
-                logger_warn("      >>> gicd emu read GICD_CTLR: ");
-                logger("ctlr: 0x%x\n", vgic->gicd_ctlr);
+                logger_vgic_debug("GICD_CTLR read: ctlr=0x%x\n", vgic->gicd_ctlr);
             }
             else if (gpa == GICD_TYPER) // ro
             {
@@ -614,15 +602,13 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                     typer |= ((vcpu_count - 1) & 0x7) << 5;
                 }
                 vgicd_read(info, el2_ctx, &typer);
-                logger_warn("      >>> gicd emu read GICD_TYPER: ");
-                logger("typer: 0x%x, vcpu_cnt: %d\n", typer, vcpu_count);
+                logger_vgic_debug("GICD_TYPER read: typer=0x%x, vcpu_cnt=%d\n", typer, vcpu_count);
             }
             else if (gpa == GICD_IIDR) // ro
             {
                 uint32_t iidr = gic_get_iidr();
                 vgicd_read(info, el2_ctx, &iidr);
-                logger_warn("      >>> gicd emu read GICD_IIDR: ");
-                logger("iidr: 0x%x\n", iidr);
+                logger_vgic_debug("GICD_IIDR read: iidr=0x%x\n", iidr);
             }
 
             /*  is enable reg*/
@@ -633,8 +619,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint32_t enabled_mask = vgicc->sgi_ppi_isenabler;
                 vgicd_read(info, el2_ctx, &enabled_mask);
 
-                logger_warn("      >>> gicd emu read GICD_ISENABLER(0): ");
-                logger("enabled_mask: 0x%x\n", enabled_mask);
+                logger_vgic_debug("GICD_ISENABLER(0) read: enabled_mask=0x%x\n", enabled_mask);
             }
             // SPI enable read (GICD_ISENABLER(1) and above)
             else if (GICD_ISENABLER(1) <= gpa && gpa < GICD_ICENABLER(0))
@@ -643,8 +628,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint32_t enabled_mask = vgic->gicd_scenabler[reg_idx];
                 vgicd_read(info, el2_ctx, &enabled_mask);
 
-                logger_warn("      >>> gicd emu read GICD_ISENABLER(%d): ", reg_idx);
-                logger("enabled_mask: 0x%x\n", enabled_mask);
+                logger_vgic_debug("GICD_ISENABLER(%d) read: enabled_mask=0x%x\n", reg_idx, enabled_mask);
             }
             // SGI and PPI disable read (GICD_ICENABLER(0))
             else if (gpa == GICD_ICENABLER(0))
@@ -653,8 +637,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint32_t enabled_mask = vgicc->sgi_ppi_isenabler;
                 vgicd_read(info, el2_ctx, &enabled_mask);
 
-                logger_warn("      >>> gicd emu read GICD_ICENABLER(0): ");
-                logger("enabled_mask: 0x%x\n", enabled_mask);
+                logger_vgic_debug("GICD_ICENABLER(0) read: enabled_mask=0x%x\n", enabled_mask);
             }
             // SPI disable read (GICD_ICENABLER(1) and above)
             else if (GICD_ICENABLER(1) <= gpa && gpa < GICD_ISPENDER(0))
@@ -663,8 +646,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint32_t enabled_mask = vgic->gicd_scenabler[reg_idx];
                 vgicd_read(info, el2_ctx, &enabled_mask);
 
-                logger_warn("      >>> gicd emu read GICD_ICENABLER(%d): ", reg_idx);
-                logger("enabled_mask: 0x%x\n", enabled_mask);
+                logger_vgic_debug("GICD_ICENABLER(%d) read: enabled_mask=0x%x\n", reg_idx, enabled_mask);
             }
 
             /* is pend reg*/
@@ -675,8 +657,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint32_t pending_status = vgic_get_sgi_ppi_pending_status(vgicc);
                 vgicd_read(info, el2_ctx, &pending_status);
 
-                logger_warn("      >>> gicd emu read GICD_ISPENDER(0): ");
-                logger("pending_status: 0x%x\n", pending_status);
+                logger_vgic_debug("GICD_ISPENDER(0) read: pending_status=0x%x\n", pending_status);
             }
             /* ic pend reg*/
             // SGI+PPI pending read (GICD_ICPENDER(0)) - 返回相同的值
@@ -686,19 +667,18 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint32_t pending_status = vgic_get_sgi_ppi_pending_status(vgicc);
                 vgicd_read(info, el2_ctx, &pending_status);
 
-                logger_warn("      >>> gicd emu read GICD_ICPENDER(0): ");
-                logger("pending_status: 0x%x\n", pending_status);
+                logger_vgic_debug("GICD_ICPENDER(0) read: pending_status=0x%x\n", pending_status);
             }
 
             // SPI pending read (GICD_ISPENDER(1) and above)
             else if (GICD_ISPENDER(1) <= gpa && gpa < GICD_ICPENDER(0))
             {
-                logger_warn("      >>> gicd emu read GICD_ISPENDER(spi) - not implemented\n");
+                logger_warn("GICD_ISPENDER(spi) read not implemented\n");
             }
             // SPI pending read (GICD_ICPENDER(1) and above)
             else if (GICD_ICPENDER(1) <= gpa && gpa < GICD_IPRIORITYR(0))
             {
-                logger_warn("      >>> gicd emu read GICD_ICPENDER(spi) - not implemented\n");
+                logger_warn("GICD_ICPENDER(spi) read not implemented\n");
             }
 
             /* I priority reg*/
@@ -710,8 +690,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint32_t priority_word = ((uint32_t *)vgicc->sgi_ppi_ipriorityr)[word_offset];
                 vgicd_read(info, el2_ctx, &priority_word);
 
-                logger_warn("      >>> gicd emu read GICD_IPRIORITYR(sgi-ppi): ");
-                logger("word_offset=%d, priority_word=0x%x\n", word_offset, priority_word);
+                logger_vgic_debug("GICD_IPRIORITYR(sgi-ppi) read: word_offset=%d, priority_word=0x%x\n", word_offset, priority_word);
             }
             // SPI priority read (VM-wide)
             else if (GICD_IPRIORITYR(GIC_FIRST_SPI / 4) <= gpa && gpa < GICD_IPRIORITYR(SPI_ID_MAX / 4))
@@ -720,8 +699,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint32_t priority_word = ((uint32_t *)vgic->gicd_ipriorityr)[word_offset];
                 vgicd_read(info, el2_ctx, &priority_word);
 
-                logger_warn("      >>> gicd emu read GICD_IPRIORITYR(spi): ");
-                logger("word_offset=%d, priority_word=0x%x\n", word_offset, priority_word);
+                logger_vgic_debug("GICD_IPRIORITYR(spi) read: word_offset=%d, priority_word=0x%x\n", word_offset, priority_word);
             }
 
             /* I cfg reg*/
@@ -748,8 +726,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 
                 vgicd_read(info, el2_ctx, &cfg_word);
 
-                logger_warn("      >>> gicd emu read GICD_ICFGR(sgi-ppi): ");
-                logger("reg_offset=%d, cfg_word=0x%x\n", reg_offset, cfg_word);
+                logger_vgic_debug("GICD_ICFGR(sgi-ppi) read: reg_offset=%d, cfg_word=0x%x\n", reg_offset, cfg_word);
             }
             // SPI configuration register read
             else if (GICD_ICFGR(GIC_FIRST_SPI / 16) <= gpa && gpa < GICD_ICFGR(SPI_ID_MAX / 16))
@@ -758,8 +735,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint32_t cfg_word = vgic->gicd_icfgr[reg_offset];
                 vgicd_read(info, el2_ctx, &cfg_word);
 
-                logger_warn("      >>> gicd emu read GICD_ICFGR(spi): ");
-                logger("reg_offset=%d, cfg_word=0x%x\n", reg_offset, cfg_word);
+                logger_vgic_debug("GICD_ICFGR(spi) read: reg_offset=%d, cfg_word=0x%x\n", reg_offset, cfg_word);
             }
 
             /* I target reg*/
@@ -772,8 +748,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint32_t target_word = (value << 24) | (value << 16) | (value << 8) | value;
                 vgicd_read(info, el2_ctx, &target_word);
 
-                logger_warn("      >>> gicd emu read GICD_ITARGETSR(sgi-ppi): ");
-                logger("vcpu_id=%d, target_word=0x%x\n", vcpu_id, target_word);
+                logger_vgic_debug("GICD_ITARGETSR(sgi-ppi) read: vcpu_id=%d, target_word=0x%x\n", vcpu_id, target_word);
             }
             // SPI target register read
             else if (GICD_ITARGETSR(GIC_FIRST_SPI / 4) <= gpa && gpa < GICD_ITARGETSR(SPI_ID_MAX / 4))
@@ -782,15 +757,13 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint32_t target_word = ((uint32_t *)vgic->gicd_itargetsr)[word_offset];
                 vgicd_read(info, el2_ctx, &target_word);
 
-                logger_warn("      >>> gicd emu read GICD_ITARGETSR(spi): ");
-                logger("word_offset=%d, target_word=0x%x\n", word_offset, target_word);
+                logger_vgic_debug("GICD_ITARGETSR(spi) read: word_offset=%d, target_word=0x%x\n", word_offset, target_word);
             }
         }
         return;
     }
 
-    logger_warn("[intc_handler]: unsupported access gpa: ");
-    logger("0x%llx\n", gpa);
+    logger_warn("VGIC: unsupported access gpa=0x%llx\n", gpa);
 }
 
 list_t *get_vcpus(tcb_t *task)
@@ -838,8 +811,7 @@ vgic_core_state_t *get_vgicc_by_vcpu(tcb_t *task)
     }
     if (!vgicc)
     {
-        logger("vgicc from task: %d\n", task->task_id);
-        logger("vm id: %d\n", vm->vm_id);
+        logger_error("VGIC: failed to find vgicc for task %d in vm %d\n", task->task_id, vm->vm_id);
         while (1)
         {
             ;
@@ -965,19 +937,19 @@ static void vgicc_dump_if_changed(vgic_core_state_t *state, uint32_t vcpu_id, ui
 
     if (changed)
     {
-        logger_warn("====== vCPU %d Hardware State Changed ======\n", vcpu_id);
-        logger_info("Task ID: %d, VM ID: %d\n", task_id, vm_id);
-        logger_info("VMCR: 0x%08x, ELSR0: 0x%08x, HCR: 0x%08x\n",
-                    state->vmcr, state->saved_elsr0, state->saved_hcr);
+        logger_vgic_debug("====== vCPU %d Hardware State Changed ======\n", vcpu_id);
+        logger_vgic_debug("Task ID: %d, VM ID: %d\n", task_id, vm_id);
+        logger_vgic_debug("VMCR: 0x%08x, ELSR0: 0x%08x, HCR: 0x%08x\n",
+                          state->vmcr, state->saved_elsr0, state->saved_hcr);
 
         for (int32_t i = 0; i < GICH_LR_NUM; i++)
         {
             if (state->saved_lr[i] != 0)
             {
-                logger_info("LR[%d]: 0x%08x\n", i, state->saved_lr[i]);
+                logger_vgic_debug("LR[%d]: 0x%08x\n", i, state->saved_lr[i]);
             }
         }
-        logger_warn("==========================================\n");
+        logger_vgic_debug("==========================================\n");
 
         // 更新缓存
         last_vmcr[vcpu_id] = state->vmcr;
@@ -1067,27 +1039,27 @@ void vgic_inject_sgi(tcb_t *task, int32_t int_id)
     // 如果已 pending，不重复注入
     if (vgic_is_irq_pending(vgicc, int_id))
     {
-        // logger_warn("SGI %d already pending on vCPU %d, skip inject.\n", int_id, task->task_id);
+        logger_vgic_debug("SGI %d already pending on vCPU %d, skip inject\n", int_id, task->task_id);
         return;
     }
 
     // 检查中断是否使能
     if (!(vgicc->sgi_ppi_isenabler & (1U << int_id)))
     {
-        // logger_warn("SGI %d is disabled on vCPU %d, still inject to pending.\n", int_id, task->task_id);
+        logger_vgic_debug("SGI %d is disabled on vCPU %d, still inject to pending\n", int_id, task->task_id);
     }
 
     // 标记为 pending
     vgic_set_irq_pending(vgicc, int_id);
 
-    logger_info("[pcpu: %d]: Inject SGI id: %d to vCPU: %d(task: %d)\n",
-                get_current_cpu_id(), int_id, get_vcpuid(task), task->task_id);
+    logger_info("Inject SGI %d to vCPU %d (task %d) on pCPU %d\n",
+                int_id, get_vcpuid(task), task->task_id, get_current_cpu_id());
 
     // 如果当前正在运行此 vCPU，尝试立即注入
     if (task == (tcb_t *)read_tpidr_el2())
     {
-        logger_info("[pcpu: %d]: (Is running)Try to inject pending SGI for vCPU: %d (task: %d)\n",
-                    get_current_cpu_id(), get_vcpuid(task), task->task_id);
+        logger_vgic_debug("Try inject pending SGI for running vCPU %d (task %d)\n",
+                          get_vcpuid(task), task->task_id);
         vgic_try_inject_pending(task);
     }
 
@@ -1128,28 +1100,28 @@ void vgic_inject_ppi(tcb_t *task, int32_t irq_id)
     // 检查中断是否已经 pending
     if (vgic_is_irq_pending(vgicc, irq_id))
     {
-        // logger_warn("PPI %d already pending on vCPU %d, skip inject.\n", irq_id, task->task_id);
+        logger_vgic_debug("PPI %d already pending on vCPU %d, skip inject\n", irq_id, task->task_id);
         return;
     }
 
     // 检查中断是否使能
     if (!(vgicc->sgi_ppi_isenabler & (1U << irq_id)))
     {
-        // logger_warn("PPI %d is disabled on vCPU %d, abort inject.\n", irq_id, task->task_id);
+        logger_vgic_debug("PPI %d is disabled on vCPU %d, abort inject\n", irq_id, task->task_id);
         return;
     }
 
     // 标记为 pending
     vgic_set_irq_pending(vgicc, irq_id);
 
-    // logger_debug("[pcpu: %d]: Inject PPI id: %d to vCPU: %d(task: %d)\n",
-    //              get_current_cpu_id(), irq_id, get_vcpuid(task), task->task_id);
+    logger_vgic_debug("Inject PPI %d to vCPU %d (task %d) on pCPU %d\n",
+                      irq_id, get_vcpuid(task), task->task_id, get_current_cpu_id());
 
     // 如果当前正在运行此 vCPU，尝试立即注入到 GICH_LR
     if (task == (tcb_t *)read_tpidr_el2())
     {
-        // logger_info("[pcpu: %d]: (Is running)Try to inject pending PPI for vCPU: %d (task: %d)\n",
-        //             get_current_cpu_id(), get_vcpuid(task), task->task_id);
+        logger_vgic_debug("Try inject pending PPI for running vCPU %d (task %d)\n",
+                          get_vcpuid(task), task->task_id);
         vgic_try_inject_pending(task);
     }
 }
@@ -1178,7 +1150,7 @@ void vgic_inject_spi(tcb_t *task, int32_t irq_id)
     // 检查中断是否使能
     if (!(vgic->gicd_scenabler[(irq_id / 32) - 1] & (1U << (irq_id % 32))))
     {
-        logger_warn("SPI %d is disabled on vCPU %d, abort inject.\n", irq_id, task->task_id);
+        logger_vgic_debug("SPI %d is disabled on vCPU %d, abort inject\n", irq_id, task->task_id);
         // return;
     }
 
@@ -1192,21 +1164,21 @@ void vgic_inject_spi(tcb_t *task, int32_t irq_id)
     // 检查中断是否已经 pending
     if (vgic_is_irq_pending(vgicc, irq_id))
     {
-        // logger_warn("SPI %d already pending on vCPU %d, skip inject.\n", irq_id, task->task_id);
+        logger_vgic_debug("SPI %d already pending on vCPU %d, skip inject\n", irq_id, task->task_id);
         return;
     }
 
     // 标记为 pending
     vgic_set_irq_pending(vgicc, irq_id);
 
-    // logger_debug("[pcpu: %d]: Inject SPI id: %d to vCPU: %d(task: %d)\n",
-    //              get_current_cpu_id(), irq_id, get_vcpuid(task), task->task_id);
+    logger_vgic_debug("Inject SPI %d to vCPU %d (task %d) on pCPU %d\n",
+                      irq_id, get_vcpuid(task), task->task_id, get_current_cpu_id());
 
     // 如果当前正在运行此 vCPU，尝试立即注入到 GICH_LR
     if (task == (tcb_t *)read_tpidr_el2())
     {
-        // logger_info("[pcpu: %d]: (Is running)Try to inject pending SPI for vCPU: %d (task: %d)\n",
-        //             get_current_cpu_id(), get_vcpuid(task), task->task_id);
+        logger_vgic_debug("Try inject pending SPI for running vCPU %d (task %d)\n",
+                          get_vcpuid(task), task->task_id);
         vgic_try_inject_pending(task);
     }
 }
@@ -1248,7 +1220,8 @@ void vgic_try_inject_pending(tcb_t *task)
 
         if (freelr < 0)
         {
-            // logger_warn("No free LR for IRQ %d (in memory), delay inject.\n", i);
+            // 太多了
+            // logger_vgic_debug("No free LR for IRQ %d (in memory), delay inject\n", i);
             break;
         }
 
@@ -1275,9 +1248,9 @@ void vgic_try_inject_pending(tcb_t *task)
         // 清除 pending 标志
         vgic_clear_irq_pending(vgicc, i);
 
-        // const char *irq_type = (i < 16) ? "SGI" : "PPI";
-        // logger_info("[pcpu: %d]: Injected %s %d into LR%d for vCPU: %d (task: %d), LR value: 0x%x\n",
-        //             get_current_cpu_id(), irq_type, i, freelr, vcpu_id, task->task_id, lr_val);
+        const char *irq_type = (i < 16) ? "SGI" : "PPI";
+        logger_vgic_debug("Injected %s %d into LR%d for vCPU %d (task %d), LR value: 0x%x\n",
+                          irq_type, i, freelr, vcpu_id, task->task_id, lr_val);
 
         // dev use
         // gicc_restore_core_state();
@@ -1320,7 +1293,7 @@ void vgic_try_inject_pending(tcb_t *task)
 
         if (freelr < 0)
         {
-            // logger_warn("No free LR for SPI %d (in memory), delay inject.\n", i);
+            logger_vgic_debug("No free LR for SPI %d (in memory), delay inject\n", i);
             break;
         }
 
@@ -1335,8 +1308,8 @@ void vgic_try_inject_pending(tcb_t *task)
         // 清除 pending 标志
         vgic_clear_irq_pending(vgicc, i);
 
-        // logger_info("[pcpu: %d]: Injected SPI %d into LR%d for vCPU: %d (task: %d), LR value: 0x%x\n",
-        //             get_current_cpu_id(), i, freelr, get_vcpuid(task), task->task_id, lr_val);
+        logger_vgic_debug("Injected SPI %d into LR%d for vCPU %d (task %d), LR value: 0x%x\n",
+                          i, freelr, get_vcpuid(task), task->task_id, lr_val);
 
         // dev use
         // gicc_restore_core_state();
@@ -1420,7 +1393,7 @@ void vgic_hw_inject_test(uint32_t vector)
     uint32_t irq_no = gic_lr_read_vid(mask);
     int32_t freelr = -1;
 
-    logger_info("ELSR: 0x%llx, APR: 0x%x, PRI: 0x%x, IRQ: %d\n", elsr, is_active, pri, irq_no);
+    logger_vgic_debug("ELSR: 0x%llx, APR: 0x%x, PRI: 0x%x, IRQ: %d\n", elsr, is_active, pri, irq_no);
 
     for (int32_t i = 0; i < GICH_LR_NUM; i++)
     {
@@ -1436,7 +1409,7 @@ void vgic_hw_inject_test(uint32_t vector)
         uint32_t existing_vector = (lr_val >> GICH_LR_PID_SHIFT) & 0x3ff;
         if (existing_vector == vector)
         {
-            logger_warn("vgic inject, vector %d already in lr%d (val=0x%x)\n", vector, i, lr_val);
+            logger_vgic_debug("vgic inject, vector %d already in lr%d (val=0x%x)\n", vector, i, lr_val);
             return; // busy
         }
     }
@@ -1447,7 +1420,7 @@ void vgic_hw_inject_test(uint32_t vector)
         return;
     }
 
-    logger_info("Injecting vector %d into LR%d, mask=0x%x\n", vector, freelr, mask);
+    logger_vgic_debug("Injecting vector %d into LR%d, mask=0x%x\n", vector, freelr, mask);
     gic_write_lr(freelr, mask);
 
     // 确保写入生效
@@ -1456,7 +1429,7 @@ void vgic_hw_inject_test(uint32_t vector)
 
     // 验证写入
     uint32_t written_val = gic_read_lr(freelr);
-    logger_info("LR%d written value: 0x%x\n", freelr, written_val);
+    logger_vgic_debug("LR%d written value: 0x%x\n", freelr, written_val);
 }
 
 void vgic_sw_inject_test(uint32_t vector)
@@ -1482,7 +1455,7 @@ void vgic_sw_inject_test(uint32_t vector)
     uint32_t irq_no = gic_lr_read_vid(mask);
     int32_t freelr = -1;
 
-    logger_info("ELSR: 0x%llx, APR: 0x%x, PRI: 0x%x, IRQ: %d\n", elsr, is_active, pri, irq_no);
+    logger_vgic_debug("ELSR: 0x%llx, APR: 0x%x, PRI: 0x%x, IRQ: %d\n", elsr, is_active, pri, irq_no);
 
     for (int32_t i = 0; i < GICH_LR_NUM; i++)
     {
@@ -1498,7 +1471,7 @@ void vgic_sw_inject_test(uint32_t vector)
         uint32_t existing_vector = (lr_val >> GICH_LR_PID_SHIFT) & 0x3ff;
         if (existing_vector == vector)
         {
-            logger_warn("vgic inject, vector %d already in lr%d (val=0x%x)\n", vector, i, lr_val);
+            logger_vgic_debug("vgic inject, vector %d already in lr%d (val=0x%x)\n", vector, i, lr_val);
             return; // busy
         }
     }
@@ -1509,7 +1482,7 @@ void vgic_sw_inject_test(uint32_t vector)
         return;
     }
 
-    logger_info("Injecting vector %d into LR%d, mask=0x%x\n", vector, freelr, mask);
+    logger_vgic_debug("Injecting vector %d into LR%d, mask=0x%x\n", vector, freelr, mask);
     gic_write_lr(freelr, mask);
 
     // 确保写入生效
@@ -1518,5 +1491,5 @@ void vgic_sw_inject_test(uint32_t vector)
 
     // 验证写入
     uint32_t written_val = gic_read_lr(freelr);
-    logger_info("LR%d written value: 0x%x\n", freelr, written_val);
+    logger_vgic_debug("LR%d written value: 0x%x\n", freelr, written_val);
 }

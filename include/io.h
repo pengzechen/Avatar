@@ -41,8 +41,8 @@ extern int32_t try_logger_debug(const char *fmt, ...);
 #define DEBUG_MODULE_GIC     1
 #define DEBUG_MODULE_TASK    2
 #define DEBUG_MODULE_VGIC    3
-#define DEBUG_MODULE_TIMER   4
-#define DEBUG_MODULE_MEM     5
+#define DEBUG_MODULE_VTIMER  4
+#define DEBUG_MODULE_VPL011  5
 #define DEBUG_MODULE_ALL     0xFF
 
 extern void set_debug_module(uint32_t module_mask);
@@ -54,8 +54,8 @@ extern int32_t try_logger_module_debug(uint32_t module_id, const char *fmt, ...)
 #define logger_gic_debug(fmt, ...)    logger_module_debug(DEBUG_MODULE_GIC, fmt, ##__VA_ARGS__)
 #define logger_task_debug(fmt, ...)   logger_module_debug(DEBUG_MODULE_TASK, fmt, ##__VA_ARGS__)
 #define logger_vgic_debug(fmt, ...)   logger_module_debug(DEBUG_MODULE_VGIC, fmt, ##__VA_ARGS__)
-#define logger_timer_debug(fmt, ...)  logger_module_debug(DEBUG_MODULE_TIMER, fmt, ##__VA_ARGS__)
-#define logger_mem_debug(fmt, ...)    logger_module_debug(DEBUG_MODULE_MEM, fmt, ##__VA_ARGS__)
+#define logger_vtimer_debug(fmt, ...)  logger_module_debug(DEBUG_MODULE_VTIMER, fmt, ##__VA_ARGS__)
+#define logger_vpl011_debug(fmt, ...)    logger_module_debug(DEBUG_MODULE_VPL011, fmt, ##__VA_ARGS__)
 
 extern void run_printf_tests();
 #endif
