@@ -34,6 +34,7 @@ SMP ?= 1
 HV ?= 0
 LOGGER ?= 1
 DEBUG ?= 1
+DEBUG_MODULE ?= 0
 OPTIMIZATION ?= 0
 VERBOSE ?= 0
 
@@ -48,7 +49,7 @@ INCLUDE := $(addprefix -I, $(INCLUDE_DIRS))
 CFLAGS_BASE := -fno-pie -mgeneral-regs-only -fno-builtin -nostdinc -fno-stack-protector
 CFLAGS_DEBUG := $(if $(filter 1,$(DEBUG)),-g -DDEBUG,)
 CFLAGS_OPT := -O$(OPTIMIZATION)
-CFLAGS_DEFINES := -DSMP_NUM=$(SMP) -DHV=$(HV) -D__LOG_LEVEL=$(LOGGER)
+CFLAGS_DEFINES := -DSMP_NUM=$(SMP) -DHV=$(HV) -D__LOG_LEVEL=$(LOGGER) -D__DEBUG_MODULE=$(DEBUG_MODULE)
 CFLAGS_VERSION := -DVERSION_STRING=\"$(VERSION)\" -DBUILD_DATE=\"$(subst $(space),_,$(BUILD_DATE))\" \
                   -DGIT_COMMIT=\"$(GIT_COMMIT)$(GIT_DIRTY)\"
 CFLAGS_EXTRA ?=
@@ -331,6 +332,8 @@ help:
 	@echo "  HV=<0|1>     - Hypervisor mode (default: 0)"
 	@echo "  LOGGER=<n>   - Log level (default: 1)"
 	@echo "  DEBUG=<0|1>  - Debug build (default: 1)"
+	@echo "  DEBUG_MODULE=<n> - Debug module mask (default: 0)"
+	@echo "                   0=none, 1=GIC, 2=TASK, 4=VGIC, 8=TIMER, 16=MEM, 255=ALL"
 	@echo "  OPTIMIZATION=<n> - Optimization level (default: 0)"
 
 # ============================================================================

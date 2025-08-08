@@ -22,6 +22,19 @@
 #define LOG_LEVEL_ERROR   3
 #define LOG_LEVEL_NONE    4
 
+// 模块调试系统
+#define DEBUG_MODULE_NONE    0
+#define DEBUG_MODULE_GIC     1
+#define DEBUG_MODULE_TASK    2
+#define DEBUG_MODULE_VGIC    3
+#define DEBUG_MODULE_TIMER   4
+#define DEBUG_MODULE_MEM     5
+#define DEBUG_MODULE_ALL     0xFF
+
+#ifndef __DEBUG_MODULE
+#define __DEBUG_MODULE DEBUG_MODULE_NONE
+#endif
+
 #define BINSTR_SZ (sizeof(uint32_t) * 8 + sizeof(uint32_t) * 2)
 
 #define BUFSZ 512
@@ -40,6 +53,9 @@ static uint64_t missed_log_debug = 0;
 static uint64_t missed_log_info = 0;
 static uint64_t missed_log_warn = 0;
 static uint64_t missed_log_error = 0;
+
+// 模块调试控制
+static uint32_t debug_module_mask = __DEBUG_MODULE;
 
 
 static char digits[16] = "0123456789abcdef";
@@ -569,4 +585,67 @@ void run_printf_tests(void)
     uart_putstr("T6: expect [00000123] got [");
     uart_putstr(buf);
     uart_putstr("]\n");
+}
+
+// --------- 模块调试控制函数 ---------
+
+// 设置调试模块掩码
+void set_debug_module(uint32_t module_mask)
+{
+    debug_module_mask = module_mask;
+}
+
+// 获取当前调试模块掩码
+uint32_t get_debug_module(void)
+{
+    return debug_module_mask;
+}
+
+// 检查模块是否启用调试
+static inline int32_t is_module_debug_enabled(uint32_t module_id)
+{
+    if (debug_module_mask == DEBUG_MODULE_ALL) {
+        return 1;
+    }
+    return (debug_module_mask & (1 << module_id)) != 0;
+}
+
+// 模块化调试日志函数
+int32_t logger_module_debug(uint32_t module_id, const char *fmt, ...)
+{
+#if __LOG_LEVEL <= LOG_LEVEL_DEBUG
+    if (!is_module_debug_enabled(module_id)) {
+        return 0;
+    }
+
+    va_list va;
+    va_start(va, fmt);
+    int32_t r = logger_impl(ANSI_BLUE, fmt, va);
+    va_end(va);
+    return r;
+#else
+    (void)module_id;
+    (void)fmt;
+    return 0;
+#endif
+}
+
+// 非阻塞版本的模块化调试日志
+int32_t try_logger_module_debug(uint32_t module_id, const char *fmt, ...)
+{
+#if __LOG_LEVEL <= LOG_LEVEL_DEBUG
+    if (!is_module_debug_enabled(module_id)) {
+        return 0;
+    }
+
+    va_list va;
+    va_start(va, fmt);
+    int32_t r = try_logger_impl(ANSI_BLUE, &missed_log_debug, fmt, va);
+    va_end(va);
+    return r;
+#else
+    (void)module_id;
+    (void)fmt;
+    return 0;
+#endif
 }
