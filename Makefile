@@ -96,7 +96,9 @@ ROOT_C_SOURCES := $(shell find . -maxdepth 1 -name "*.c" 2>/dev/null)
 OTHER_C_SOURCES := $(shell find boot exception io mem timer task process spinlock hyper lib fs syscall -name "*.c" 2>/dev/null)
 # 手动添加app目录中的非main.c文件（避免包含app子目录中的main.c）
 APP_C_SOURCES := $(shell find app -maxdepth 1 -name "*.c" 2>/dev/null)
-C_SOURCES := $(ROOT_C_SOURCES) $(OTHER_C_SOURCES) $(APP_C_SOURCES)
+# 手动添加guest目录中需要的C文件
+GUEST_C_SOURCES := guest/guests.c
+C_SOURCES := $(ROOT_C_SOURCES) $(OTHER_C_SOURCES) $(APP_C_SOURCES) $(GUEST_C_SOURCES)
 
 ROOT_S_SOURCES := $(shell find . -maxdepth 1 -name "*.S" 2>/dev/null)
 OTHER_S_SOURCES := $(shell find boot exception io mem timer task process spinlock hyper lib fs syscall -name "*.S" 2>/dev/null)
@@ -181,6 +183,10 @@ $(BUILD_DIR)/%.o: fs/%.c | $(BUILD_DIR)
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
 $(BUILD_DIR)/%.o: syscall/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
+
+$(BUILD_DIR)/%.o: guest/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 

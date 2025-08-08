@@ -5,8 +5,7 @@
 #include "io.h"
 #include "lib/aj_string.h"
 #include "thread.h"
-
-#define VIRTUAL_TIMER_IRQ 27  // PPI 27 用于虚拟定时器中断（注意：不使用真实的27号中断）
+#include "os_cfg.h"
 
 // CNTV_CTL 寄存器位定义
 #define CNTV_CTL_ENABLE     (1U << 0)   // 使能位

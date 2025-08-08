@@ -3,12 +3,12 @@
 #include <spinlock.h>
 #include <io.h>
 
-#define UART0_DR (*(volatile uint32_t *)(UART0_BASE + 0x00))   // 数据寄存器
-#define UART0_FR (*(volatile uint32_t *)(UART0_BASE + 0x18))   // 标志寄存器
-#define UART0_IBRD (*(volatile uint32_t *)(UART0_BASE + 0x24)) // 整数波特率除数寄存器
-#define UART0_FBRD (*(volatile uint32_t *)(UART0_BASE + 0x28)) // 小数波特率除数寄存器
-#define UART0_LCRH (*(volatile uint32_t *)(UART0_BASE + 0x2C)) // 线路控制寄存器
-#define UART0_CR (*(volatile uint32_t *)(UART0_BASE + 0x30))   // 控制寄存器
+#define UART0_DR (*(volatile uint32_t *)(UART0_BASE_ADDR + 0x00))   // 数据寄存器
+#define UART0_FR (*(volatile uint32_t *)(UART0_BASE_ADDR + 0x18))   // 标志寄存器
+#define UART0_IBRD (*(volatile uint32_t *)(UART0_BASE_ADDR + 0x24)) // 整数波特率除数寄存器
+#define UART0_FBRD (*(volatile uint32_t *)(UART0_BASE_ADDR + 0x28)) // 小数波特率除数寄存器
+#define UART0_LCRH (*(volatile uint32_t *)(UART0_BASE_ADDR + 0x2C)) // 线路控制寄存器
+#define UART0_CR (*(volatile uint32_t *)(UART0_BASE_ADDR + 0x30))   // 控制寄存器
 
 static spinlock_t lock;
 

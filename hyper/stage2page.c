@@ -219,7 +219,7 @@ void data_abort_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 	}
 
 	// Handle PL011 UART MMIO access
-	if (UART0_BASE <= info->gpa && info->gpa < (UART0_BASE + 0x1000))
+	if (UART0_BASE_ADDR <= info->gpa && info->gpa < (UART0_BASE_ADDR + 0x1000))
 	{
 		uint32_t reg_num = info->hsr.dabt.reg;
 		uint32_t len = 1U << (info->hsr.dabt.size & 0x3U);

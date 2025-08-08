@@ -7,18 +7,17 @@
 #include <thread.h>
 #include <task/task.h>
 #include <hyper/vgic.h>
+#include <os_cfg.h>
 
 static uint64_t test_num = 0;
-
-#define TIMER_VECTOR 30
 
 extern void v_timer_tick(uint64_t now);
 
 
 void handle_timer_interrupt(uint64_t *sp)
 {
-    // 设置定时值
-    write_cntp_tval_el0(625000);
+    // 设置定时值 - 使用配置常量
+    write_cntp_tval_el0(TIMER_TVAL_VALUE);
     timer_tick_schedule(sp);
     v_timer_tick(read_cntpct_el0());
 }
@@ -29,8 +28,8 @@ void timer_init_second()
 
     logger("timer frq: %d\n", frq);
 
-    // 设置定时值
-    write_cntp_tval_el0(625000);
+    // 设置定时值 - 使用配置常量
+    write_cntp_tval_el0(TIMER_TVAL_VALUE);
     // 启用定时器
     write_cntp_ctl_el0(0b1);
 
@@ -50,8 +49,8 @@ void timer_init()
 
     logger("timer frq: %d\n", frq);
 
-    // 设置定时值
-    write_cntp_tval_el0(625000);
+    // 设置定时值 - 使用配置常量
+    write_cntp_tval_el0(TIMER_TVAL_VALUE);
     // 启用定时器
     write_cntp_ctl_el0(0b1);
 

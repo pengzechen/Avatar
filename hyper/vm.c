@@ -4,6 +4,7 @@
 #include <hyper/vpl011.h>
 #include <hyper/hyper_cfg.h>
 #include <aj_types.h>
+#include <os_cfg.h>
 #include "gic.h"
 #include "mem/page.h"
 #include "lib/aj_string.h"
@@ -22,9 +23,6 @@
 static struct _vm_t vms[VM_NUM_MAX];
 static uint32_t vm_num = 0;
 
-#define HV_TIMER_VECTOR 27
-#define PL011_INT 33
-
 
 void fake_timer() {
     // logger("fake timer\n");
@@ -39,9 +37,9 @@ void fake_console()
 
 void mmio_map_gicd()
 {
-    for (int32_t i = 0; i < 16; i++)
+    for (int32_t i = 0; i < MMIO_PAGES_GICD; i++)
     {
-        lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_AREA_GICD + 0x1000 * i); // 0800 0000 - 0801 0000  gicd
+        lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_AREA_GICD + MMIO_PAGE_SIZE * i);
         avr_entry->p2m.read = 0;
         avr_entry->p2m.write = 0;
         apply_ept(avr_entry);
@@ -50,9 +48,9 @@ void mmio_map_gicd()
 
 void mmio_map_gicc()
 {
-    for (int32_t i = 0; i < 16; i++)
+    for (int32_t i = 0; i < MMIO_PAGES_GICC; i++)
     {
-        lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_AREA_GICC + 0x1000 * i); // 0800 0000 - 0801 0000  gicd
+        lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_AREA_GICC + MMIO_PAGE_SIZE * i);
         avr_entry->p2m.read = 0;
         avr_entry->p2m.write = 0;
         apply_ept(avr_entry);
@@ -60,14 +58,14 @@ void mmio_map_gicc()
 }
 
 void mmio_map_pl011()
-{   
-    for (int32_t i = 0; i < 1; i++)
+{
+    for (int32_t i = 0; i < MMIO_PAGES_PL011; i++)
     {
-        lpae_t *avr_entry = get_ept_entry((uint64_t)0x9000000 + 0x1000 * i); // 0800 0000 - 0801 0000  gicd
+        lpae_t *avr_entry = get_ept_entry((uint64_t)MMIO_AREA_PL011 + MMIO_PAGE_SIZE * i);
         avr_entry->p2m.read = 0;
         avr_entry->p2m.write = 0;
         apply_ept(avr_entry);
-        logger_info("mmio_map_pl011: 0x%lx\n", (uint64_t)0x9000000 + 0x1000 * i);
+        logger_info("mmio_map_pl011: 0x%lx\n", (uint64_t)MMIO_AREA_PL011 + MMIO_PAGE_SIZE * i);
     }
 }
 
@@ -108,7 +106,7 @@ void test_mem_hypervisor()
     avr_entry->p2m.read = 0;
     avr_entry->p2m.write = 0;
     apply_ept(avr_entry);
-    *(uint64_t *)0x50000000 = 0x1234;
+    *(uint64_t *)MMIO_ARREA = 0x1234;
 }
 
 // 一个vm必定有多个vcpu，一个vgic。 先在这里初始化
@@ -171,13 +169,13 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
     vm->vcpu_cnt = vcpu_num;
 
     //(3.1) 首核 - 所有VM的首核都绑定到pCPU 0
-    void *stack = kalloc_pages(2);
+    void *stack = kalloc_pages(VM_STACK_PAGES);
     if (stack == NULL)
     {
         logger_error("Failed to allocate stack for primary vcpu \n");
         return;
     }
-    tcb_t *task = create_vm_task((void *)entry_addr, (uint64_t)stack + 8192, (1 << 0)); // 绑定到pCPU 0
+    tcb_t *task = create_vm_task((void *)entry_addr, (uint64_t)stack + VM_STACK_SIZE, PRIMARY_VCPU_PCPU_MASK);
     if (task == NULL)
     {
         logger_error("Failed to create vcpu task\n");
@@ -191,13 +189,13 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
     //(3.2) 其它核 - 所有VM的其他核都绑定到pCPU 1
     for (int32_t i = 1; i < vcpu_num; i++)
     {
-        void *stack = kalloc_pages(2);
+        void *stack = kalloc_pages(VM_STACK_PAGES);
         if (stack == NULL)
         {
             logger_error("Failed to allocate stack for vcpu %d\n", i);
             return;
         }
-        tcb_t *task = create_vm_task(test_guest, (uint64_t)stack + 8192, (1 << 1)); // 绑定到pCPU 1
+        tcb_t *task = create_vm_task(test_guest, (uint64_t)stack + VM_STACK_SIZE, SECONDARY_VCPU_PCPU_MASK);
         if (task == NULL)
         {
             logger_error("Failed to create vcpu task %d\n", i);

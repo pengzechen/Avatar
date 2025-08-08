@@ -17,8 +17,8 @@
 
 void test_mem()
 {
-    uint32_t mask = 97;
-    void *addr = (void *)0x9000000;
+    uint32_t mask = TEST_MEM_MASK;
+    void *addr = (void *)TEST_MEM_ADDR;
     logger("addr: 0x%llx\n", addr);
     logger("before value: 0x%llx\n", *(const volatile uint32_t *)((addr)));
     *(volatile uint32_t *)addr = mask;

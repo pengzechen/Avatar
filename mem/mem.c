@@ -39,7 +39,7 @@ static pte_t kpage_dir;
 void mark_kernel_memory_allocated()
 {
     uint64_t start = (uint64_t)(void *)__kernal_start;
-    uint64_t end = (uint64_t)(void *)__heap_flag + 0x900000ULL;
+    uint64_t end = (uint64_t)(void *)__heap_flag + HEAP_OFFSET;
     // 如果 heap_start 不是页对齐的，将其向上对齐
     end = UP2(end, PAGE_SIZE);
 
@@ -65,7 +65,7 @@ void alloctor_init() //  初始化 g_alloc
 
     mutex_init(&g_alloc.mutex);
 
-    uint64_t heap_start = (uint64_t)(void *)__heap_flag + 0x900000;
+    uint64_t heap_start = (uint64_t)(void *)__heap_flag + HEAP_OFFSET;
     heap_start = UP2(heap_start, PAGE_SIZE);
     logger("heap start: 0x%llx\n", heap_start);
     mark_kernel_memory_allocated();
@@ -119,7 +119,7 @@ static void addr_free_page(addr_alloc_t *alloc, uint64_t addr, int32_t page_coun
 {
     // mutex_lock(&alloc->mutex);
     uint64_t start = (uint64_t)(void *)__kernal_start;
-    static uint64_t heap_start = (uint64_t)(void *)__heap_flag + 0x900000;
+    static uint64_t heap_start = (uint64_t)(void *)__heap_flag + HEAP_OFFSET;
     heap_start = UP2(heap_start, PAGE_SIZE);
     // 确保释放的页不在内核空间内（内核空间地址范围：KERNEL_RAM_START 到 heap_start）
     // assert( addr >= heap_start);
@@ -232,7 +232,7 @@ pte_t *find_pte(pte_t *page_dir, // 虚拟地址
 int32_t memory_create_map(pte_t *page_dir, uint64_t vaddr, uint64_t paddr, int32_t count, uint64_t perm)
 {
     uint64_t start = (uint64_t)(void *)__kernal_start;
-    uint64_t end = (uint64_t)(void *)__heap_flag + 0x900000ULL;
+    uint64_t end = (uint64_t)(void *)__heap_flag + HEAP_OFFSET;
     // 如果 heap_start 不是页对齐的，将其向上对齐
     end = UP2(end, PAGE_SIZE);
     // 这里start和end计算出来的都是物理地址
@@ -400,9 +400,9 @@ pte_t *create_uvm(void)
         memory_create_map(page_dir, addr, addr, 1, 1); // 内核空间先恒等映射
     }
 
-    for (uint64_t addr = 0x8000000; addr < 0xa000000; addr += PAGE_SIZE)
+    for (uint64_t addr = DEVICE_MEM_START; addr < DEVICE_MEM_END; addr += PAGE_SIZE)
     {
-        memory_create_map(page_dir, addr, addr, 1, 2); // 内核空间先恒等映射
+        memory_create_map(page_dir, addr, addr, 1, 2); // 设备内存恒等映射
     }
     return page_dir;
 }
@@ -416,7 +416,8 @@ void _destroy_page_table_vm(pte_t *table, int32_t level)
         return;
 
     // 各级页表的最大项数（按实际情况调整）
-    static const int32_t max_entries[] = {1, 4, 512, 512};
+    static const int32_t max_entries[] = {PAGE_TABLE_MAX_ENTRIES_L0, PAGE_TABLE_MAX_ENTRIES_L1,
+                                          PAGE_TABLE_MAX_ENTRIES_L2, PAGE_TABLE_MAX_ENTRIES_L3};
     int32_t entry_count = max_entries[level];
 
     // 遍历当前层级的所有页表项
@@ -453,7 +454,7 @@ void _destroy_page_table_vm(pte_t *table, int32_t level)
 
             if (page_phys >= start && page_phys <= end)
                 return;
-            if (page_phys >= 0x8000000 && page_phys <= 0xa000000)
+            if (page_phys >= DEVICE_MEM_START && page_phys <= DEVICE_MEM_END)
                 return;
 
             addr_free_page(&g_alloc, page_phys, 1);
@@ -482,7 +483,8 @@ void _destroy_page_table(pte_t *table, int32_t level)
         return;
 
     // 各级页表的最大项数（按实际情况调整）
-    static const int32_t max_entries[] = {1, 8, 512, 512};
+    static const int32_t max_entries[] = {PAGE_TABLE_MAX_ENTRIES_L0, 8,
+                                          PAGE_TABLE_MAX_ENTRIES_L2, PAGE_TABLE_MAX_ENTRIES_L3};
     int32_t entry_count = max_entries[level];
 
     // 遍历当前层级的所有页表项
@@ -534,7 +536,7 @@ bool _copy_page_table(pte_t *src_table, pte_t *dst_table, int32_t level)
             if (end > KERNEL_VMA)
                 end -= KERNEL_VMA;
 
-            if ((src_phys >= start && src_phys <= end) || (src_phys >= 0x8000000 && src_phys <= 0xa000000))
+            if ((src_phys >= start && src_phys <= end) || (src_phys >= DEVICE_MEM_START && src_phys <= DEVICE_MEM_END))
             {
                 // 设置目标页表项
                 dst_table[i].pte = (src_phys >> 12 << 12) | (src_entry->pte & 0xFFF);
@@ -695,8 +697,8 @@ static int32_t get_available_page_count(addr_alloc_t *alloc)
     // mutex_lock(&alloc->mutex);
 
     // 获取位图的总页数
-    uint64_t start_page = (0x40000000 - g_alloc.start) / g_alloc.page_size;
-    uint64_t end_page = (0x60000000 - g_alloc.start) / g_alloc.page_size;
+    uint64_t start_page = (KERNEL_RAM_START - g_alloc.start) / g_alloc.page_size;
+    uint64_t end_page = ((KERNEL_RAM_START + 0x20000000) - g_alloc.start) / g_alloc.page_size;  // 512MB范围
 
     // 遍历位图，统计未分配的页面数量
     for (int32_t i = start_page; i < end_page; i++)

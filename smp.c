@@ -102,8 +102,8 @@ void start_secondary_cpus()
 #endif
 
         // 等待从核启动完成
-        for (int32_t j = 0; j < 10; j++)
-            for (int32_t k = 0; k < 0xfffff; k++)
+        for (int32_t j = 0; j < CPU_STARTUP_WAIT_LOOPS; j++)
+            for (int32_t k = 0; k < CPU_STARTUP_INNER_LOOPS; k++)
                 ;
 
         // 初始化从核的thread info
