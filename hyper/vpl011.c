@@ -6,6 +6,7 @@
 #include "lib/aj_string.h"
 #include "thread.h"
 #include "hyper/vgic.h"
+#include "timer.h"
 
 /* Virtual PL011 management structures */
 static vpl011_t _vpl011s[VM_NUM_MAX];
@@ -14,6 +15,69 @@ static uint32_t _vpl011_num = 0;
 /* Virtual PL011 state pool (one per VM) */
 static vpl011_state_t _vpl011_states[VM_NUM_MAX];
 static uint32_t _vpl011_state_num = 0;
+
+/* String matching buffer for timestamp detection */
+#define MATCH_BUFFER_SIZE 256
+#define TARGET_STRING "Run /init as init process"
+static char match_buffer[MATCH_BUFFER_SIZE];
+static uint32_t match_buffer_pos = 0;
+
+/* --------------------------------------------------------
+ * ==================    辅助函数    ==================
+ * -------------------------------------------------------- */
+
+/* 格式化时间戳为 [   37.268662] 格式 */
+static void format_timestamp(char *buffer, size_t buffer_size)
+{
+    uint64_t current_ticks = read_cntpct_el0();
+    uint64_t frequency = read_cntfrq_el0();
+
+    if (frequency == 0) {
+        my_snprintf(buffer, buffer_size, "[    0.000000] ");
+        return;
+    }
+
+    /* 计算秒和微秒 */
+    uint64_t seconds = current_ticks / frequency;
+    uint64_t remaining_ticks = current_ticks % frequency;
+    uint64_t microseconds = (remaining_ticks * 1000000) / frequency;
+
+    /* 格式化为 [   37.268662] 格式 */
+    my_snprintf(buffer, buffer_size, "[%4llu.%06llu] ", seconds, microseconds);
+}
+
+/* 检查字符串匹配并输出时间戳 */
+static void check_string_match_and_output_timestamp(char c)
+{
+    /* 将字符添加到匹配缓冲区 */
+    if (match_buffer_pos < MATCH_BUFFER_SIZE - 1) {
+        match_buffer[match_buffer_pos++] = c;
+        match_buffer[match_buffer_pos] = '\0';
+    } else {
+        /* 缓冲区满了，移动内容 */
+        memmove(match_buffer, match_buffer + 1, MATCH_BUFFER_SIZE - 2);
+        match_buffer[MATCH_BUFFER_SIZE - 2] = c;
+        match_buffer[MATCH_BUFFER_SIZE - 1] = '\0';
+        match_buffer_pos = MATCH_BUFFER_SIZE - 1;
+    }
+
+    /* 检查是否匹配目标字符串 */
+    if (strstr(match_buffer, TARGET_STRING) != NULL) {
+        char timestamp[32];
+        format_timestamp(timestamp, sizeof(timestamp));
+
+        /* 输出时间戳到物理UART */
+        uart_putstr("\n");
+        uart_putstr(timestamp);
+        uart_putstr("Detected target string: ");
+        uart_putstr(TARGET_STRING);
+        uart_putstr("\n");
+
+        /* 清空匹配缓冲区 */
+        match_buffer_pos = 0;
+        match_buffer[0] = '\0';
+    }
+}
 
 /* --------------------------------------------------------
  * ==================    初始化函数    ==================
@@ -210,6 +274,7 @@ void vpl011_write(vpl011_state_t *vuart, uint32_t offset, uint32_t value)
 
         /* Add to TX FIFO if not full */
         if (vuart->tx_count < 16) {
+            char output_char = (char)(value & 0xFF);
             vuart->tx_fifo[vuart->tx_count++] = (uint8_t)(value & 0xFF);
 
             /* Update flag register */
@@ -219,7 +284,10 @@ void vpl011_write(vpl011_state_t *vuart, uint32_t offset, uint32_t value)
             }
 
             /* Forward to physical UART immediately for now */
-            uart_putchar((char)(value & 0xFF));
+            uart_putchar(output_char);
+
+            /* 检查字符串匹配并可能输出时间戳 */
+            // check_string_match_and_output_timestamp(output_char);
 
             /* Simulate immediate transmission - remove from TX FIFO */
             vuart->tx_count--;

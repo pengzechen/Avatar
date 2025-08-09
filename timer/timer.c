@@ -23,8 +23,11 @@ void handle_timer_interrupt(uint64_t *sp)
     // Physical Timer - 设置定时值
     write_cntp_tval_el0(TIMER_TVAL_VALUE);
 #endif
-    timer_tick_schedule(sp);
-    v_timer_tick(read_cntpct_el0());
+    
+    // if (get_current_cpu_id() == 0) {
+        timer_tick_schedule(sp);
+        v_timer_tick(read_cntpct_el0());
+    // }
 }
 
 void timer_init_second()
