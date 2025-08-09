@@ -107,7 +107,6 @@ void validate_device_config(void)
     logger("GICH Base: 0x%lx\n", GICH_BASE_ADDR);
     logger("GICV Base: 0x%lx\n", GICV_BASE_ADDR);
     logger("Timer Vector: %d\n", TIMER_VECTOR);
-    logger("HV Timer Vector: %d\n", HV_TIMER_VECTOR);
     logger("PL011 Interrupt: %d\n", PL011_INT);
     
     // 验证设备地址的合理性
@@ -115,10 +114,6 @@ void validate_device_config(void)
         logger("ERROR: GICC base address should be after GICD\n");
     }
     
-    // 验证中断向量的合理性
-    if (TIMER_VECTOR == HV_TIMER_VECTOR) {
-        logger("ERROR: Timer vectors conflict\n");
-    }
 }
 
 void validate_all_configs(void)

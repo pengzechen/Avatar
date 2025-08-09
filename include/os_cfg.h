@@ -6,6 +6,11 @@
  * 系统配置参数 - 统一管理所有硬编码值
  * ============================================================================ */
 
+/* HV 模式配置 - 必须在最前面定义，因为后面的配置会用到 */
+#ifndef HV
+#define HV 1
+#endif
+
 /* 核数配置 - 必须在最前面定义，因为后面的配置会用到 */
 #ifndef SMP_NUM
 #define SMP_NUM 1
@@ -38,10 +43,14 @@
 #define TIMER_TVAL_VALUE (TIMER_FREQUENCY_HZ * TIMER_TICK_INTERVAL_MS / 1000)  // 625000
 
 /* 中断向量配置 */
-#define TIMER_VECTOR 30
-#define HV_TIMER_VECTOR 27
-#define PL011_INT 33
-#define VIRTUAL_TIMER_IRQ 27  // PPI 27 用于虚拟定时器中断
+#if HV
+#define TIMER_VECTOR 26              // Hypervisor Timer (PPI 10) - 当HV=1时使用
+#else
+#define TIMER_VECTOR 30              // Non-secure Physical Timer (PPI 14) - 当HV=0时使用
+#endif
+
+#define VIRTUAL_TIMER_IRQ 27         // Virtual Timer (PPI 11) - 用于虚拟定时器中断
+#define PL011_INT 33                 // UART 中断
 
 /* 内核线程栈定义区 */
 #define STACK_SIZE (1 << 14) // 16 K
@@ -72,10 +81,6 @@
 #define SECONDARY_STACK_TOTAL (BOOT_STACK_SIZE * 7)  // 最大支持8核
 #endif
 
-/* HV */
-#ifndef HV
-#define HV 0
-#endif
 
 /* guest内存定义区 */
 #define GUEST_RAM_START ((unsigned long long)0x40000000)

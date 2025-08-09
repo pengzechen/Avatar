@@ -28,4 +28,27 @@ test_guest:
 	mrs	x3, ctr_el0
 	mov x10, #10
 
-	b .  // el1
+	// 循环串口输出测试
+	mov x1, #0x9000000         // UART基地址
+
+loop:
+	// 输出 "Hi\n"
+	mov w0, #'H'
+	str w0, [x1]
+	mov w0, #'i'
+	str w0, [x1]
+	mov w0, #'\n'
+	str w0, [x1]
+
+	// 延时 - 很多nop指令
+	mov x2, #0x900000          // 延时计数器
+delay:
+	nop
+	nop
+	nop
+	nop
+	nop
+	subs x2, x2, #1
+	b.ne delay
+
+	b loop                     // 继续循环

@@ -26,7 +26,7 @@ static uint32_t vm_num = 0;
 
 void fake_timer() {
     // logger("fake timer\n");
-    vgic_hw_inject_test(HV_TIMER_VECTOR);
+    vgic_hw_inject_test(TIMER_VECTOR);
 }
 
 void fake_console()

@@ -57,6 +57,47 @@ static inline uint64_t read_cntpct_el0(void)
     return val;
 }
 
+// ========== Hypervisor Timer (EL2) 寄存器操作 ==========
+
+// CNTHP_CTL_EL2 （Hypervisor Timer 控制寄存器）
+static inline void write_cnthp_ctl_el2(uint64_t val)
+{
+    asm volatile("msr cnthp_ctl_el2, %0" : : "r"(val));
+}
+
+static inline uint64_t read_cnthp_ctl_el2(void)
+{
+    uint64_t val;
+    asm volatile("mrs %0, cnthp_ctl_el2" : "=r"(val));
+    return val;
+}
+
+// CNTHP_TVAL_EL2 （Hypervisor Timer 定时值寄存器）
+static inline void write_cnthp_tval_el2(uint64_t val)
+{
+    asm volatile("msr cnthp_tval_el2, %0" : : "r"(val));
+}
+
+static inline uint64_t read_cnthp_tval_el2(void)
+{
+    uint64_t val;
+    asm volatile("mrs %0, cnthp_tval_el2" : "=r"(val));
+    return val;
+}
+
+// CNTHP_CVAL_EL2 （Hypervisor Timer 比较值寄存器）
+static inline void write_cnthp_cval_el2(uint64_t val)
+{
+    asm volatile("msr cnthp_cval_el2, %0" : : "r"(val));
+}
+
+static inline uint64_t read_cnthp_cval_el2(void)
+{
+    uint64_t val;
+    asm volatile("mrs %0, cnthp_cval_el2" : "=r"(val));
+    return val;
+}
+
 void timer_init();
 void timer_init_second();
 
