@@ -15,6 +15,7 @@ typedef struct _vtimer_core_state_t
 
     // 虚拟定时器寄存器状态
     uint64_t cntvct_offset;     // 虚拟计数器偏移
+    int32_t cntv_tval;         // 虚拟定时器时间值寄存器
     uint64_t cntv_cval;         // 虚拟定时器比较值寄存器
     uint32_t cntv_ctl;          // 虚拟定时器控制寄存器
 
@@ -55,12 +56,19 @@ bool vtimer_should_fire(vtimer_core_state_t *vt, uint64_t now);
 void vtimer_inject_to_vcpu(tcb_t *task);
 
 // 定时器寄存器访问 - 通过 task->cpu_info->sys_reg 访问
-uint64_t vtimer_read_cntvct(tcb_t *task);                // Guest 读取虚拟计数器时调用
-void vtimer_write_cntv_cval(tcb_t *task, uint64_t cval); // Guest 设置定时器比较值时调用
+
+
 void vtimer_write_cntv_ctl(tcb_t *task, uint32_t ctl);   // Guest 启用/禁用定时器时调用
-uint32_t vtimer_read_cntv_ctl(tcb_t *task);
-uint32_t vtimer_read_cntv_tval(tcb_t *task);
 void vtimer_write_cntv_tval(tcb_t *task, uint32_t tval);
+void vtimer_write_cntv_cval(tcb_t *task, uint64_t cval); // Guest 设置定时器比较值时调用
+
+uint64_t vtimer_read_cntvct(tcb_t *task);                // Guest 读取虚拟计数器时调用
+
+uint32_t vtimer_read_cntv_ctl(tcb_t *task);
+int32_t vtimer_read_cntv_tval(tcb_t *task);
+uint64_t vtimer_read_cntv_cval(tcb_t *task);
+
+
 
 // 核心保存/恢复接口
 void vtimer_core_save(tcb_t *task);

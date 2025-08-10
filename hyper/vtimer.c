@@ -6,6 +6,7 @@
 #include "lib/aj_string.h"
 #include "thread.h"
 #include "os_cfg.h"
+#include "timer.h"
 
 // CNTV_CTL 寄存器位定义
 #define CNTV_CTL_ENABLE     (1U << 0)   // 使能位
@@ -98,6 +99,7 @@ void vtimer_core_init(vtimer_core_state_t *vt, uint32_t vcpu_id)
     vt->cntvct_offset = 0;
     vt->cntv_cval = 0;
     vt->cntv_ctl = 0;
+    vt->cntv_tval = 0;
     vt->fire_count = 0;
     vt->last_fire_time = 0;
 
@@ -132,137 +134,40 @@ uint32_t vtimer_read_cntv_ctl(tcb_t *task)
     return (uint32_t)task->cpu_info->sys_reg->cntv_ctl_el0;
 }
 
-uint32_t vtimer_read_cntv_tval(tcb_t *task)
+int32_t vtimer_read_cntv_tval(tcb_t *task)
 {
     if (!task || !task->cpu_info || !task->cpu_info->sys_reg) {
         return 0;
     }
-    return (uint32_t)task->cpu_info->sys_reg->cntv_tval_el0;
+    return (int32_t)task->cpu_info->sys_reg->cntv_tval_el0;
 }
 
-void vtimer_write_cntv_cval(tcb_t *task, uint64_t cval)
+uint64_t vtimer_read_cntv_cval(tcb_t *task)
 {
-    if (!task || !task->cpu_info || !task->cpu_info->sys_reg || !task->curr_vm) {
-        return;
+    if (!task || !task->cpu_info || !task->cpu_info->sys_reg) {
+        return 0;
     }
-
-    vtimer_core_state_t *vt = get_vtimer_by_vcpu(task);
-    if (!vt) {
-        return;
-    }
-
-    // 更新寄存器值
-    task->cpu_info->sys_reg->cntv_cval_el0 = cval;
-    vt->cntv_cval = cval;
-
-    // 如果定时器使能，重新计算 deadline
-    uint32_t ctl = (uint32_t)task->cpu_info->sys_reg->cntv_ctl_el0;
-    if (ctl & CNTV_CTL_ENABLE) {
-        uint64_t virtual_count = vtimer_read_cntvct(task);
-        if (cval > virtual_count) {
-            // 计算 deadline 基于当前时钟 tick
-            uint64_t delay = cval - virtual_count;
-            vt->deadline = task->curr_vm->vtimer->now_tick + delay;
-            vt->enabled = true;
-        } else {
-            // 立即触发
-            vt->enabled = false;
-            vt->pending = true;
-            task->cpu_info->sys_reg->cntv_ctl_el0 |= CNTV_CTL_ISTATUS;
-        }
-    }
-
-    logger_info("vCPU %d: Set CNTV_CVAL to 0x%llx\n", vt->id, cval);
+    return task->cpu_info->sys_reg->cntv_cval_el0;
 }
 
 void vtimer_write_cntv_ctl(tcb_t *task, uint32_t ctl)
 {
-    if (!task || !task->cpu_info || !task->cpu_info->sys_reg || !task->curr_vm) {
-        return;
-    }
+}
 
-    vtimer_core_state_t *vt = get_vtimer_by_vcpu(task);
-    if (!vt) {
-        return;
-    }
-
-    uint32_t old_ctl = (uint32_t)task->cpu_info->sys_reg->cntv_ctl_el0;
-    ctl = ctl & 0x7;  // 只保留低3位
-
-    // 更新寄存器值
-    task->cpu_info->sys_reg->cntv_ctl_el0 = ctl;
-    vt->cntv_ctl = ctl;
-
-    // 检查使能位变化
-    if ((ctl & CNTV_CTL_ENABLE) && !(old_ctl & CNTV_CTL_ENABLE)) {
-        // 定时器被使能
-        uint64_t virtual_count = vtimer_read_cntvct(task);
-        if (vt->cntv_cval > virtual_count) {
-            uint64_t delay = vt->cntv_cval - virtual_count;
-            vt->deadline = task->curr_vm->vtimer->now_tick + delay;
-            vt->enabled = true;
-            vt->pending = false;
-            task->cpu_info->sys_reg->cntv_ctl_el0 &= ~CNTV_CTL_ISTATUS;
-        } else {
-            vt->enabled = false;
-            vt->pending = true;
-            task->cpu_info->sys_reg->cntv_ctl_el0 |= CNTV_CTL_ISTATUS;
-        }
-    } else if (!(ctl & CNTV_CTL_ENABLE) && (old_ctl & CNTV_CTL_ENABLE)) {
-        // 定时器被禁用
-        vt->enabled = false;
-        vt->pending = false;
-        task->cpu_info->sys_reg->cntv_ctl_el0 &= ~CNTV_CTL_ISTATUS;
-    }
-
-    logger_info("vCPU %d: Set CNTV_CTL to 0x%x (enable=%d, imask=%d, istatus=%d)\n",
-                vt->id, ctl,
-                !!(ctl & CNTV_CTL_ENABLE),
-                !!(ctl & CNTV_CTL_IMASK),
-                !!(ctl & CNTV_CTL_ISTATUS));
+void vtimer_write_cntv_cval(tcb_t *task, uint64_t cval)
+{
 }
 
 void vtimer_write_cntv_tval(tcb_t *task, uint32_t tval)
 {
-    if (!task || !task->cpu_info || !task->cpu_info->sys_reg) {
-        return;
-    }
-
-    // 更新寄存器值
-    task->cpu_info->sys_reg->cntv_tval_el0 = tval;
-
-    // TVAL = CVAL - 当前计数器值，所以 CVAL = 当前计数器值 + TVAL
-    uint64_t current_count = vtimer_read_cntvct(task);
-    uint64_t cval = current_count + tval;
-    vtimer_write_cntv_cval(task, cval);
-
-    logger_info("vCPU %d: Set CNTV_TVAL to 0x%x (converted to CVAL: 0x%llx)\n",
-                get_vtimer_by_vcpu(task) ? get_vtimer_by_vcpu(task)->id : 0, tval, cval);
 }
 
 void vtimer_set_timer(vtimer_core_state_t *vt, uint64_t cval, uint32_t ctl)
 {
-    if (!vt) {
-        logger_error("vtimer_set_timer: invalid vtimer_core_state_t\n");
-        return;
-    }
-
-    // 通过 vCPU ID 找到对应的 task
-    tcb_t *task = get_task_by_vcpu_id(vt->id);
-    if (!task) {
-        logger_error("vtimer_set_timer: cannot find task for vCPU %d\n", vt->id);
-        return;
-    }
-
-    // 使用基于 task 的函数来设置定时器
-    vtimer_write_cntv_cval(task, cval);
-    vtimer_write_cntv_ctl(task, ctl);
-
-    logger_info("vCPU %d: Set timer CVAL=0x%llx, CTL=0x%x\n", vt->id, cval, ctl);
 }
 
 // 核心保存/恢复接口
-void vtimer_core_save(tcb_t *task)
+void vtimer_core_restore(tcb_t *task)
 {
     if (!task || !task->cpu_info || !task->cpu_info->sys_reg) {
         return;
@@ -273,20 +178,13 @@ void vtimer_core_save(tcb_t *task)
         return;
     }
 
-    // 从虚拟定时器状态同步到 sys_reg
     task->cpu_info->sys_reg->cntv_ctl_el0 = vt->cntv_ctl;
     task->cpu_info->sys_reg->cntv_cval_el0 = vt->cntv_cval;
-
-    // 计算 TVAL = CVAL - 当前虚拟计数器值
-    uint64_t virtual_count = vtimer_read_cntvct(task);
-    int64_t tval = (int64_t)(vt->cntv_cval - virtual_count);
-    task->cpu_info->sys_reg->cntv_tval_el0 = (uint64_t)tval;
-
-    // logger_debug("vCPU %d: Saved timer state - CTL=0x%x, CVAL=0x%llx, TVAL=0x%llx\n",
-    //             vt->id, vt->cntv_ctl, vt->cntv_cval, (uint64_t)tval);
+    // 这里先强转为 u64
+    task->cpu_info->sys_reg->cntv_tval_el0 = (uint64_t)vt->cntv_tval;
 }
 
-void vtimer_core_restore(tcb_t *task)
+void vtimer_core_save(tcb_t *task)
 {
     if (!task || !task->cpu_info || !task->cpu_info->sys_reg || !task->curr_vm) {
         return;
@@ -300,27 +198,17 @@ void vtimer_core_restore(tcb_t *task)
     // 从 sys_reg 恢复到虚拟定时器状态
     uint32_t ctl = (uint32_t)task->cpu_info->sys_reg->cntv_ctl_el0;
     uint64_t cval = task->cpu_info->sys_reg->cntv_cval_el0;
+    // 恢复之前存进去的 i23 的值
+    int32_t tval = (int32_t)task->cpu_info->sys_reg->cntv_tval_el0;
+
+        // 从虚拟定时器状态同步到 sys_reg
+    if (ctl != vt->cntv_ctl)
+        logger_vtimer_debug("vCPU %d: Now: %lld, Saved timer state - CTL=0x%x, CVAL=%lld, TVAL=%d\n",
+                vt->id, task->curr_vm->vtimer->now_tick, ctl, cval, tval);
 
     vt->cntv_ctl = ctl;
     vt->cntv_cval = cval;
-
-    // 重新计算定时器状态
-    if (ctl & CNTV_CTL_ENABLE) {
-        uint64_t virtual_count = vtimer_read_cntvct(task);
-        if (cval > virtual_count) {
-            uint64_t delay = cval - virtual_count;
-            vt->deadline = task->curr_vm->vtimer->now_tick + delay;
-            vt->enabled = true;
-            vt->pending = false;
-        } else {
-            vt->enabled = false;
-            vt->pending = true;
-            task->cpu_info->sys_reg->cntv_ctl_el0 |= CNTV_CTL_ISTATUS;
-        }
-    } else {
-        vt->enabled = false;
-        vt->pending = false;
-    }
+    vt->cntv_tval = tval;
 
     // logger_debug("vCPU %d: Restored timer state - CTL=0x%x, CVAL=0x%llx, enabled=%d\n",
     //             vt->id, ctl, cval, vt->enabled);
@@ -357,7 +245,7 @@ void vtimer_inject_to_vcpu(tcb_t *task)
         // logger_info("Injected virtual timer interrupt (PPI %d) to vCPU %d\n",
         //             VIRTUAL_TIMER_IRQ, vt->id);
     } else {
-        logger_info("Virtual timer interrupt masked for vCPU %d\n", vt->id);
+        // logger_info("Virtual timer interrupt masked for vCPU %d\n", vt->id);
     }
 }
 
@@ -456,26 +344,14 @@ void v_timer_tick(uint64_t now)
             }
 
             // Check if timer should fire based on guest settings
-            // if (vtimer_should_fire(vt, now)) {
-                logger_vtimer_debug("[pcpu: %d]: Timer fired for VM%d vCPU %d(task: %d) - CVAL=0x%llx, now=0x%llx\n",
-                    get_current_cpu_id(), task->curr_vm->vm_id, get_vcpuid(task), task->task_id,
-                    vt->cntv_cval, now);
-
-                // Update timer state
-                vt->pending = true;
-                vt->enabled = false;
-                vt->cntv_ctl |= CNTV_CTL_ISTATUS;
-                vt->fire_count++;
-                vt->last_fire_time = now;
-
-                // Update sys_reg to reflect the new state
-                if (task->cpu_info && task->cpu_info->sys_reg) {
-                    task->cpu_info->sys_reg->cntv_ctl_el0 = vt->cntv_ctl;
-                }
+            if (vtimer_should_fire(vt, now)) {
+                // logger_vtimer_debug("[pcpu: %d]: Timer fired for VM%d vCPU %d(task: %d) - CVAL=0x%llx, now=0x%llx\n",
+                //     get_current_cpu_id(), task->curr_vm->vm_id, get_vcpuid(task), task->task_id,
+                //     vt->cntv_cval, now);
 
                 // Inject interrupt to the vCPU (虚拟中断，不使用真实的27号中断)
                 vtimer_inject_to_vcpu(task);
-            // }
+            }
         }
     }
 }
