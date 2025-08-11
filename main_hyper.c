@@ -49,6 +49,18 @@ void vtcr_init(void)
     write_vtcr_el2(vtcr_val);
 }
 
+void vtimer_init_el2(void)
+{
+    logger_info("Initialize virtual timer offset...\n");
+
+    // 初始化 CNTVOFF_EL2 为 0，这样 Guest 看到的虚拟时间就等于物理时间
+    // Guest 读取 CNTVCT_EL0 时看到的是：CNTPCT_EL0 - CNTVOFF_EL2
+    write_cntvoff_el2(0);
+
+    uint64_t cntvoff = read_cntvoff_el2();
+    logger_info("CNTVOFF_EL2 initialized to: 0x%llx\n", cntvoff);
+}
+
 extern size_t cacheline_bytes;
 int32_t inited_cpu_num_el2 = 0;
 spinlock_t lock_el2;
@@ -65,6 +77,7 @@ void main_entry_el2()
     logger("main entry: get_current_cpu_id: %d\n", get_current_cpu_id());
 
     vtcr_init();
+    vtimer_init_el2();
     guest_ept_init();
 
     if (get_current_cpu_id() == 0)

@@ -98,6 +98,21 @@ static inline uint64_t read_cnthp_cval_el2(void)
     return val;
 }
 
+// ========== Virtual Timer Offset (EL2) 寄存器操作 ==========
+
+// CNTVOFF_EL2 （Virtual Timer Offset 寄存器）
+static inline void write_cntvoff_el2(uint64_t val)
+{
+    asm volatile("msr cntvoff_el2, %0" : : "r"(val));
+}
+
+static inline uint64_t read_cntvoff_el2(void)
+{
+    uint64_t val;
+    asm volatile("mrs %0, cntvoff_el2" : "=r"(val));
+    return val;
+}
+
 void timer_init();
 void timer_init_second();
 

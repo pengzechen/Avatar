@@ -24,10 +24,10 @@ void handle_timer_interrupt(uint64_t *sp)
     write_cntp_tval_el0(TIMER_TVAL_VALUE);
 #endif
     
-    // if (get_current_cpu_id() == 0) {
+    if (get_current_cpu_id() == 0) {
         timer_tick_schedule(sp);
         v_timer_tick(read_cntpct_el0());
-    // }
+    }
 }
 
 void timer_init_second()

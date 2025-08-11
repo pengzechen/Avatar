@@ -38,7 +38,9 @@ typedef struct _vtimer_t
     struct _vm_t *vm;  // 关联的虚拟机
     vtimer_core_state_t *core_state[VCPU_NUM_MAX];  // 每个 vCPU 的定时器状态指针
     uint32_t vcpu_cnt;  // vCPU 数量
-    uint64_t now_tick;  // 当前时钟 tick，由外部时钟源更新
+    uint64_t now_tick;  // 当前虚拟时钟 tick
+    uint64_t start_time;  // VM启动时的物理时间
+    uint64_t cntvoff;   // 虚拟时间偏移量
 } vtimer_t;
 
 // 函数声明
@@ -54,15 +56,15 @@ void vtimer_core_init(vtimer_core_state_t *vt, uint32_t vcpu_id);
 void vtimer_set_timer(vtimer_core_state_t *vt, uint64_t cval, uint32_t ctl);
 bool vtimer_should_fire(vtimer_core_state_t *vt, uint64_t now);
 void vtimer_inject_to_vcpu(tcb_t *task);
+void vtimer_set_vm_offset(vtimer_t *vtimer);
 
 // 定时器寄存器访问 - 通过 task->cpu_info->sys_reg 访问
 
 
 void vtimer_write_cntv_ctl(tcb_t *task, uint32_t ctl);   // Guest 启用/禁用定时器时调用
-void vtimer_write_cntv_tval(tcb_t *task, uint32_t tval);
+void vtimer_write_cntv_tval(tcb_t *task, int32_t tval);
 void vtimer_write_cntv_cval(tcb_t *task, uint64_t cval); // Guest 设置定时器比较值时调用
 
-uint64_t vtimer_read_cntvct(tcb_t *task);                // Guest 读取虚拟计数器时调用
 
 uint32_t vtimer_read_cntv_ctl(tcb_t *task);
 int32_t vtimer_read_cntv_tval(tcb_t *task);
