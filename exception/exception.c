@@ -7,93 +7,270 @@
 #include "vmm/vcpu.h"
 #include "thread.h"
 
+// ESR_EL1 Exception Class definitions for EL1 exceptions
+#define ESR_EL1_EC_SVC          0x15    // SVC instruction execution
+#define ESR_EL1_EC_SMC          0x17    // SMC instruction execution
+
+// Maximum number of interrupt vectors
+#define MAX_IRQ_VECTORS         512
+
+// External symbol declarations
 extern void *syscall_table[];
 
-// 示例使用方式：处理同步异常
+// Static function declarations
+static void handle_svc_call(trap_frame_t *context, uint32_t esr);
+static void handle_smc_call_el1(trap_frame_t *context, uint32_t esr);
+static void handle_unknown_sync_exception(trap_frame_t *context, uint32_t esr, uint32_t ec);
+static void dump_exception_context(trap_frame_t *context, uint32_t esr, uint32_t ec);
+static const char* get_exception_kind_name(uint64_t kind);
+static const char* get_exception_source_name(uint64_t source);
+
+/**
+ * Handle synchronous exceptions from EL1
+ * @param stack_pointer: Pointer to saved context on stack
+ */
 void handle_sync_exception(uint64_t *stack_pointer)
 {
-    trap_frame_t *el1_ctx = (trap_frame_t *)stack_pointer;
-
-    int32_t el1_esr = read_esr_el1();
-
-    int32_t ec = ((el1_esr >> 26) & 0b111111);
-
-    save_cpu_ctx(el1_ctx); // 保存 发生异常的那个任务的 处理器状态
-
-    if (ec == 0x15)
-    { // svc
-        // enable_interrupts();
-        // logger("This is svc call handler\n");
-        // logger("svc number: %llx\n", el1_ctx->r[8]);
-        uint64_t (*func)(void *) = (uint64_t (*)(void *))syscall_table[el1_ctx->r[8]];
-        // 传进去的应该是一个指针，指针偏移 0-7 是参数。现在只支持最多 8 个参数
-        uint64_t ret = func((void *)el1_ctx);
-        // 返回值放在 x0
-        el1_ctx->r[0] = ret;
-        // disable_interrupts();
+    if (!stack_pointer) {
+        logger_error("Invalid stack pointer in sync exception handler\n");
         return;
     }
 
-    if (ec == 0x17)
-    { // smc
-        logger("This is smc call handler\n");
-        return;
-    }
+    trap_frame_t *context = (trap_frame_t *)stack_pointer;
+    uint32_t esr_el1 = read_esr_el1();
+    uint32_t ec = (esr_el1 >> 26) & 0x3F;  // Extract Exception Class
 
-    /* =============== UnDefined ================== */
-    if (get_current_cpu_id() == 0)
-    {
-        logger("el1 esr: %llx\n", el1_esr);
-        logger("ec: %llx\n", ec);
-        logger("This is handle_sync_exception: \n");
-        for (int32_t i = 0; i < 31; i++)
-        {
-            uint64_t value = el1_ctx->r[i];
-            logger("General-purpose register: %d, value: %llx\n", i, value);
-        }
-        uint64_t elr_el1_value = el1_ctx->elr;
-        uint64_t usp_value = el1_ctx->usp;
-        uint64_t spsr_value = el1_ctx->spsr;
-        logger("usp: %llx, elr: %llx, spsr: %llx\n", usp_value, elr_el1_value, spsr_value);
+    // Save CPU context for the interrupted task
+    save_cpu_ctx(context);
+
+    switch (ec) {
+    case ESR_EL1_EC_SVC:
+        handle_svc_call(context, esr_el1);
+        break;
+
+    case ESR_EL1_EC_SMC:
+        handle_smc_call_el1(context, esr_el1);
+        break;
+
+    default:
+        handle_unknown_sync_exception(context, esr_el1, ec);
+        break;
     }
-    while (1)
-        ;
 }
 
-irq_handler_t g_handler_vec[512] = {0};
+// Global interrupt handler vector table
+static irq_handler_t g_handler_vec[MAX_IRQ_VECTORS] = {0};
 
-irq_handler_t *get_g_handler_vec()
+/**
+ * Get the global interrupt handler vector table
+ * @return: Pointer to the handler vector table
+ */
+irq_handler_t *get_g_handler_vec(void)
 {
     return g_handler_vec;
 }
 
-void irq_install(int32_t vector, void (*h)(uint64_t *))
+/**
+ * Install an interrupt handler for a specific vector
+ * @param vector: Interrupt vector number
+ * @param handler: Handler function pointer
+ */
+void irq_install(int32_t vector, void (*handler)(uint64_t *))
 {
-    g_handler_vec[vector] = h;
+    if (vector < 0 || vector >= MAX_IRQ_VECTORS) {
+        logger_error("Invalid IRQ vector: %d (max: %d)\n", vector, MAX_IRQ_VECTORS - 1);
+        return;
+    }
+
+    if (!handler) {
+        logger_error("Invalid handler for IRQ vector %d\n", vector);
+        return;
+    }
+
+    g_handler_vec[vector] = handler;
+    // logger_debug("Installed IRQ handler for vector %d\n", vector);
 }
 
-// 示例使用方式：处理 IRQ 异常
+/**
+ * Handle IRQ exceptions from EL1
+ * @param stack_pointer: Pointer to saved context on stack
+ */
 void handle_irq_exception(uint64_t *stack_pointer)
 {
-    trap_frame_t *el1_ctx = (trap_frame_t *)stack_pointer;
+    if (!stack_pointer) {
+        logger_error("Invalid stack pointer in IRQ exception handler\n");
+        return;
+    }
 
-    uint64_t x1_value = el1_ctx->r[1];
-    uint64_t sp_el0_value = el1_ctx->usp;
-    save_cpu_ctx(el1_ctx); // 保存 发生异常的那个任务的 处理器状态
+    trap_frame_t *context = (trap_frame_t *)stack_pointer;
 
-    int32_t iar = gic_read_iar();
-    int32_t vector = gic_iar_irqnr(iar);
+    // Save CPU context for the interrupted task
+    save_cpu_ctx(context);
+
+    // Read interrupt acknowledge register to get the interrupt ID
+    uint32_t iar = gic_read_iar();
+    uint32_t irq_id = gic_iar_irqnr(iar);
+
+    // logger_debug("IRQ exception at EL1: IRQ_ID=%d\n", irq_id);
+
+    // Acknowledge the interrupt (End of Interrupt)
     gic_write_eoir(iar);
 
-    g_handler_vec[vector]((uint64_t *)el1_ctx); // arg not use
+    // Validate IRQ vector
+    if (irq_id >= MAX_IRQ_VECTORS) {
+        logger_error("Invalid IRQ vector: %d\n", irq_id);
+        return;
+    }
+
+    // Dispatch to the registered interrupt handler
+    if (g_handler_vec[irq_id]) {
+        g_handler_vec[irq_id]((uint64_t *)context);
+    } else {
+        logger_warn("No handler registered for IRQ %d\n", irq_id);
+    }
 }
 
-// 示例使用方式：处理无效异常
+/**
+ * Handle invalid/unimplemented exception vectors at EL1
+ * @param stack_pointer: Pointer to saved context on stack
+ * @param kind: Exception kind (sync/irq/fiq/serror)
+ * @param source: Exception source (current_el_sp0/current_el_spx/lower_el_aarch64/lower_el_aarch32)
+ */
 void invalid_exception(uint64_t *stack_pointer, uint64_t kind, uint64_t source)
 {
-    trap_frame_t *el1_ctx = (trap_frame_t *)stack_pointer;
+    if (!stack_pointer) {
+        logger_error("Invalid stack pointer in invalid exception handler\n");
+        while (1) { asm volatile("wfi"); }
+    }
 
-    uint64_t x2_value = el1_ctx->r[2];
+    trap_frame_t *context = (trap_frame_t *)stack_pointer;
+    uint32_t esr_el1 = read_esr_el1();
+    uint32_t ec = (esr_el1 >> 26) & 0x3F;
 
-    // 在这里实现处理无效异常的代码
+    // Log the invalid exception details
+    logger_error("=== INVALID EXCEPTION AT EL1 ===\n");
+    logger_error("Kind: %s (%lu)\n", get_exception_kind_name(kind), kind);
+    logger_error("Source: %s (%lu)\n", get_exception_source_name(source), source);
+    logger_error("ESR_EL1: 0x%x\n", esr_el1);
+    logger_error("Exception Class: 0x%x\n", ec);
+
+    // Log processor state
+    logger_error("ELR_EL1: 0x%lx\n", context->elr);
+    logger_error("SPSR_EL1: 0x%lx\n", context->spsr);
+    logger_error("SP_EL0: 0x%lx\n", context->usp);
+
+    // Dump context for debugging
+    dump_exception_context(context, esr_el1, ec);
+
+    logger_error("=== SYSTEM HALTED ===\n");
+    logger_error("Invalid exception cannot be handled. System will halt.\n");
+
+    // Halt the system - this is a fatal error
+    while (1) {
+        asm volatile("wfi");
+    }
+}
+
+/**
+ * Handle SVC (Supervisor Call) instructions from EL0
+ */
+static void handle_svc_call(trap_frame_t *context, uint32_t esr)
+{
+    // Extract SVC number from X8 register (ARM64 calling convention)
+    uint64_t svc_number = context->r[8];
+
+    // logger_debug("SVC call: number=%lu\n", svc_number);
+
+    // Validate SVC number (assuming syscall_table has reasonable bounds)
+    if (!syscall_table || !syscall_table[svc_number]) {
+        logger_error("Invalid SVC number: %lu\n", svc_number);
+        context->r[0] = -1; // Return error
+        return;
+    }
+
+    // Call the system call handler
+    // The context pointer contains all arguments in r[0]-r[7]
+    uint64_t (*syscall_func)(void *) = (uint64_t (*)(void *))syscall_table[svc_number];
+    uint64_t result = syscall_func((void *)context);
+
+    // Store return value in X0
+    context->r[0] = result;
+}
+
+/**
+ * Handle SMC (Secure Monitor Call) instructions from EL1
+ */
+static void handle_smc_call_el1(trap_frame_t *context, uint32_t esr)
+{
+    uint64_t function_id = context->r[0];
+
+    logger_info("SMC call from EL1: function_id=0x%lx\n", function_id);
+
+    // For now, just log and return success
+    // In a real implementation, this might forward to EL3 or handle specific SMC calls
+    context->r[0] = 0; // Return success
+}
+
+/**
+ * Handle unknown/unimplemented synchronous exceptions
+ */
+static void handle_unknown_sync_exception(trap_frame_t *context, uint32_t esr, uint32_t ec)
+{
+    logger_error("Unknown synchronous exception at EL1\n");
+    logger_error("ESR_EL1: 0x%x, Exception Class: 0x%x\n", esr, ec);
+
+    // Only dump context on CPU 0 to avoid spam in multi-core systems
+    if (get_current_cpu_id() == 0) {
+        dump_exception_context(context, esr, ec);
+    }
+
+    logger_error("System halted due to unknown exception\n");
+    while (1) {
+        asm volatile("wfi");
+    }
+}
+
+/**
+ * Dump exception context for debugging
+ */
+static void dump_exception_context(trap_frame_t *context, uint32_t esr, uint32_t ec)
+{
+    logger_error("=== EXCEPTION CONTEXT DUMP ===\n");
+    logger_error("ESR: 0x%x, EC: 0x%x\n", esr, ec);
+    logger_error("ELR: 0x%lx, SPSR: 0x%lx, SP_EL0: 0x%lx\n",
+                 context->elr, context->spsr, context->usp);
+
+    // Dump general purpose registers
+    logger_error("=== REGISTER DUMP ===\n");
+    for (int i = 0; i < 31; i++) {
+        logger_error("X%d: 0x%016lx\n", i, context->r[i]);
+    }
+}
+
+/**
+ * Get human-readable exception kind name (shared with EL2 handler)
+ */
+static const char* get_exception_kind_name(uint64_t kind)
+{
+    switch (kind) {
+        case 0: return "Synchronous";
+        case 1: return "IRQ";
+        case 2: return "FIQ";
+        case 3: return "SError";
+        default: return "Unknown";
+    }
+}
+
+/**
+ * Get human-readable exception source name (shared with EL2 handler)
+ */
+static const char* get_exception_source_name(uint64_t source)
+{
+    switch (source) {
+        case 0: return "Current EL with SP_EL0";
+        case 1: return "Current EL with SP_ELx";
+        case 2: return "Lower EL (AArch64)";
+        case 3: return "Lower EL (AArch32)";
+        default: return "Unknown";
+    }
 }

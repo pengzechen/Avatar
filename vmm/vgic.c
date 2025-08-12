@@ -124,8 +124,8 @@ void vgicd_write(stage2_fault_info_t *info, trap_frame_t *el2_ctx, void *paddr)
     volatile uint32_t *dst;     // 目标地址指针
 
     // 从HSR寄存器中提取寄存器编号和操作大小
-    reg_num = info->hsr.dabt.reg;                    // 获取源寄存器编号
-    len = 1U << (info->hsr.dabt.size & 0x3U);       // 计算数据长度: 1,2,4,8字节
+    reg_num = info->esr.dabt.reg;                    // 获取源寄存器编号
+    len = 1U << (info->esr.dabt.size & 0x3U);       // 计算数据长度: 1,2,4,8字节
 
     // VGICD寄存器通常是32位的，检查操作大小
     if (len != 4U) {
@@ -176,8 +176,8 @@ void vgicd_read(stage2_fault_info_t *info, trap_frame_t *el2_ctx, void *paddr)
     uint32_t dat;              // 从虚拟GIC寄存器读取的数据
 
     // 从HSR寄存器中提取寄存器编号和操作大小
-    reg_num = info->hsr.dabt.reg;                    // 获取目标寄存器编号
-    len = 1U << (info->hsr.dabt.size & 0x3U);       // 计算数据长度: 1,2,4,8字节
+    reg_num = info->esr.dabt.reg;                    // 获取目标寄存器编号
+    len = 1U << (info->esr.dabt.size & 0x3U);       // 计算数据长度: 1,2,4,8字节
 
     // VGICD寄存器通常是32位的，检查操作大小
     if (len != 4U) {
@@ -216,13 +216,13 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
     paddr_t gpa = info->gpa;
     if (GICD_BASE_ADDR <= gpa && gpa < (GICD_BASE_ADDR + 0x0010000))
     {
-        if (info->hsr.dabt.write)
+        if (info->esr.dabt.write)
         { // 寄存器写到内存
             if (gpa == GICD_CTLR)
             {
-                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t reg_num = info->esr.dabt.reg;
                 int32_t r = el2_ctx->r[reg_num];
-                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t len = 1 << (info->esr.dabt.size & 0x00000003);
                 vgic->gicd_ctlr = r;
                 logger_vgic_debug("GICD_CTLR write: gpa=0x%llx, value=0x%llx, len=%d\n", gpa, r, len);
             }
@@ -230,9 +230,9 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             // SGI and PPI enable (GICD_ISENABLER(0))
             else if (gpa == GICD_ISENABLER(0))
             {
-                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t reg_num = info->esr.dabt.reg;
                 uint32_t r = el2_ctx->r[reg_num];
-                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t len = 1 << (info->esr.dabt.size & 0x00000003);
 
                 vgic_core_state_t *vgicc = get_vgicc_by_vcpu(curr);
                 // W1S: 写1置位，写0无效果
@@ -246,9 +246,9 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             }
             else if (GICD_ISENABLER(1) <= gpa && gpa < GICD_ICENABLER(0))
             {
-                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t reg_num = info->esr.dabt.reg;
                 uint32_t r = el2_ctx->r[reg_num];
-                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t len = 1 << (info->esr.dabt.size & 0x00000003);
                 int32_t reg_idx = (gpa - GICD_ISENABLER(0)) / 0x4;
                 int32_t base_id = reg_idx * 32;
 
@@ -270,9 +270,9 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             // SGI and PPI disable (GICD_ICENABLER(0)) - W1C
             else if (gpa == GICD_ICENABLER(0))
             {
-                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t reg_num = info->esr.dabt.reg;
                 uint32_t r = el2_ctx->r[reg_num];
-                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t len = 1 << (info->esr.dabt.size & 0x00000003);
 
                 vgic_core_state_t *vgicc = get_vgicc_by_vcpu(curr);
                 // W1C: 写1清零，写0无效果
@@ -286,9 +286,9 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             }
             else if (GICD_ICENABLER(1) <= gpa && gpa < GICD_ISPENDER(0))
             {
-                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t reg_num = info->esr.dabt.reg;
                 uint32_t r = el2_ctx->r[reg_num];
-                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t len = 1 << (info->esr.dabt.size & 0x00000003);
                 int32_t reg_idx = (gpa - GICD_ICENABLER(0)) / 0x4;
                 int32_t base_id = reg_idx * 32;
 
@@ -312,9 +312,9 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             // SGI+PPI set pending (GICD_ISPENDER(0)) - W1S
             else if (gpa == GICD_ISPENDER(0))
             {
-                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t reg_num = info->esr.dabt.reg;
                 uint32_t r = el2_ctx->r[reg_num];
-                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t len = 1 << (info->esr.dabt.size & 0x00000003);
 
                 vgic_core_state_t *vgicc = get_vgicc_by_vcpu(curr);
 
@@ -335,9 +335,9 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             // SGI+PPI clear pending (GICD_ICPENDER(0)) - W1C
             else if (gpa == GICD_ICPENDER(0))
             {
-                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t reg_num = info->esr.dabt.reg;
                 uint32_t r = el2_ctx->r[reg_num];
-                int32_t len = 1 << (info->hsr.dabt.size & 0x00000003);
+                int32_t len = 1 << (info->esr.dabt.size & 0x00000003);
 
                 vgic_core_state_t *vgicc = get_vgicc_by_vcpu(curr);
 
@@ -387,8 +387,8 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             // SGI + PPI priority write (per-vCPU)
             else if (GICD_IPRIORITYR(0) <= gpa && gpa < GICD_IPRIORITYR(GIC_FIRST_SPI / 4))
             {
-                int32_t reg_num = info->hsr.dabt.reg;
-                int32_t len = 1 << (info->hsr.dabt.size & 0x3);
+                int32_t reg_num = info->esr.dabt.reg;
+                int32_t len = 1 << (info->esr.dabt.size & 0x3);
                 uint32_t val = el2_ctx->r[reg_num];
 
                 vgic_core_state_t *vgicc = get_vgicc_by_vcpu(curr);
@@ -415,8 +415,8 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             // SPI priority write (VM-wide)
             else if (GICD_IPRIORITYR(GIC_FIRST_SPI / 4) <= gpa && gpa < GICD_IPRIORITYR(SPI_ID_MAX / 4))
             {
-                int32_t reg_num = info->hsr.dabt.reg;
-                int32_t len = 1 << (info->hsr.dabt.size & 0x3);
+                int32_t reg_num = info->esr.dabt.reg;
+                int32_t len = 1 << (info->esr.dabt.size & 0x3);
                 uint32_t val = el2_ctx->r[reg_num];
 
                 int32_t offset = gpa - GICD_IPRIORITYR(0);
@@ -446,9 +446,9 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             // PPI (16-31)：配置通常由硬件或系统固定，很少允许软件修改
             else if (GICD_ICFGR(GIC_FIRST_SPI / 16) <= gpa && gpa < GICD_ICFGR(SPI_ID_MAX / 16))
             {
-                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t reg_num = info->esr.dabt.reg;
                 uint32_t reg_value = el2_ctx->r[reg_num];
-                int32_t len = 1 << (info->hsr.dabt.size & 0x3);
+                int32_t len = 1 << (info->esr.dabt.size & 0x3);
 
                 uint32_t reg_offset = (gpa - GICD_ICFGR(0)) / 4;
 
@@ -468,9 +468,9 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             // SPI target register write
             else if (GICD_ITARGETSR(GIC_FIRST_SPI / 4) <= gpa && gpa < GICD_ITARGETSR(SPI_ID_MAX / 4))
             {
-                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t reg_num = info->esr.dabt.reg;
                 uint32_t reg_value = el2_ctx->r[reg_num];
-                int32_t len = 1 << (info->hsr.dabt.size & 0x3);
+                int32_t len = 1 << (info->esr.dabt.size & 0x3);
 
                 uint32_t word_offset = (gpa - GICD_ITARGETSR(0)) / 4;
                 ((uint32_t *)vgic->gicd_itargetsr)[word_offset] = reg_value;
@@ -481,7 +481,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             /* sgi reg*/
             else if (gpa == GICD_SGIR) // wo
             {
-                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t reg_num = info->esr.dabt.reg;
                 uint32_t sgir_val = el2_ctx->r[reg_num];
 
                 uint8_t sgi_int_id = sgir_val & 0xF;
@@ -529,7 +529,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             /* pend sgi reg*/
             else if (GICD_SPENDSGIR(0) <= gpa && gpa < GICD_SPENDSGIR(MAX_SGI_ID / 4))
             {
-                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t reg_num = info->esr.dabt.reg;
                 uint32_t reg_value = el2_ctx->r[reg_num];
                 uint32_t sgi_reg_idx = (gpa - GICD_SPENDSGIR(0)) / 4;
 
@@ -556,7 +556,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
             /* clear pend sgi reg*/
             else if (GICD_CPENDSGIR(0) <= gpa && gpa < GICD_CPENDSGIR(MAX_SGI_ID / 4))
             {
-                int32_t reg_num = info->hsr.dabt.reg;
+                int32_t reg_num = info->esr.dabt.reg;
                 uint32_t reg_value = el2_ctx->r[reg_num];
                 uint32_t sgi_reg_idx = (gpa - GICD_CPENDSGIR(0)) / 4;
 

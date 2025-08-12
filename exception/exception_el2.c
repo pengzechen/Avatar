@@ -11,9 +11,26 @@
 #include "task/task.h"
 #include "thread.h"
 
-void advance_pc(stage2_fault_info_t *info, trap_frame_t *context)
+// Static function declarations
+static void handle_wfi_wfe_trap(union esr_el2 *esr, trap_frame_t *ctx);
+static void handle_hvc_call(union esr_el2 *esr, trap_frame_t *ctx);
+static void handle_smc_call(union esr_el2 *esr, trap_frame_t *ctx);
+static void handle_sysreg_access(union esr_el2 *esr, trap_frame_t *ctx);
+static void handle_illegal_execution_state(union esr_el2 *esr, trap_frame_t *ctx);
+static void handle_data_abort(union esr_el2 *esr, trap_frame_t *ctx);
+static void handle_unknown_exception(uint32_t ec, union esr_el2 *esr, trap_frame_t *ctx);
+static const char* get_exception_kind_name(uint64_t kind);
+static const char* get_exception_source_name(uint64_t source);
+
+void advance_pc(union esr_el2 *esr, trap_frame_t *context)
 {
-    context->elr += info->hsr.len ? 4 : 2;
+    context->elr += esr->len ? 4 : 2;
+}
+
+// Legacy function for backward compatibility
+void advance_pc_legacy(stage2_fault_info_t *info, trap_frame_t *context)
+{
+    advance_pc(&info->esr, context);
 }
 
 void decode_spsr(uint64_t spsr) {
@@ -68,190 +85,325 @@ void decode_spsr(uint64_t spsr) {
            (int)((spsr >> 28) & 1)); // V
 }
 
-
-// 示例使用方式：处理同步异常
+/**
+ * Handle synchronous exceptions trapped to EL2
+ * @param stack_pointer: Pointer to saved context on stack
+ */
 void handle_sync_exception_el2(uint64_t *stack_pointer)
 {
     trap_frame_t *ctx_el2 = (trap_frame_t *)stack_pointer;
+    uint32_t el2_esr = read_esr_el2();
+    uint32_t ec = (el2_esr >> 26) & 0x3F;  // Extract Exception Class
 
-    int32_t el2_esr = read_esr_el2();
-
-    int32_t ec = ((el2_esr >> 26) & 0b111111);
-
-    // logger("        el2 esr: %llx, ec: %llx\n", el2_esr, ec);
-
-    union hsr hsr = {.bits = el2_esr};
+    union esr_el2 esr = {.bits = el2_esr};
     save_cpu_ctx(ctx_el2);
-    if (ec == 0x1)
-    {
-        // wfi
-        stage2_fault_info_t info;
-        // logger("Prefetch abort : %llx\n", hsr.bits);
-        info.hsr.bits = hsr.bits;
-        logger_info("            This is wfi trap handler\n");
-        advance_pc(&info, ctx_el2);
-        return;
+    switch (ec) {
+    case ESR_EC_WFI_WFE:
+        handle_wfi_wfe_trap(&esr, ctx_el2);
+        break;
+
+    case ESR_EC_HVC:
+        handle_hvc_call(&esr, ctx_el2);
+        break;
+
+    case ESR_EC_SMC:
+        handle_smc_call(&esr, ctx_el2);
+        break;
+    case ESR_EC_SYSREG:
+        handle_sysreg_access(&esr, ctx_el2);
+        break;
+
+    case ESR_EC_ILLEGAL_STATE:
+        handle_illegal_execution_state(&esr, ctx_el2);
+        break;
+
+    case ESR_EC_DATA_ABORT:
+        handle_data_abort(&esr, ctx_el2);
+        break;
+
+    default:
+        handle_unknown_exception(ec, &esr, ctx_el2);
+        break;
     }
-    else if (ec == 0x16)
-    { // hvc
-        stage2_fault_info_t info;
-        info.hsr.bits = hsr.bits;
-        logger_info("           This is hvc call handler\n");
-        logger_warn("           function id: %lx\n", ctx_el2->r[0]);
-        if (ctx_el2->r[0] == PSCI_0_2_FN64_CPU_ON)
-        {
-            logger_info("           This is cpu on handler\n");
-            int32_t ret = vpsci_cpu_on(ctx_el2);
-            ctx_el2->r[0] = ret; // SMC 返回值
-        }
-        advance_pc(&info, ctx_el2);
-        return;
-    }
-    else if (ec == 0x17)
-    { // smc
-        stage2_fault_info_t info;
-        // logger("Prefetch abort : %llx\n", hsr.bits);
-        info.hsr.bits = hsr.bits;
-        logger_info("            This is smc call handler\n");
-        advance_pc(&info, ctx_el2);
-        ctx_el2->r[0] = 0; // SMC 返回值
-        return;
-    }
-    else if (ec == 0x18)
-    {
-        // 系统指令异常 - 处理 Guest 对定时器寄存器的访问
-        logger_info("            This is sys instr handler\n");
-        stage2_fault_info_t info;
-        info.hsr.bits = hsr.bits;
-
-        // 调用虚拟定时器处理函数
-        // if (handle_vtimer_sysreg_access(&info, ctx_el2)) {
-        //     advance_pc(&info, ctx_el2);
-        //     return;
-        // }
-
-        // 如果不是定时器寄存器访问，继续原有处理
-        logger_warn("Unhandled system register access: 0x%x\n", hsr.bits);
-    }
-    else if (ec == 0x20) 
-    {
-        logger_info("            This is illegal exec state handler\n");
-        stage2_fault_info_t info;
-        info.hsr.bits = hsr.bits;
-        logger("Guest exception: FAR_EL2=0x%lx\n", read_far_el2());
-        logger("        el2 esr: %llx, ec: %llx\n", el2_esr, ec);
-        decode_spsr(ctx_el2->spsr);
-
-        uint64_t sp_el1;   // el1 h
-        asm volatile("mrs %0, sp_el1" : "=r"(sp_el1));
-        logger("sp_el1: 0x%lx\n", sp_el1);
-
-        uint64_t sp_el0;  // el1 t
-        asm volatile("mrs %0, sp_el0" : "=r"(sp_el0));
-        logger("sp_el0: 0x%lx\n", sp_el0);
-
-        
-        advance_pc(&info, ctx_el2);
-        // while(1);
-        // return;
-    }
-    else if (ec == 0x24)
-    { // data abort
-        // logger_info("            This is data abort handler\n");
-        stage2_fault_info_t info;
-        // logger("Prefetch abort : %llx\n", hsr.bits);
-        info.hsr.bits = hsr.bits;
-        info.reason = PREFETCH;
-        uint64_t hpfar = read_hpfar_el2(); // 目前 hpfar 和 far 读到的内容不同，少了8位
-        uint64_t far = read_far_el2();
-        // logger("far: 0x%llx, hpfar: 0x%llx\n", far, hpfar);
-        info.gpa = (far & 0xfff) | (hpfar << 8);
-        info.gva = far;
-
-        // gva_to_ipa(info.gva, &info.gpa);
-        data_abort_handler(&info, ctx_el2);
-
-        advance_pc(&info, ctx_el2);
-        return;
-    }
-
-    for (int32_t i = 0; i < 31; i++)
-    {
-        uint64_t value = ctx_el2->r[i];
-        logger("General-purpose register: %d, value: %llx\n", i, value);
-    }
-
-    uint64_t elr_el1_value = ctx_el2->elr;
-    uint64_t usp_value = ctx_el2->usp;
-    uint64_t spsr_value = ctx_el2->spsr;
-
-    logger("usp: %llx, elr: %llx, spsr: %llx\n", usp_value, elr_el1_value, spsr_value);
-
-    while (1)
-        ;
 }
 
-// 示例使用方式：处理 IRQ 异常
+
+/**
+ * Handle WFI/WFE instruction traps
+ */
+static void handle_wfi_wfe_trap(union esr_el2 *esr, trap_frame_t *ctx)
+{
+    logger_info("WFI/WFE instruction trapped\n");
+
+    // Check if it's WFI or WFE based on the TI bit
+    if (esr->wfi_wfe.ti) {
+        logger_debug("WFE (Wait For Event) instruction\n");
+    } else {
+        logger_debug("WFI (Wait For Interrupt) instruction\n");
+    }
+
+    advance_pc(esr, ctx);
+}
+
+/**
+ * Handle HVC (Hypervisor Call) instructions
+ */
+static void handle_hvc_call(union esr_el2 *esr, trap_frame_t *ctx)
+{
+    uint64_t function_id = ctx->r[0];
+    logger_info("HVC call: function_id=0x%lx\n", function_id);
+
+    // Handle PSCI calls
+    if (function_id == PSCI_0_2_FN64_CPU_ON) {
+        logger_info("PSCI CPU_ON call\n");
+        int32_t ret = vpsci_cpu_on(ctx);
+        ctx->r[0] = ret;
+    } else {
+        logger_warn("Unhandled HVC call: 0x%lx\n", function_id);
+        ctx->r[0] = -1; // Return PSCI_RET_NOT_SUPPORTED
+    }
+
+    advance_pc(esr, ctx);
+}
+
+/**
+ * Handle SMC (Secure Monitor Call) instructions
+ */
+static void handle_smc_call(union esr_el2 *esr, trap_frame_t *ctx)
+{
+    uint64_t function_id = ctx->r[0];
+    logger_info("SMC call: function_id=0x%lx\n", function_id);
+
+    // SMC calls should typically be forwarded to EL3
+    // For now, just return success for basic compatibility
+    ctx->r[0] = 0;
+    advance_pc(esr, ctx);
+}
+
+/**
+ * Handle system register access traps
+ */
+static void handle_sysreg_access(union esr_el2 *esr, trap_frame_t *ctx)
+{
+    logger_info("System register access trapped\n");
+
+    // Extract system register information
+    uint32_t op0 = esr->sysreg.op0;
+    uint32_t op1 = esr->sysreg.op1;
+    uint32_t crn = esr->sysreg.crn;
+    uint32_t crm = esr->sysreg.crm;
+    uint32_t op2 = esr->sysreg.op2;
+    uint32_t rt = esr->sysreg.rt;
+    bool is_write = esr->sysreg.direction;
+
+    logger_debug("SysReg access: op0=%d, op1=%d, CRn=%d, CRm=%d, op2=%d, Rt=%d, %s\n",
+                 op0, op1, crn, crm, op2, rt, is_write ? "write" : "read");
+
+    // TODO: Implement virtual timer register handling
+    // if (handle_vtimer_sysreg_access(op0, op1, crn, crm, op2, rt, is_write, ctx)) {
+    //     advance_pc(esr, ctx);
+    //     return;
+    // }
+
+    logger_warn("Unhandled system register access: ESR=0x%x\n", esr->bits);
+    advance_pc(esr, ctx);
+}
+
+/**
+ * Handle illegal execution state exceptions
+ */
+static void handle_illegal_execution_state(union esr_el2 *esr, trap_frame_t *ctx)
+{
+    logger_error("Illegal execution state exception\n");
+    logger_error("FAR_EL2=0x%lx, ESR_EL2=0x%x\n", read_far_el2(), esr->bits);
+
+    decode_spsr(ctx->spsr);
+
+    uint64_t sp_el1, sp_el0;
+    asm volatile("mrs %0, sp_el1" : "=r"(sp_el1));
+    asm volatile("mrs %0, sp_el0" : "=r"(sp_el0));
+    logger_error("SP_EL1=0x%lx, SP_EL0=0x%lx\n", sp_el1, sp_el0);
+
+    // For illegal execution state, we might not want to advance PC
+    // as it could lead to further issues
+    logger_error("System halted due to illegal execution state\n");
+    while (1) {
+        asm volatile("wfi");
+    }
+}
+
+/**
+ * Handle data abort exceptions from lower EL
+ */
+static void handle_data_abort(union esr_el2 *esr, trap_frame_t *ctx)
+{
+    // Create stage2 fault info structure for memory access faults
+    stage2_fault_info_t fault_info = {
+        .esr = *esr,
+        .reason = STAGE2_FAULT_DATA
+    };
+
+    // Read fault address information
+    uint64_t hpfar = read_hpfar_el2();
+    uint64_t far = read_far_el2();
+
+    // Combine FAR and HPFAR to get the full guest physical address
+    fault_info.gpa = (far & 0xFFF) | (hpfar << 8);
+    fault_info.gva = far;
+
+    // Extract access information from ESR
+    fault_info.is_write = esr->dabt.write;
+    fault_info.access_size = 1U << (esr->dabt.size & 0x3);
+
+    // logger_debug("Data abort: GVA=0x%lx, GPA=0x%lx, %s, size=%d bytes\n",
+    //              fault_info.gva, fault_info.gpa,
+    //              fault_info.is_write ? "write" : "read",
+    //              fault_info.access_size);
+
+    // Handle the stage2 page fault
+    data_abort_handler(&fault_info, ctx);
+
+    // Advance PC using the legacy function for stage2 faults
+    advance_pc_legacy(&fault_info, ctx);
+}
+
+/**
+ * Handle unknown/unimplemented exception classes
+ */
+static void handle_unknown_exception(uint32_t ec, union esr_el2 *esr, trap_frame_t *ctx)
+{
+    logger_error("Unknown exception class: EC=0x%x, ESR=0x%x\n", ec, esr->bits);
+    logger_error("ELR_EL2=0x%lx, SPSR_EL2=0x%lx\n", ctx->elr, ctx->spsr);
+
+    // Dump registers for debugging
+    for (int i = 0; i < 31; i++) {
+        logger_error("X%d=0x%lx\n", i, ctx->r[i]);
+    }
+
+    // Halt the system for debugging
+    while (1) {
+        asm volatile("wfi");
+    }
+}
+
+/**
+ * Handle IRQ exceptions trapped to EL2
+ * @param stack_pointer: Pointer to saved context on stack
+ */
 void handle_irq_exception_el2(uint64_t *stack_pointer)
 {
     trap_frame_t *context = (trap_frame_t *)stack_pointer;
 
-    uint64_t x1_value = context->r[1];
-    uint64_t sp_el0_value = context->usp;
+    // Read interrupt acknowledge register to get the interrupt ID
+    uint32_t iar = gic_read_iar();
+    uint32_t irq_id = gic_iar_irqnr(iar);
 
-    int32_t iar = gic_read_iar();
-    int32_t vector = gic_iar_irqnr(iar);
+    // logger_debug("IRQ exception: IRQ_ID=%d\n", irq_id);
+
+    // Acknowledge the interrupt (End of Interrupt)
     gic_write_eoir(iar);
 
     /*
-        * 你手动注入给 guest 的 virtual interrupt（虚拟硬件中断），不能在 EL2 写 DIR！
-        * 否则会直接把这个中断标记为 inactive，guest 就根本收不到。
-        * 需要透穿的不写 dir
-        */
+     * IMPORTANT: For virtual interrupts injected to guests, do NOT write DIR in EL2!
+     * Writing DIR would mark the interrupt as inactive immediately, preventing the
+     * guest from receiving it. Only write DIR for interrupts that should be handled
+     * entirely in the hypervisor.
+     */
     gic_write_dir(iar);
-    
 
+    // Save CPU context for interrupt handling
     save_cpu_ctx(context);
 
-    get_g_handler_vec()[vector]((uint64_t *)context); // arg not use
+    // Dispatch to the registered interrupt handler
+    irq_handler_t *handler_vec = get_g_handler_vec();
+    if (handler_vec && handler_vec[irq_id]) {
+        handler_vec[irq_id]((uint64_t *)context);
+    } else {
+        logger_warn("No handler registered for IRQ %d\n", irq_id);
+    }
 }
 
-// 示例使用方式：处理无效异常
+/**
+ * Handle invalid/unimplemented exception vectors
+ * @param stack_pointer: Pointer to saved context on stack
+ * @param kind: Exception kind (sync/irq/fiq/serror)
+ * @param source: Exception source (current_el_sp0/current_el_spx/lower_el_aarch64/lower_el_aarch32)
+ */
 void invalid_exception_el2(uint64_t *stack_pointer, uint64_t kind, uint64_t source)
 {
-
     trap_frame_t *context = (trap_frame_t *)stack_pointer;
+    uint32_t esr_el2 = read_esr_el2();
+    uint32_t ec = (esr_el2 >> 26) & 0x3F;
 
-    uint64_t x2_value = context->r[2];
+    // Log the invalid exception details
+    logger_error("=== INVALID EXCEPTION ===\n");
+    logger_error("Kind: %s (%lu)\n", get_exception_kind_name(kind), kind);
+    logger_error("Source: %s (%lu)\n", get_exception_source_name(source), source);
+    logger_error("ESR_EL2: 0x%x\n", esr_el2);
+    logger_error("Exception Class: 0x%x\n", ec);
 
-    logger("invalid_exception_el2, kind: %d, source: %d\n", kind, source);
+    // Log processor state
+    logger_error("ELR_EL2: 0x%lx\n", context->elr);
+    logger_error("SPSR_EL2: 0x%lx\n", context->spsr);
+    logger_error("SP_EL0: 0x%lx\n", context->usp);
+    logger_error("FAR_EL2: 0x%lx\n", read_far_el2());
 
-    int32_t el2_esr = read_esr_el2();
+    // Decode SPSR for additional context
+    decode_spsr(context->spsr);
 
-    int32_t ec = ((el2_esr >> 26) & 0b111111);
-
-    logger("        el2 esr: %llx\n", el2_esr);
-    logger("        ec: %llx\n", ec);
-
-    for (int32_t i = 0; i < 31; i++)
-    {
-        uint64_t value = context->r[i];
-        logger("General-purpose register: %d, value: %llx\n", i, value);
+    // Dump general purpose registers
+    logger_error("=== REGISTER DUMP ===\n");
+    for (int i = 0; i < 31; i++) {
+        logger_error("X%d: 0x%016lx\n", i, context->r[i]);
     }
 
-    uint64_t elr_el1_value = context->elr;
-    uint64_t usp_value = context->usp;
-    uint64_t spsr_value = context->spsr;
+    logger_error("=== SYSTEM HALTED ===\n");
+    logger_error("Invalid exception cannot be handled. System will halt.\n");
 
-    logger("usp: %llx, elr: %llx, spsr: %llx\n", usp_value, elr_el1_value, spsr_value);
-
-    while (1)
-        ;
+    // Halt the system - this is a fatal error
+    while (1) {
+        asm volatile("wfi");
+    }
 }
 
-// 调用 handle_irq_exception_el2
+/**
+ * Get human-readable exception kind name
+ */
+static const char* get_exception_kind_name(uint64_t kind)
+{
+    switch (kind) {
+        case 0: return "Synchronous";
+        case 1: return "IRQ";
+        case 2: return "FIQ";
+        case 3: return "SError";
+        default: return "Unknown";
+    }
+}
+
+/**
+ * Get human-readable exception source name
+ */
+static const char* get_exception_source_name(uint64_t source)
+{
+    switch (source) {
+        case 0: return "Current EL with SP_EL0";
+        case 1: return "Current EL with SP_ELx";
+        case 2: return "Lower EL (AArch64)";
+        case 3: return "Lower EL (AArch32)";
+        default: return "Unknown";
+    }
+}
+
+/**
+ * Handle IRQ exceptions that occur at the current EL (EL2) with SP_ELx
+ * This is typically for hypervisor-internal interrupts
+ * @param stack_pointer: Pointer to saved context on stack
+ */
 void current_spxel_irq(uint64_t *stack_pointer)
 {
-    // logger("irq stay in same el\n");
+    // logger_debug("IRQ at current EL (EL2) with SP_ELx\n");
+
+    // For now, delegate to the same handler as lower EL IRQs
+    // In the future, this might need different handling for hypervisor-specific interrupts
     handle_irq_exception_el2(stack_pointer);
 }

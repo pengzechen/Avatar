@@ -5,6 +5,14 @@
 
 #include "avatar_types.h"
 
+// ESR_EL2 Exception Class definitions
+#define ESR_EC_WFI_WFE          0x01    // WFI or WFE instruction execution
+#define ESR_EC_HVC              0x16    // HVC instruction execution
+#define ESR_EC_SMC              0x17    // SMC instruction execution
+#define ESR_EC_SYSREG           0x18    // System register access
+#define ESR_EC_ILLEGAL_STATE    0x20    // Illegal Execution State
+#define ESR_EC_DATA_ABORT       0x24    // Data Abort from lower EL
+
 typedef struct
 {
     uint64_t r[NUM_REGS]; // General-purpose registers x0..x30
@@ -15,123 +23,135 @@ typedef struct
 
 typedef trap_frame_t cpu_ctx_t;
 
-union hsr
+union esr_el2
 {
     uint32_t bits;
 
     struct
     {
-        unsigned long iss : 25; /* Instruction Specific Syndrome */
-        unsigned long len : 1;  /* Instruction length */
-        unsigned long ec : 6;   /* Exception Class */
+        uint32_t iss : 25; /* Instruction Specific Syndrome */
+        uint32_t len : 1;  /* Instruction length */
+        uint32_t ec : 6;   /* Exception Class */
     };
 
     /* Common to all conditional exception classes (0x0N, except 0x00). */
-    struct hsr_cond
+    struct esr_cond
     {
-        unsigned long iss : 20;    /* Instruction Specific Syndrome */
-        unsigned long cc : 4;      /* Condition Code */
-        unsigned long ccvalid : 1; /* CC Valid */
-        unsigned long len : 1;     /* Instruction length */
-        unsigned long ec : 6;      /* Exception Class */
+        uint32_t iss : 20;    /* Instruction Specific Syndrome */
+        uint32_t cc : 4;      /* Condition Code */
+        uint32_t ccvalid : 1; /* CC Valid */
+        uint32_t len : 1;     /* Instruction length */
+        uint32_t ec : 6;      /* Exception Class */
     } cond;
 
-    struct hsr_wfi_wfe
+    struct esr_wfi_wfe
     {
-        unsigned long ti : 1; /* Trapped instruction */
-        unsigned long sbzp : 19;
-        unsigned long cc : 4;      /* Condition Code */
-        unsigned long ccvalid : 1; /* CC Valid */
-        unsigned long len : 1;     /* Instruction length */
-        unsigned long ec : 6;      /* Exception Class */
+        uint32_t ti : 1;      /* Trapped instruction */
+        uint32_t sbzp : 19;
+        uint32_t cc : 4;      /* Condition Code */
+        uint32_t ccvalid : 1; /* CC Valid */
+        uint32_t len : 1;     /* Instruction length */
+        uint32_t ec : 6;      /* Exception Class */
     } wfi_wfe;
 
     /* reg, reg0, reg1 are 4 bits on AArch32, the fifth bit is sbzp. */
-    struct hsr_cp32
+    struct esr_cp32
     {
-        unsigned long read : 1;    /* Direction */
-        unsigned long crm : 4;     /* CRm */
-        unsigned long reg : 5;     /* Rt */
-        unsigned long crn : 4;     /* CRn */
-        unsigned long op1 : 3;     /* Op1 */
-        unsigned long op2 : 3;     /* Op2 */
-        unsigned long cc : 4;      /* Condition Code */
-        unsigned long ccvalid : 1; /* CC Valid */
-        unsigned long len : 1;     /* Instruction length */
-        unsigned long ec : 6;      /* Exception Class */
-    } cp32;                        /* HSR_EC_CP15_32, CP14_32, CP10 */
+        uint32_t read : 1;    /* Direction */
+        uint32_t crm : 4;     /* CRm */
+        uint32_t reg : 5;     /* Rt */
+        uint32_t crn : 4;     /* CRn */
+        uint32_t op1 : 3;     /* Op1 */
+        uint32_t op2 : 3;     /* Op2 */
+        uint32_t cc : 4;      /* Condition Code */
+        uint32_t ccvalid : 1; /* CC Valid */
+        uint32_t len : 1;     /* Instruction length */
+        uint32_t ec : 6;      /* Exception Class */
+    } cp32;                   /* ESR_EC_CP15_32, CP14_32, CP10 */
 
-    struct hsr_cp64
+    struct esr_cp64
     {
-        unsigned long read : 1; /* Direction */
-        unsigned long crm : 4;  /* CRm */
-        unsigned long reg1 : 5; /* Rt1 */
-        unsigned long reg2 : 5; /* Rt2 */
-        unsigned long sbzp : 1;
-        unsigned long op1 : 4;     /* Op1 */
-        unsigned long cc : 4;      /* Condition Code */
-        unsigned long ccvalid : 1; /* CC Valid */
-        unsigned long len : 1;     /* Instruction length */
-        unsigned long ec : 6;      /* Exception Class */
-    } cp64;                        /* HSR_EC_CP15_64, HSR_EC_CP14_64 */
+        uint32_t read : 1; /* Direction */
+        uint32_t crm : 4;  /* CRm */
+        uint32_t reg1 : 5; /* Rt1 */
+        uint32_t reg2 : 5; /* Rt2 */
+        uint32_t sbzp : 1;
+        uint32_t op1 : 4;     /* Op1 */
+        uint32_t cc : 4;      /* Condition Code */
+        uint32_t ccvalid : 1; /* CC Valid */
+        uint32_t len : 1;     /* Instruction length */
+        uint32_t ec : 6;      /* Exception Class */
+    } cp64;                   /* ESR_EC_CP15_64, ESR_EC_CP14_64 */
 
-    struct hsr_cp
+    struct esr_cp
     {
-        unsigned long coproc : 4; /* Number of coproc accessed */
-        unsigned long sbz0p : 1;
-        unsigned long tas : 1; /* Trapped Advanced SIMD */
-        unsigned long res0 : 14;
-        unsigned long cc : 4;      /* Condition Code */
-        unsigned long ccvalid : 1; /* CC Valid */
-        unsigned long len : 1;     /* Instruction length */
-        unsigned long ec : 6;      /* Exception Class */
-    } cp;                          /* HSR_EC_CP */
+        uint32_t coproc : 4;  /* Number of coproc accessed */
+        uint32_t sbz0p : 1;
+        uint32_t tas : 1;     /* Trapped Advanced SIMD */
+        uint32_t res0 : 14;
+        uint32_t cc : 4;      /* Condition Code */
+        uint32_t ccvalid : 1; /* CC Valid */
+        uint32_t len : 1;     /* Instruction length */
+        uint32_t ec : 6;      /* Exception Class */
+    } cp;                     /* ESR_EC_CP */
 
-    struct hsr_dabt
+    struct esr_dabt
     {
-        unsigned long dfsc : 6;  /* Data Fault Status Code */
-        unsigned long write : 1; /* Write / not Read */
-        unsigned long s1ptw : 1; /* */
-        unsigned long cache : 1; /* Cache Maintenance */
-        unsigned long eat : 1;   /* External Abort Type */
-        unsigned long sbzp0 : 6;
-        unsigned long reg : 5;   /* Register */
-        unsigned long sign : 1;  /* Sign extend */
-        unsigned long size : 2;  /* Access Size */
-        unsigned long valid : 1; /* Syndrome Valid */
-        unsigned long len : 1;   /* Instruction length */
-        unsigned long ec : 6;    /* Exception Class */
-    } dabt;                      /* HSR_EC_DATA_ABORT_* */
+        uint32_t dfsc : 6;  /* Data Fault Status Code */
+        uint32_t write : 1; /* Write / not Read */
+        uint32_t s1ptw : 1; /* Stage 1 Page Table Walk */
+        uint32_t cache : 1; /* Cache Maintenance */
+        uint32_t eat : 1;   /* External Abort Type */
+        uint32_t sbzp0 : 6;
+        uint32_t reg : 5;   /* Register */
+        uint32_t sign : 1;  /* Sign extend */
+        uint32_t size : 2;  /* Access Size */
+        uint32_t valid : 1; /* Syndrome Valid */
+        uint32_t len : 1;   /* Instruction length */
+        uint32_t ec : 6;    /* Exception Class */
+    } dabt;                 /* ESR_EC_DATA_ABORT_* */
 
-    struct hsr_sysreg
+    struct esr_sysreg
     {
-        unsigned long op2 : 3;       /* Op2 */
-        unsigned long op1 : 3;       /* Op1 */
-        unsigned long crn : 4;       /* CRn */
-        unsigned long rt : 5;        /* Rt */
-        unsigned long crm : 4;       /* CRm */
-        unsigned long direction : 1; /* Direction (0=MRS, 1=MSR) */
-        unsigned long op0 : 2;       /* Op0 */
-        unsigned long res0 : 3;      /* Reserved */
-        unsigned long cc : 4;        /* Condition Code */
-        unsigned long ccvalid : 1;   /* CC Valid */
-        unsigned long len : 1;       /* Instruction length */
-        unsigned long ec : 6;        /* Exception Class */
-    } sysreg;                        /* HSR_EC_SYSREG */
+        uint32_t op2 : 3;       /* Op2 */
+        uint32_t op1 : 3;       /* Op1 */
+        uint32_t crn : 4;       /* CRn */
+        uint32_t rt : 5;        /* Rt */
+        uint32_t crm : 4;       /* CRm */
+        uint32_t direction : 1; /* Direction (0=MRS, 1=MSR) */
+        uint32_t op0 : 2;       /* Op0 */
+        uint32_t res0 : 3;      /* Reserved */
+        uint32_t cc : 4;        /* Condition Code */
+        uint32_t ccvalid : 1;   /* CC Valid */
+        uint32_t len : 1;       /* Instruction length */
+        uint32_t ec : 6;        /* Exception Class */
+    } sysreg;                   /* ESR_EC_SYSREG */
 };
 
-enum stage2_fault_reson_t
+// Exception information for general exception handling
+typedef struct _exception_info_t
 {
-    PREFETCH = 0,
-    DABT
+    union esr_el2 esr;
+    uint32_t exception_class;
+    trap_frame_t *context;
+} exception_info_t;
+
+// Memory fault types for stage2 page faults
+enum stage2_fault_reason_t
+{
+    STAGE2_FAULT_PREFETCH = 0,  // Instruction fetch abort
+    STAGE2_FAULT_DATA           // Data access abort
 };
 
+// Specific structure for stage2 memory faults (data/instruction aborts)
 typedef struct _stage2_fault_info_t
 {
-    union hsr hsr;
-    enum stage2_fault_reson_t reason;
-    vaddr_t gva;
-    paddr_t gpa;
+    union esr_el2 esr;
+    enum stage2_fault_reason_t reason;
+    vaddr_t gva;        // Guest Virtual Address
+    paddr_t gpa;        // Guest Physical Address
+    bool is_write;      // Write access (for data aborts)
+    uint32_t access_size; // Access size in bytes
 } stage2_fault_info_t;
 
 static inline uint32_t read_esr_el1(void)
@@ -192,6 +212,10 @@ static inline uint64_t read_hyfar_el2(void)
 }
 
 typedef void (*irq_handler_t)(uint64_t *);
+
+// Exception handling functions
+void advance_pc(union esr_el2 *esr, trap_frame_t *context);
+void advance_pc_legacy(stage2_fault_info_t *info, trap_frame_t *context);
 
 void irq_install(int32_t vector, void (*h)(uint64_t *));
 irq_handler_t *get_g_handler_vec();

@@ -190,11 +190,11 @@ void data_abort_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 	lpae_t *ept;
 	unsigned long tmp;
 
-	// logger("EPT Violation : %s\n", info->reason == PREFETCH ? "prefetch" : "data");
+	// logger("EPT Violation : %s\n", info->reason == STAGE2_FAULT_PREFETCH ? "prefetch" : "data");
 	// logger("PC : %llx\n", el2_ctx->elr);
 	// logger("GVA : 0x%llx\n", info->gva);
 	// logger("GPA : 0x%llx\n", (unsigned long)info->gpa);
-	// logger("Register : R%d\n", info->hsr.dabt.reg);
+	// logger("Register : R%d\n", info->esr.dabt.reg);
 
 	ept = get_ept_entry(info->gpa);
 	tmp = ept->bits & 0xFFFFFFFF;
@@ -221,10 +221,10 @@ void data_abort_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 	// Handle PL011 UART MMIO access
 	if (UART0_BASE_ADDR <= info->gpa && info->gpa < (UART0_BASE_ADDR + 0x1000))
 	{
-		uint32_t reg_num = info->hsr.dabt.reg;
-		uint32_t len = 1U << (info->hsr.dabt.size & 0x3U);
+		uint32_t reg_num = info->esr.dabt.reg;
+		uint32_t len = 1U << (info->esr.dabt.size & 0x3U);
 		uint64_t reg_data = 0;
-		bool is_write = info->hsr.dabt.write;
+		bool is_write = info->esr.dabt.write;
 
 		if (is_write && reg_num != 30U) {
 			reg_data = el2_ctx->r[reg_num];
@@ -274,11 +274,11 @@ int32_t handle_mmio(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 
 	// logger_debug("MMIO operation gpa: 0x%llx\n", gpa);
 
-	reg_num = info->hsr.dabt.reg;
-	len = 1U << (info->hsr.dabt.size & 0x3U); // 1, 2, 4, or 8 bytes
+	reg_num = info->esr.dabt.reg;
+	len = 1U << (info->esr.dabt.size & 0x3U); // 1, 2, 4, or 8 bytes
 	r = &el2_ctx->r[reg_num];
 
-	if (info->hsr.dabt.write)
+	if (info->esr.dabt.write)
 	{
 		// MMIO Write: Register -> Memory
 		if (reg_num != 30U)

@@ -28,6 +28,10 @@
         "mmu.h": "c",
         "pro.h": "c",
         "list.h": "c",
-        "type_traits": "c"
+        "type_traits": "c",
+        "vtimer.h": "c",
+        "exception.h": "c",
+        "stage2page.h": "c",
+        "vpsci.h": "c"
     }
 }
