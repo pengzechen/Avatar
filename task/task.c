@@ -292,11 +292,13 @@ void vm_in()
     extern void gicc_restore_core_state();
     extern void vgic_try_inject_pending(tcb_t *task);
     extern void vtimer_core_restore(tcb_t *task);
-    restore_sysregs(curr->cpu_info->sys_reg);
 
     // 先修改内存中的值
     if (!curr->curr_vm)
         return;
+
+    restore_sysregs(curr->cpu_info->sys_reg);
+
     vgic_try_inject_pending(curr);
 
     // 恢复虚拟定时器状态
@@ -312,10 +314,11 @@ void vm_out()
     extern void save_sysregs(cpu_sysregs_t *);
     extern void gicc_save_core_state();
     extern void vtimer_core_save(tcb_t *task);
-    save_sysregs(curr->cpu_info->sys_reg);
-
     if (!curr->curr_vm)
         return;
+        
+    save_sysregs(curr->cpu_info->sys_reg);
+
     // 保存虚拟定时器状态
     vtimer_core_save(curr);
 
