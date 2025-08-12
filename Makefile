@@ -69,8 +69,8 @@ else
 Q := @
 endif
 
-# QEMU配置
-QEMU_ARGS := -m 4G -smp $(SMP) -cpu cortex-a72 -nographic -M virt -M gic_version=2
+# QEMU配置  --trace qemu_mutex_lock
+QEMU_ARGS := -m 4G -smp $(SMP) -cpu cortex-a72 -nographic -M virt -M gic_version=2 -accel tcg,thread=single 
 ifeq ($(HV),1)
 QEMU_ARGS += -M virtualization=on
 LD := boot/link_vmm.lds
