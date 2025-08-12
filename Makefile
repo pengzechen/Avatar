@@ -38,6 +38,10 @@ DEBUG_MODULE ?= 0
 OPTIMIZATION ?= 0
 VERBOSE ?= 0
 
+# CPU亲和性配置
+CPU_AFFINITY ?=
+TASKSET_CMD := $(if $(CPU_AFFINITY),taskset -c $(CPU_AFFINITY),)
+
 
 # 目录配置
 SRC_DIRS := . boot exception io mem timer task process spinlock \
@@ -281,11 +285,11 @@ app_clean:
 
 run: $(BUILD_DIR)/kernel.bin
 	@echo "Starting QEMU..."
-	@qemu-system-aarch64 $(QEMU_ARGS) -kernel $<
+	@$(TASKSET_CMD) qemu-system-aarch64 $(QEMU_ARGS) -kernel $<
 
 debug: $(BUILD_DIR)/kernel.bin
 	@echo "Starting QEMU in debug mode..."
-	@qemu-system-aarch64 $(QEMU_ARGS) -kernel $< -s -S
+	@$(TASKSET_CMD) qemu-system-aarch64 $(QEMU_ARGS) -kernel $< -s -S
 
 # ============================================================================
 # 清理和维护
@@ -336,6 +340,7 @@ help:
 	@echo "  DEBUG_MODULE=<n> - Debug module mask (default: 0)"
 	@echo "                   0=none, 2=GIC, 4=TASK, 8=VGIC, 16=VTIMER, 32=VPL011, 255=ALL"
 	@echo "  OPTIMIZATION=<n> - Optimization level (default: 0)"
+	@echo "  CPU_AFFINITY=<cores> - Bind QEMU to specific CPU cores (e.g., 0,1 or 2-5)"
 
 # ============================================================================
 # 特殊目标和依赖
