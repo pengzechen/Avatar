@@ -1,6 +1,6 @@
 
-#ifndef __HYPER_CFG_H__
-#define __HYPER_CFG_H__
+#ifndef __VMM_CFG_H__
+#define __VMM_CFG_H__
 
 /* ============================================================================
  * 虚拟化配置参数
@@ -25,4 +25,4 @@
 #define VM_STACK_PAGES 2  // 每个vCPU分配2页栈空间
 #define VM_STACK_SIZE (VM_STACK_PAGES * 4096)  // 8KB
 
-#endif // __HYPER_CFG_H__
+#endif // __VMM_CFG_H__

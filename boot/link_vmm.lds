@@ -1,4 +1,4 @@
-/* link_hyper.ld */
+/* link_vmm.ld */
 ENTRY(_start)
 
 

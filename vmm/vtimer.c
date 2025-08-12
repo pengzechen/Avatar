@@ -1,6 +1,6 @@
-#include "hyper/vtimer.h"
-#include "hyper/vgic.h"
-#include "hyper/vm.h"
+#include "vmm/vtimer.h"
+#include "vmm/vgic.h"
+#include "vmm/vm.h"
 #include "task/task.h"
 #include "io.h"
 #include "lib/aj_string.h"
@@ -187,11 +187,11 @@ void vtimer_write_cntv_ctl(tcb_t *task, uint32_t ctl)
     // 更新 enabled 状态
     vt->enabled = (ctl & CNTV_CTL_ENABLE) ? true : false;
 
-    logger_vtimer_debug("vCPU %d: CTL write %u (enabled=%d, masked=%d, status=%d)\n",
-                vt->id, ctl,
-                !!(ctl & CNTV_CTL_ENABLE),
-                !!(ctl & CNTV_CTL_IMASK),
-                !!(ctl & CNTV_CTL_ISTATUS));
+    // logger_vtimer_debug("vCPU %d: CTL write %u (enabled=%d, masked=%d, status=%d)\n",
+    //             vt->id, ctl,
+    //             !!(ctl & CNTV_CTL_ENABLE),
+    //             !!(ctl & CNTV_CTL_IMASK),
+    //             !!(ctl & CNTV_CTL_ISTATUS));
 }
 
 void vtimer_write_cntv_cval(tcb_t *task, uint64_t cval)
@@ -218,11 +218,11 @@ void vtimer_write_cntv_cval(tcb_t *task, uint64_t cval)
         vt->cntv_ctl &= ~CNTV_CTL_ISTATUS;
         task->cpu_info->sys_reg->cntv_ctl_el0 = vt->cntv_ctl;
         vt->pending = false;
-        logger_vtimer_debug("vCPU %d: CVAL write cleared ISTATUS\n", vt->id);
+        // logger_vtimer_debug("vCPU %d: CVAL write cleared ISTATUS\n", vt->id);
     }
 
-    logger_vtimer_debug("vCPU %d: CVAL write %llu (current_time=%llu, tval=%lld)\n",
-                vt->id, cval, current_time, tval_check);
+    // logger_vtimer_debug("vCPU %d: CVAL write %llu (current_time=%llu, tval=%lld)\n",
+    //             vt->id, cval, current_time, tval_check);
 }
 
 void vtimer_write_cntv_tval(tcb_t *task, int32_t tval)
@@ -315,19 +315,18 @@ void vtimer_core_save(tcb_t *task)
     bool tval_changed = (tval_diff > 1000 || tval_diff < -1000);  // 允许小的时间差异
 
     if (ctl_changed) {
-        logger_vtimer_debug("vCPU %d: Guest modified CTL: 0x%x -> 0x%x\n", vt->id, vt->cntv_ctl, ctl);
+        // logger_vtimer_debug("vCPU %d: Guest modified CTL: 0x%x -> 0x%x\n", vt->id, vt->cntv_ctl, ctl);
         vtimer_write_cntv_ctl(task, ctl);
     }
 
     if (cval_changed) {
-        logger_vtimer_debug("vCPU %d: Guest modified CVAL: %llu -> %llu\n", vt->id, vt->cntv_cval, cval);
+        // logger_vtimer_debug("vCPU %d: Guest modified CVAL: %llu -> %llu\n", vt->id, vt->cntv_cval, cval);
         vtimer_write_cntv_cval(task, cval);
     }
 
     if (tval_changed && !cval_changed) {
         // Guest 修改了 TVAL 但没有修改 CVAL，说明是通过 TVAL 设置定时器
-        logger_vtimer_debug("vCPU %d: Guest modified TVAL: expected=%lld, stored=%d\n",
-                    vt->id, expected_tval, tval_stored);
+        // logger_vtimer_debug("vCPU %d: Guest modified TVAL: expected=%lld, stored=%d\n", vt->id, expected_tval, tval_stored);
         vtimer_write_cntv_tval(task, tval_stored);
     }
 

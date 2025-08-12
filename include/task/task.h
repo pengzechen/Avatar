@@ -3,12 +3,12 @@
 #define __TASK_H__
 
 #include "aj_types.h"
-#include "hyper/vcpu.h"
+#include "vmm/vcpu.h"
 #include "lib/list.h"
 #include "os_cfg.h"
 
 #include "pro.h"
-#include "hyper/vm.h"
+#include "vmm/vm.h"
 
 #pragma pack(1)
 typedef struct _contex_t

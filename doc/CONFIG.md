@@ -5,7 +5,7 @@
 ## 配置文件结构
 
 - `include/os_cfg.h` - 主要系统配置
-- `include/hyper/hyper_cfg.h` - 虚拟化相关配置
+- `include/vmm/vmm_cfg.h` - 虚拟化相关配置
 
 ## 主要配置参数
 

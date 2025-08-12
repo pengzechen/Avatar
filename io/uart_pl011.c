@@ -5,7 +5,7 @@
 
 #include <gic.h>
 #include <exception.h>
-#include <hyper/vpl011.h>
+#include <vmm/vpl011.h>
 
 // Circular buffer for transmit data
 #define UART_TX_BUFFER_SIZE 32

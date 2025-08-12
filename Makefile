@@ -41,7 +41,7 @@ VERBOSE ?= 0
 
 # 目录配置
 SRC_DIRS := . boot exception io mem timer task process spinlock \
-            hyper lib fs app syscall
+            vmm lib fs app syscall
 INCLUDE_DIRS := include guest
 INCLUDE := $(addprefix -I, $(INCLUDE_DIRS))
 
@@ -73,9 +73,9 @@ endif
 QEMU_ARGS := -m 4G -smp $(SMP) -cpu cortex-a72 -nographic -M virt -M gic_version=2
 ifeq ($(HV),1)
 QEMU_ARGS += -M virtualization=on
-LD := link_hyper.lds
+LD := boot/link_vmm.lds
 else
-LD := link.lds
+LD := boot/link.lds
 endif
 
 # 工具链
@@ -94,7 +94,7 @@ READELF := $(TOOL_PREFIX)readelf
 # 自动发现源文件（排除guest和clib目录）
 # 分别处理根目录和其他目录，确保完全排除clib
 ROOT_C_SOURCES := $(shell find . -maxdepth 1 -name "*.c" 2>/dev/null)
-OTHER_C_SOURCES := $(shell find boot exception io mem timer task process spinlock hyper lib fs syscall -name "*.c" 2>/dev/null)
+OTHER_C_SOURCES := $(shell find boot exception io mem timer task process spinlock vmm lib fs syscall -name "*.c" 2>/dev/null)
 # 手动添加app目录中的非main.c文件（避免包含app子目录中的main.c）
 APP_C_SOURCES := $(shell find app -maxdepth 1 -name "*.c" 2>/dev/null)
 # 手动添加guest目录中需要的C文件
@@ -102,7 +102,7 @@ GUEST_C_SOURCES := guest/guests.c
 C_SOURCES := $(ROOT_C_SOURCES) $(OTHER_C_SOURCES) $(APP_C_SOURCES) $(GUEST_C_SOURCES)
 
 ROOT_S_SOURCES := $(shell find . -maxdepth 1 -name "*.S" 2>/dev/null)
-OTHER_S_SOURCES := $(shell find boot exception io mem timer task process spinlock hyper lib fs syscall -name "*.S" 2>/dev/null)
+OTHER_S_SOURCES := $(shell find boot exception io mem timer task process spinlock vmm lib fs syscall -name "*.S" 2>/dev/null)
 # 手动添加app目录中需要的汇编文件（排除syscall.S）
 APP_S_SOURCES := $(shell find app -maxdepth 1 -name "*.S" 2>/dev/null | grep -v syscall.S)
 S_SOURCES := $(ROOT_S_SOURCES) $(OTHER_S_SOURCES) $(APP_S_SOURCES)
@@ -171,7 +171,7 @@ $(BUILD_DIR)/%.o: process/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/%.o: hyper/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: vmm/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
@@ -217,7 +217,7 @@ $(BUILD_DIR)/%.s.o: spinlock/%.S | $(BUILD_DIR)
 	$(Q)echo "  AS      $<"
 	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
-$(BUILD_DIR)/%.s.o: hyper/%.S | $(BUILD_DIR)
+$(BUILD_DIR)/%.s.o: vmm/%.S | $(BUILD_DIR)
 	$(Q)echo "  AS      $<"
 	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
@@ -230,9 +230,9 @@ $(BUILD_DIR)/%.s.o: guest/%.S | $(BUILD_DIR)
 	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
 # 特殊处理：确保某些文件的编译顺序
-$(BUILD_DIR)/main_hyper.o: main_hyper.c | $(BUILD_DIR)
-	$(Q)echo "  CC      $< (hypervisor main)"
-	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/main_hyper.d $< -o $@
+$(BUILD_DIR)/main_vmm.o: main_vmm.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $< (vmm main)"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/main_vmm.d $< -o $@
 
 
 # ============================================================================
@@ -316,7 +316,7 @@ info:
 
 # 显示帮助信息
 help:
-	@echo "Avatar Hypervisor Build System"
+	@echo "Avatar VMM Build System"
 	@echo ""
 	@echo "Targets:"
 	@echo "  all          - Build kernel binary (default)"
@@ -330,7 +330,7 @@ help:
 	@echo ""
 	@echo "Configuration variables:"
 	@echo "  SMP=<n>      - Number of CPU cores (default: 1)"
-	@echo "  HV=<0|1>     - Hypervisor mode (default: 0)"
+	@echo "  HV=<0|1>     - VMM mode (default: 0)"
 	@echo "  LOGGER=<n>   - Log level (default: 1)"
 	@echo "  DEBUG=<0|1>  - Debug build (default: 1)"
 	@echo "  DEBUG_MODULE=<n> - Debug module mask (default: 0)"

@@ -1,6 +1,6 @@
 
 #include <io.h>
-#include <hyper/vcpu.h>
+#include <vmm/vcpu.h>
 #include <lib/aj_string.h>
 #include "os_cfg.h"
 

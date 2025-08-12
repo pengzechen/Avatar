@@ -58,7 +58,7 @@ cd ../../
 
 ### step3 compile and run
 ```bash
-# run as a hypervisor
+# run as a vmm
 make SMP=2 HV=1 run
 
 # run as a kernel

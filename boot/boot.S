@@ -172,7 +172,7 @@ primary_entry_el2:
     ldr x0, =_stack_top
     mov sp, x0
 
-    b hyper_main
+    b vmm_main
     
     b .
 

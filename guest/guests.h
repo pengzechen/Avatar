@@ -3,7 +3,7 @@
 #define _H_GUETSTS_H
 
 #include "aj_types.h"
-#include "hyper/hyper_cfg.h"
+#include "vmm/vmm_cfg.h"
 
 typedef struct {
     void *bin_start;
@@ -41,7 +41,7 @@ extern char __guest_fs_start_1[], __guest_fs_end_1[];
 #define VM1_BIN_LOADADDR  0x50200000UL
 #define VM1_DTB_LOADADDR  0x50000000UL
 #define VM1_FS_LOADADDR   0x58000000UL
-#define VM1_SMP_NUM       4
+#define VM1_SMP_NUM       1
 
 
 // 声明数组，实际定义在 guest/guests.c 中

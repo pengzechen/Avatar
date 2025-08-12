@@ -1,5 +1,5 @@
 #include "os_cfg.h"
-#include "hyper/hyper_cfg.h"
+#include "vmm/vmm_cfg.h"
 #include "guest/guests.h"
 #include "io.h"
 

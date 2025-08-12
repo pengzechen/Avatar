@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Avatar Hypervisor Dependency Checker
+Avatar VMM Dependency Checker
 检查源文件之间的依赖关系，生成依赖图
 """
 
@@ -184,7 +184,7 @@ class DependencyAnalyzer:
         print(f"Most dependents: {max_reverse[1]} ({max_reverse[0]} dependents)")
 
 def main():
-    parser = argparse.ArgumentParser(description='Analyze Avatar Hypervisor dependencies')
+    parser = argparse.ArgumentParser(description='Analyze Avatar VMM dependencies')
     parser.add_argument('--dot', help='Generate DOT graph file')
     parser.add_argument('--check-cycles', action='store_true', help='Check for circular dependencies')
     parser.add_argument('--build-order', action='store_true', help='Show build order')
@@ -192,13 +192,13 @@ def main():
     
     # 配置目录
     src_dirs = ['.', 'boot', 'exception', 'io', 'mem', 'timer', 'task',
-                'process', 'spinlock', 'hyper', 'lib', 'fs', 'syscall', 'guest']
+                'process', 'spinlock', 'vmm', 'lib', 'fs', 'syscall', 'guest']
     include_dirs = ['include', 'guest']
     
     analyzer = DependencyAnalyzer(src_dirs, include_dirs)
     analyzer.build_dependency_graph()
     
-    print("Avatar Hypervisor Dependency Analysis")
+    print("Avatar VMM Dependency Analysis")
     print("=" * 40)
     analyzer.print_statistics()
     

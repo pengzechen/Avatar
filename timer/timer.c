@@ -6,7 +6,7 @@
 #include <exception.h>
 #include <thread.h>
 #include <task/task.h>
-#include <hyper/vgic.h>
+#include <vmm/vgic.h>
 #include <os_cfg.h>
 
 static uint64_t test_num = 0;
@@ -16,7 +16,7 @@ extern void v_timer_tick(uint64_t now);
 
 void handle_timer_interrupt(uint64_t *sp)
 {
-#if HV
+#if HV == 1
     // Hypervisor Timer - 设置定时值
     write_cnthp_tval_el2(TIMER_TVAL_VALUE);
 #else
@@ -36,7 +36,7 @@ void timer_init_second()
 
     logger("timer frq: %d\n", frq);
 
-#if HV
+#if HV == 1
     // Hypervisor Timer 初始化
     logger("Initializing Hypervisor Timer (Vector %d)\n", TIMER_VECTOR);
     write_cnthp_tval_el2(TIMER_TVAL_VALUE);
@@ -65,7 +65,7 @@ void timer_init()
 
     logger("timer frq: %d\n", frq);
 
-#if HV
+#if HV == 1
     // Hypervisor Timer 初始化
     logger("Initializing Hypervisor Timer (Vector %d)\n", TIMER_VECTOR);
     write_cnthp_tval_el2(TIMER_TVAL_VALUE);

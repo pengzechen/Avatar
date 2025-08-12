@@ -1,5 +1,5 @@
 #include <aj_types.h>
-#include <hyper/vpsci.h>
+#include <vmm/vpsci.h>
 #include <psci.h>
 #include <task/task.h>
 #include <thread.h>

@@ -1,8 +1,8 @@
 
-#include <hyper/vgic.h>
-#include <hyper/vtimer.h>
-#include <hyper/vpl011.h>
-#include <hyper/hyper_cfg.h>
+#include <vmm/vgic.h>
+#include <vmm/vtimer.h>
+#include <vmm/vpl011.h>
+#include <vmm/vmm_cfg.h>
 #include <aj_types.h>
 #include <os_cfg.h>
 #include "gic.h"
@@ -10,7 +10,7 @@
 #include "lib/aj_string.h"
 #include <mem/stage2page.h>
 #include "io.h"
-#include "hyper/vm.h"
+#include "vmm/vm.h"
 #include "mem/mem.h"
 #include "task/task.h"
 #include "../guest/guests.h"
@@ -161,7 +161,7 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
     guest_trap_init();
 
     //(2) 设置ttbr,和vtcr
-    // 这里在main_hyper.c中已经设置了
+    // 这里在main_vmm.c中已经设置了
 
     //(3) 分配vcpu
     // 创建两个 guest 任务

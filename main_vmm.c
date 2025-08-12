@@ -9,9 +9,9 @@
 #include "mem/page.h"
 #include "task/task.h"
 #include "lib/aj_string.h"
-#include "hyper/vm.h"
-#include "hyper/vtimer.h"
-#include "hyper/vpl011.h"
+#include "vmm/vm.h"
+#include "vmm/vtimer.h"
+#include "vmm/vpl011.h"
 #include "os_cfg.h"
 #include "thread.h"
 #include "mem/mem.h"
@@ -109,7 +109,7 @@ void main_entry_el2()
         // vm_init(vm, 1); // 初始化第二个虚拟机
         // run_vm(vm);
 
-        logger("\nHello Hyper:\nthere's some hyper tests: \n");
+        logger("\nHello VMM:\nthere's some vmm tests: \n");
         logger("scrlr_el2: 0x%llx\n", read_sctlr_el2());
         logger("hcr_el2: 0x%llx\n", read_hcr_el2());
         logger("read_vttbr_el2: 0x%llx\n", read_vttbr_el2());
@@ -142,7 +142,7 @@ void main_entry_el2()
     guest_entry();
 }
 
-void hyper_main()
+void vmm_main()
 {
     io_early_init();
     // run_printf_tests();

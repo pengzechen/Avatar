@@ -4,10 +4,10 @@
 #include <exception.h>
 #include <gic.h>
 #include <mem/stage2page.h>
-#include <hyper/vcpu.h>
-#include <hyper/vtimer.h>
+#include <vmm/vcpu.h>
+#include <vmm/vtimer.h>
 #include <psci.h>
-#include <hyper/vpsci.h>
+#include <vmm/vpsci.h>
 #include "task/task.h"
 #include "thread.h"
 

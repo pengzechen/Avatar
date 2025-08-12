@@ -4,9 +4,9 @@
 #include <os_cfg.h>
 #include <io.h>
 #include <exception.h>
-#include <hyper/vcpu.h>
-#include <hyper/vgic.h>
-#include <hyper/vpl011.h>
+#include <vmm/vcpu.h>
+#include <vmm/vgic.h>
+#include <vmm/vpl011.h>
 #include <lib/aj_string.h>
 
 extern lpae_t ept_L1[];

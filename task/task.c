@@ -1,7 +1,7 @@
 #include <task/task.h>
 #include <io.h>
 #include <gic.h>
-#include <hyper/vcpu.h>
+#include <vmm/vcpu.h>
 #include <lib/aj_string.h>
 #include <sys/sys.h>
 #include <spinlock.h>

@@ -7,7 +7,7 @@
 
 #include "aj_types.h"
 #include "vm.h"
-#include "hyper_cfg.h"
+#include "vmm_cfg.h"
 #include "gic.h"
 #include "task/task.h"
 

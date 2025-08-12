@@ -4,7 +4,7 @@
 #include <exception.h>
 #include <gic.h>
 #include <timer.h>
-#include <hyper/vcpu.h>
+#include <vmm/vcpu.h>
 #include <thread.h>
 
 extern void *syscall_table[];

@@ -2,11 +2,11 @@
 
 /*     目前只准备实现 vgic    */
 
-#include <hyper/vgic.h>
+#include <vmm/vgic.h>
 #include <aj_types.h>
-#include <hyper/vm.h>
+#include <vmm/vm.h>
 #include <exception.h>
-#include <hyper/hyper_cfg.h>
+#include <vmm/vmm_cfg.h>
 #include <io.h>
 #include <mem/barrier.h>
 #include <thread.h>

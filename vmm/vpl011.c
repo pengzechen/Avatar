@@ -1,11 +1,11 @@
-#include "hyper/vpl011.h"
-#include "hyper/vm.h"
+#include "vmm/vpl011.h"
+#include "vmm/vm.h"
 #include "task/task.h"
 #include "uart_pl011.h"
 #include "io.h"
 #include "lib/aj_string.h"
 #include "thread.h"
-#include "hyper/vgic.h"
+#include "vmm/vgic.h"
 #include "timer.h"
 
 /* Virtual PL011 management structures */
