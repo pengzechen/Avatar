@@ -6,11 +6,11 @@
  */
 
 
-#include <aj_arg.h>
-#include <aj_types.h>
-#include <lib/aj_string.h>
-#include <io.h>
-#include <spinlock.h>
+#include "aj_arg.h"
+#include "aj_types.h"
+#include "lib/aj_string.h"
+#include "io.h"
+#include "spinlock.h"
 
 #ifndef __LOG_LEVEL
 #define __LOG_LEVEL 3

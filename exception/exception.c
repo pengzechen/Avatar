@@ -1,11 +1,11 @@
 
-#include <aj_types.h>
-#include <io.h>
-#include <exception.h>
-#include <gic.h>
-#include <timer.h>
-#include <vmm/vcpu.h>
-#include <thread.h>
+#include "aj_types.h"
+#include "io.h"
+#include "exception.h"
+#include "gic.h"
+#include "timer.h"
+#include "vmm/vcpu.h"
+#include "thread.h"
 
 extern void *syscall_table[];
 

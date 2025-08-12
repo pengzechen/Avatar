@@ -1,11 +1,11 @@
-#include <uart_pl011.h>
-#include <spinlock.h>
-#include <io.h>
-#include <mmio.h>
+#include "uart_pl011.h"
+#include "spinlock.h"
+#include "io.h"
+#include "mmio.h"
 
-#include <gic.h>
-#include <exception.h>
-#include <vmm/vpl011.h>
+#include "gic.h"
+#include "exception.h"
+#include "vmm/vpl011.h"
 
 // Circular buffer for transmit data
 #define UART_TX_BUFFER_SIZE 32

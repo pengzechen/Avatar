@@ -2,7 +2,7 @@
 #ifndef __VTIMER_H__
 #define __VTIMER_H__
 
-#include <aj_types.h>
+#include "aj_types.h"
 #include "task/task.h"
 #include "exception.h"
 

@@ -1,10 +1,10 @@
 
-#include <aj_types.h>
-#include <mem/mmu.h>
-#include <lib/aj_string.h>
-#include <mem/page.h>
-#include <os_cfg.h>
-#include <mem/barrier.h>
+#include "aj_types.h"
+#include "mem/mmu.h"
+#include "lib/aj_string.h"
+#include "mem/page.h"
+#include "os_cfg.h"
+#include "mem/barrier.h"
 
 // 定义页表
 static uint64_t pt0[512] __attribute__((aligned(4096)));

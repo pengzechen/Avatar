@@ -5,7 +5,7 @@
 #include "timer.h"
 #include "mem/mmu.h"
 #include "sys/vtcr.h"
-#include <mem/stage2page.h>
+#include "mem/stage2page.h"
 #include "mem/page.h"
 #include "task/task.h"
 #include "lib/aj_string.h"

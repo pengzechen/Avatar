@@ -1,9 +1,9 @@
-#include <aj_types.h>
-#include <vmm/vpsci.h>
-#include <psci.h>
-#include <task/task.h>
-#include <thread.h>
-#include <io.h>
+#include "aj_types.h"
+#include "vmm/vpsci.h"
+#include "psci.h"
+#include "task/task.h"
+#include "thread.h"
+#include "io.h"
 
 // vpsci_cpu_on: 启动 guest vcpu
 // ctx_el2: 当前 trap_frame_t

@@ -1,13 +1,13 @@
 
-#include <aj_types.h>
-#include <io.h>
-#include <exception.h>
-#include <gic.h>
-#include <mem/stage2page.h>
-#include <vmm/vcpu.h>
-#include <vmm/vtimer.h>
-#include <psci.h>
-#include <vmm/vpsci.h>
+#include "aj_types.h"
+#include "io.h"
+#include "exception.h"
+#include "gic.h"
+#include "mem/stage2page.h"
+#include "vmm/vcpu.h"
+#include "vmm/vtimer.h"
+#include "psci.h"
+#include "vmm/vpsci.h"
 #include "task/task.h"
 #include "thread.h"
 

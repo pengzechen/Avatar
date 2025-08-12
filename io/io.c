@@ -1,8 +1,8 @@
 
-#include <uart_pl011.h>
-#include <spinlock.h>
-#include <io.h>
-#include <gic.h>
+#include "uart_pl011.h"
+#include "spinlock.h"
+#include "io.h"
+#include "gic.h"
 
 
 struct uart_ops_t

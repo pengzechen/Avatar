@@ -14,8 +14,8 @@
 #define PADDR_MASK ((1ULL << PADDR_BITS) - 1)
 #define PAGE_MASK (1 << 12) // 页对齐掩码
 
-#include <mem/page.h>
-#include <exception.h>
+#include "mem/page.h"
+#include "exception.h"
 
 void guest_ept_init(void);
 

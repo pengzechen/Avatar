@@ -1,14 +1,14 @@
 
-#include <vmm/vgic.h>
-#include <vmm/vtimer.h>
-#include <vmm/vpl011.h>
-#include <vmm/vmm_cfg.h>
-#include <aj_types.h>
-#include <os_cfg.h>
+#include "vmm/vgic.h"
+#include "vmm/vtimer.h"
+#include "vmm/vpl011.h"
+#include "vmm/vmm_cfg.h"
+#include "aj_types.h"
+#include "os_cfg.h"
 #include "gic.h"
 #include "mem/page.h"
 #include "lib/aj_string.h"
-#include <mem/stage2page.h>
+#include "mem/stage2page.h"
 #include "io.h"
 #include "vmm/vm.h"
 #include "mem/mem.h"

@@ -1,13 +1,13 @@
 
-#include <timer.h>
-#include <gic.h>
-#include <aj_types.h>
-#include <io.h>
-#include <exception.h>
-#include <thread.h>
-#include <task/task.h>
-#include <vmm/vgic.h>
-#include <os_cfg.h>
+#include "timer.h"
+#include "gic.h"
+#include "aj_types.h"
+#include "io.h"
+#include "exception.h"
+#include "thread.h"
+#include "task/task.h"
+#include "vmm/vgic.h"
+#include "os_cfg.h"
 
 static uint64_t test_num = 0;
 

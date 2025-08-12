@@ -1,7 +1,7 @@
 
 #ifndef SYSCALL_H
 #define SYSCALL_H
-#include <aj_types.h>
+#include "aj_types.h"
 
 char getc();
 void putc(char c);

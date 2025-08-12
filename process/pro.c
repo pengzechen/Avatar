@@ -1,13 +1,13 @@
 
-#include <pro.h>
+#include "pro.h"
 #include "lib/list.h"
-#include <lib/aj_string.h>
-#include <os_cfg.h>
-#include <mem/mem.h>
-#include <task/task.h>
-#include <elf.h>
+#include "lib/aj_string.h"
+#include "os_cfg.h"
+#include "mem/mem.h"
+#include "task/task.h"
+#include "elf.h"
 #include "lib/list.h"
-#include <thread.h>
+#include "thread.h"
 #include "../app/app.h"
 #include "sys/sys.h"
 static process_t g_pro_dec[MAX_TASKS];

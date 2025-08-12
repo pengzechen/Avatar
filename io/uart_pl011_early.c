@@ -1,7 +1,7 @@
 
-#include <uart_pl011.h>
-#include <spinlock.h>
-#include <io.h>
+#include "uart_pl011.h"
+#include "spinlock.h"
+#include "io.h"
 
 #define UART0_DR (*(volatile uint32_t *)(UART0_BASE_ADDR + 0x00))   // 数据寄存器
 #define UART0_FR (*(volatile uint32_t *)(UART0_BASE_ADDR + 0x18))   // 标志寄存器

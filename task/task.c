@@ -1,14 +1,14 @@
-#include <task/task.h>
-#include <io.h>
-#include <gic.h>
-#include <vmm/vcpu.h>
-#include <lib/aj_string.h>
-#include <sys/sys.h>
-#include <spinlock.h>
-#include <thread.h>
+#include "task/task.h"
+#include "io.h"
+#include "gic.h"
+#include "vmm/vcpu.h"
+#include "lib/aj_string.h"
+#include "sys/sys.h"
+#include "spinlock.h"
+#include "thread.h"
 #include "os_cfg.h"
-#include <mem/page.h>
-#include <mem/mem.h>
+#include "mem/page.h"
+#include "mem/mem.h"
 
 // 下面三个变量仅仅在 alloc_tcb 和 free_tcb 使用
 tcb_t g_task_dec[MAX_TASKS];
