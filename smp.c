@@ -4,7 +4,7 @@
 #include "os_cfg.h"
 #include "io.h"
 #include "thread.h"
-#include "lib/aj_string.h"
+#include "lib/avatar_string.h"
 
 extern void second_entry();
 extern void second_entry_el2();

@@ -1,9 +1,9 @@
 
 
 #include "mem/mem.h"
-#include "lib/aj_string.h"
-#include "aj_types.h"
-#include "aj_arg.h"
+#include "lib/avatar_string.h"
+#include "avatar_types.h"
+#include "avatar_arg.h"
 #include "os_cfg.h"
 #include "ramfs.h"
 #include "io.h"

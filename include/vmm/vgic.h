@@ -5,7 +5,7 @@
 
 #include "../gic.h"
 
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "vm.h"
 #include "vmm_cfg.h"
 #include "gic.h"

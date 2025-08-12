@@ -1,7 +1,7 @@
 #ifndef HYPER_VPSCI_H
 #define HYPER_VPSCI_H
 
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "task/task.h"
 
 // 启动 guest vcpu

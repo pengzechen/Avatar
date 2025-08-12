@@ -2,7 +2,7 @@
 #include "io.h"
 #include "gic.h"
 #include "vmm/vcpu.h"
-#include "lib/aj_string.h"
+#include "lib/avatar_string.h"
 #include "sys/sys.h"
 #include "spinlock.h"
 #include "thread.h"

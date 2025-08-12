@@ -2,7 +2,7 @@
 #ifndef BITMAP_H
 #define BITMAP_H
 
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "os_cfg.h"
 #include "io.h"
 

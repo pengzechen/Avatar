@@ -2,7 +2,7 @@
 #ifndef PRO_H
 #define PRO_H
 
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "os_cfg.h"
 #include "task/task.h"
 #include "lib/list.h"

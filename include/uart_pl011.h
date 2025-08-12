@@ -3,7 +3,7 @@
 #ifndef __PL011_H__
 #define __PL011_H__
 
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "os_cfg.h"
 
 // UART PL011 register definitions

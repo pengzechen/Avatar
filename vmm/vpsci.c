@@ -1,4 +1,4 @@
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "vmm/vpsci.h"
 #include "psci.h"
 #include "task/task.h"

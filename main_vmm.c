@@ -8,7 +8,7 @@
 #include "mem/stage2page.h"
 #include "mem/page.h"
 #include "task/task.h"
-#include "lib/aj_string.h"
+#include "lib/avatar_string.h"
 #include "vmm/vm.h"
 #include "vmm/vtimer.h"
 #include "vmm/vpl011.h"

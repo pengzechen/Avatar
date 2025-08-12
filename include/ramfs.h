@@ -2,7 +2,7 @@
 #ifndef RAM_FS
 #define RAM_FS
 
-#include "aj_types.h"
+#include "avatar_types.h"
 
 #define MAX_FILES 256
 

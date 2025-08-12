@@ -1,7 +1,7 @@
 
 #include "pro.h"
 #include "lib/list.h"
-#include "lib/aj_string.h"
+#include "lib/avatar_string.h"
 #include "os_cfg.h"
 #include "mem/mem.h"
 #include "task/task.h"

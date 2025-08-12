@@ -1,7 +1,7 @@
 #ifndef LIST_H
 #define LIST_H
 
-#include "aj_types.h"
+#include "avatar_types.h"
 
 typedef struct _list_node_t
 {

@@ -3,7 +3,7 @@
 #include "vmm/vm.h"
 #include "task/task.h"
 #include "io.h"
-#include "lib/aj_string.h"
+#include "lib/avatar_string.h"
 #include "thread.h"
 #include "os_cfg.h"
 #include "timer.h"

@@ -3,7 +3,7 @@
 #include "task/task.h"
 #include "uart_pl011.h"
 #include "io.h"
-#include "lib/aj_string.h"
+#include "lib/avatar_string.h"
 #include "thread.h"
 #include "vmm/vgic.h"
 #include "timer.h"

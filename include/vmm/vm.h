@@ -2,7 +2,7 @@
 #ifndef __VM_H__
 #define __VM_H__
 
-#include "../aj_types.h"
+#include "../avatar_types.h"
 
 #include "vcpu.h"
 #include "vgic.h"

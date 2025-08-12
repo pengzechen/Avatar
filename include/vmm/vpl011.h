@@ -1,7 +1,7 @@
 #ifndef __VPL011_H__
 #define __VPL011_H__
 
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "task/task.h"
 
 typedef struct _tcb_t tcb_t;

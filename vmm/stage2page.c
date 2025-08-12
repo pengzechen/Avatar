@@ -7,7 +7,7 @@
 #include "vmm/vcpu.h"
 #include "vmm/vgic.h"
 #include "vmm/vpl011.h"
-#include "lib/aj_string.h"
+#include "lib/avatar_string.h"
 
 extern lpae_t ept_L1[];
 lpae_t *ept_L2_root;

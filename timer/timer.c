@@ -1,7 +1,7 @@
 
 #include "timer.h"
 #include "gic.h"
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "io.h"
 #include "exception.h"
 #include "thread.h"

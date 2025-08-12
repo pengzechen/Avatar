@@ -3,7 +3,7 @@
 /*     目前只准备实现 vgic    */
 
 #include "vmm/vgic.h"
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "vmm/vm.h"
 #include "exception.h"
 #include "vmm/vmm_cfg.h"
@@ -11,7 +11,7 @@
 #include "mem/barrier.h"
 #include "thread.h"
 #include "mmio.h"
-#include "lib/aj_string.h"
+#include "lib/avatar_string.h"
 #include "exception.h"
 
 #define HIGHEST_BIT_POSITION(x)        \

@@ -2,7 +2,7 @@
 #ifndef __TASK_H__
 #define __TASK_H__
 
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "vmm/vcpu.h"
 #include "lib/list.h"
 #include "os_cfg.h"

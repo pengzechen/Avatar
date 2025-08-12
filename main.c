@@ -1,5 +1,5 @@
 
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "io.h"
 #include "smp.h"
 #include "psci.h"
@@ -9,7 +9,7 @@
 #include "task/task.h"
 #include "spinlock.h"
 #include "uart_pl011.h"
-#include "lib/aj_string.h"
+#include "lib/avatar_string.h"
 #include "mem/mem.h"
 #include "app/app.h"
 #include "pro.h"

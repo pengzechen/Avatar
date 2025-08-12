@@ -3,7 +3,7 @@
 #ifndef __MMIO_H__
 #define __MMIO_H__
 #include "mem/barrier.h"
-#include "aj_types.h"
+#include "avatar_types.h"
 
 
 // 低层裸访问（无 barrier）

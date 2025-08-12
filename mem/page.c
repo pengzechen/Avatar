@@ -1,7 +1,7 @@
 
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "mem/mmu.h"
-#include "lib/aj_string.h"
+#include "lib/avatar_string.h"
 #include "mem/page.h"
 #include "os_cfg.h"
 #include "mem/barrier.h"

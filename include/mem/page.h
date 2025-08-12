@@ -5,7 +5,7 @@
 
 #define __packed __attribute__((packed))
 
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "barrier.h"
 
 typedef struct __packed

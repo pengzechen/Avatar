@@ -3,7 +3,7 @@
 #ifndef __GIC_H__
 #define __GIC_H__
 
-#include "aj_types.h"
+#include "avatar_types.h"
 
 #define GIC_NR_PRIVATE_IRQS 32
 #define GIC_FIRST_SPI GIC_NR_PRIVATE_IRQS

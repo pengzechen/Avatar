@@ -6,9 +6,9 @@
  */
 
 
-#include "aj_arg.h"
-#include "aj_types.h"
-#include "lib/aj_string.h"
+#include "avatar_arg.h"
+#include "avatar_types.h"
+#include "lib/avatar_string.h"
 #include "io.h"
 #include "spinlock.h"
 

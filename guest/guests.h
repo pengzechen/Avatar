@@ -2,7 +2,7 @@
 #ifndef _H_GUETSTS_H
 #define _H_GUETSTS_H
 
-#include "aj_types.h"
+#include "avatar_types.h"
 #include "vmm/vmm_cfg.h"
 
 typedef struct {

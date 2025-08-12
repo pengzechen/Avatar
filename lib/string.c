@@ -5,8 +5,8 @@
  * under the terms of the GNU Library General Public License version 2.
  */
 
-#include "lib/aj_string.h"
-#include "aj_types.h"
+#include "lib/avatar_string.h"
+#include "avatar_types.h"
 
 size_t strlen(const char *buf)
 {

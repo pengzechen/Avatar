@@ -3,7 +3,7 @@
 #ifndef __TIMER_H__
 #define __TIMER_H__
 
-#include "aj_types.h"
+#include "avatar_types.h"
 
 // CNTFRQ_EL0    （频率寄存器）
 static inline uint64_t read_cntfrq_el0(void)
