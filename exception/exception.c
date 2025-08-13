@@ -220,9 +220,9 @@ static void handle_unknown_sync_exception(trap_frame_t *context, uint32_t esr, u
     logger_error("ESR_EL1: 0x%x, Exception Class: 0x%x\n", esr, ec);
 
     // Only dump context on CPU 0 to avoid spam in multi-core systems
-    if (get_current_cpu_id() == 0) {
+    // if (get_current_cpu_id() == 0) {
         dump_exception_context(context, esr, ec);
-    }
+    // }
 
     logger_error("System halted due to unknown exception\n");
     while (1) {
