@@ -2,6 +2,7 @@
 
 #include "mem/bitmap.h"
 #include "os_cfg.h"
+#include "lib/avatar_assert.h"
 
 //  0x20000  128Kb
 uint8_t bitmap_buffer[OS_CFG_BITMAP_SIZE / 8] __attribute__((section(".bss.bitmap_buffer")));
@@ -19,9 +20,9 @@ void bitmap_init(bitmap_t *bitmap, uint8_t *buffer, size_t size)
 // 设置指定索引位置的位为 1，前提是该位为 0（未分配）
 void bitmap_set(bitmap_t *bitmap, size_t index)
 {
-    assert(index < bitmap->size); // 确保索引不越界
+    avatar_assert(index < bitmap->size); // 确保索引不越界
     // 确保该位是未分配的（即当前值为 0）
-    assert((bitmap->bits[index / 8] & (1 << (index % 8))) == 0);
+    avatar_assert((bitmap->bits[index / 8] & (1 << (index % 8))) == 0);
 
     // 设置该位为 1
     bitmap->bits[index / 8] |= (1 << (index % 8));
@@ -45,7 +46,7 @@ void bitmap_set_range(bitmap_t *bitmap, size_t start, size_t count)
 // 清除指定索引位置的位为 0，前提是该位为 1（已分配）
 void bitmap_clear(bitmap_t *bitmap, size_t index)
 {
-    assert(index < bitmap->size); // 确保索引不越界
+    avatar_assert(index < bitmap->size); // 确保索引不越界
     // 确保该位是已分配的（即当前值为 1）
     // assert((bitmap->bits[index / 8] & (1 << (index % 8))) != 0);
     if ((bitmap->bits[index / 8] & (1 << (index % 8))) == 0)

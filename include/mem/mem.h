@@ -13,6 +13,17 @@
 // 将虚拟地址转换为物理地址
 #define virt_to_phys(va) ((uint64_t)(va) - KERNEL_VMA)
 
+#define GET_PGD_INDEX(addr) ((addr >> 39) & 0x1ff)
+#define GET_PUD_INDEX(addr) ((addr >> 30) & 0x1ff)
+#define GET_PMD_INDEX(addr) ((addr >> 21) & 0x1ff)
+#define GET_PTE_INDEX(addr) ((addr >> 12) & 0x1ff)
+
+// 向上对齐到 bound 边界
+#define UP2(size, bound) (((size) + (bound) - 1) & ~((bound) - 1))
+
+// 向下对齐到 bound 边界
+#define DOWN2(size, bound) ((size) & ~((bound) - 1))
+
 typedef struct _addr_alloc_t
 {
     mutex_t mutex;      // for test

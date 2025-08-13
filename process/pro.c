@@ -10,6 +10,7 @@
 #include "thread.h"
 #include "../app/app.h"
 #include "sys/sys.h"
+#include "lib/avatar_assert.h"
 static process_t g_pro_dec[MAX_TASKS];
 
 process_t *alloc_process(char *name)
@@ -50,7 +51,7 @@ void free_process(process_t *pro)
 static int32_t load_phdr(const char *elf_file_addr, Elf64_Phdr *phdr, pte_t *page_dir)
 {
     // 生成的ELF文件要求是页边界对齐的
-    assert((phdr->p_vaddr & (PAGE_SIZE - 1)) == 0);
+    avatar_assert((phdr->p_vaddr & (PAGE_SIZE - 1)) == 0);
 
     // 分配空间
     int32_t err = memory_alloc_page(page_dir, phdr->p_vaddr, phdr->p_memsz, 0);

@@ -24,16 +24,6 @@ uint64_t bitmap_find_contiguous_free_fs(const bitmap_t *bitmap, size_t count);
 
 extern uint8_t bitmap_buffer[OS_CFG_BITMAP_SIZE / 8] __attribute__((section(".bss.bitmap_buffer")));
 
-#define assert(condition)                                                   \
-    do                                                                      \
-    {                                                                       \
-        if (!(condition))                                                   \
-        {                                                                   \
-            logger("Assertion failed: %s, function %s, file %s, line %d\n", \
-                   #condition, __func__, __FILE__, __LINE__);               \
-            while (1)                                                       \
-                ;                                                           \
-        }                                                                   \
-    } while (0)
+/* 断言宏由 lib/avatar_assert.h 提供，请在使用处包含该头文件 */
 
 #endif // BITMAP_H

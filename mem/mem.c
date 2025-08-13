@@ -8,29 +8,9 @@
 #include "mem/page.h"
 #include "mem/mmu.h"
 #include "lib/avatar_string.h"
+#include "lib/avatar_assert.h"
 
-#define GET_PGD_INDEX(addr) ((addr >> 39) & 0x1ff)
-#define GET_PUD_INDEX(addr) ((addr >> 30) & 0x1ff)
-#define GET_PMD_INDEX(addr) ((addr >> 21) & 0x1ff)
-#define GET_PTE_INDEX(addr) ((addr >> 12) & 0x1ff)
-
-// 向上对齐到 bound 边界
-#define UP2(size, bound) (((size) + (bound) - 1) & ~((bound) - 1))
-
-// 向下对齐到 bound 边界
-#define DOWN2(size, bound) ((size) & ~((bound) - 1))
-
-#define assert(condition)                                                   \
-    do                                                                      \
-    {                                                                       \
-        if (!(condition))                                                   \
-        {                                                                   \
-            logger("Assertion failed: %s, function %s, file %s, line %d\n", \
-                   #condition, __func__, __FILE__, __LINE__);               \
-            while (1)                                                       \
-                ;                                                           \
-        }                                                                   \
-    } while (0)
+/* 内存管理宏定义现在由 mem/mem_utils.h 提供 */
 
 static addr_alloc_t g_alloc;
 
@@ -727,7 +707,7 @@ void assert_bitmap_state(uint64_t addr, uint8_t expected_state)
     logger("Checking page at address: 0x%llx, expected state: %d, current state: %d\n", addr, expected_state, current_state);
 
     // 检查当前状态与预期状态是否匹配
-    assert(current_state == expected_state);
+    avatar_assert(current_state == expected_state);
 }
 
 void test_alloc_free()
@@ -737,7 +717,7 @@ void test_alloc_free()
     // 测试：分配1页
     addr = addr_alloc_page(&g_alloc, 1);
     logger("Allocated 1 page at address: 0x%llx\n", addr);
-    assert(addr != 0);
+    avatar_assert(addr != 0);
 
     // 确认分配后的地址在位图中标记为已使用
     assert_bitmap_state(addr, 1);
@@ -752,7 +732,7 @@ void test_alloc_free()
     // 测试：分配多页
     addr = addr_alloc_page(&g_alloc, 4); // 假设连续4页
     logger("Allocated 4 pages starting at address: 0x%llx\n", addr);
-    assert(addr != 0);
+    avatar_assert(addr != 0);
 
     // 确认分配的4页在位图中标记为已使用
     for (int32_t i = 0; i < 4; i++)
@@ -778,12 +758,12 @@ void test_find_free_page()
     // 测试：找到第一个空闲页
     addr = addr_alloc_page(&g_alloc, 1);
     logger("Allocated 1 page at address: 0x%llx\n", addr);
-    assert(addr != 0);
+    avatar_assert(addr != 0);
 
     // 测试：查找第一个空闲页
     uint64_t free_page = bitmap_find_first_free(&g_alloc.bitmap);
     logger("First free page is at index: %lu\n", free_page);
-    assert(free_page != -1);
+    avatar_assert(free_page != -1);
 
     // 确认返回的空闲页是正确的
     assert_bitmap_state(free_page * PAGE_SIZE + g_alloc.start, 0);
@@ -798,12 +778,12 @@ void test_find_contiguous_free_pages()
     // 测试：找到连续的空闲页
     addr = addr_alloc_page(&g_alloc, 4); // 分配4页
     logger("Allocated 4 pages at address: 0x%llx\n", addr);
-    assert(addr != 0);
+    avatar_assert(addr != 0);
 
     // 测试：查找4个连续的空闲页
     uint64_t free_page = bitmap_find_contiguous_free(&g_alloc.bitmap, 4);
     logger("Found contiguous 4 free pages at index: %lu\n", free_page);
-    assert(free_page != -1);
+    avatar_assert(free_page != -1);
 
     // 确认返回的连续空闲页是正确的
     for (int32_t i = 0; i < 4; i++)
@@ -821,7 +801,7 @@ void test_create_uvm_find_pte()
 
     // 测试create_uvm函数
     pte_t *page_dir = create_uvm();
-    assert(page_dir != (pte_t *)0);
+    avatar_assert(page_dir != (pte_t *)0);
     logger("Page directory created at: %llx\n", page_dir);
 
     // 测试find_pte是否能够正确分配并返回页表项
@@ -830,18 +810,18 @@ void test_create_uvm_find_pte()
         000000000 000000001 010100010 101100111 1000 1001 0000
      */
     pte_t *pte = find_pte(page_dir, vaddr, 1);
-    assert(pte != NULL);
+    avatar_assert(pte != NULL);
     logger("Page table entry for vaddr 0x%llx: 0x%llx\n", vaddr, pte);
 
     pte_t *test = find_pte(page_dir, vaddr, 1);
-    assert(pte == test);
+    avatar_assert(pte == test);
 
     destory_4level(page_dir);
 
     // 保证测试完成时总页数相同
     uint64_t end_total_nums = get_available_page_count(&g_alloc);
     logger("test end total nums: %d\n", end_total_nums);
-    assert(total_nums == end_total_nums);
+    avatar_assert(total_nums == end_total_nums);
 }
 
 // 测试 memory_create_map 函数 memory_get_paddr 函数 和 memory_free_page 函数
@@ -851,7 +831,7 @@ void test_memory_create_map()
     logger("test start total nums: %d\n", total_nums);
 
     pte_t *page_dir = create_uvm();
-    assert(page_dir != (pte_t *)0);
+    avatar_assert(page_dir != (pte_t *)0);
     logger("Page directory created at: %llx\n", (unsigned long)page_dir);
 
     uint64_t vaddr = 0x1000;                       // 虚拟地址
@@ -859,20 +839,20 @@ void test_memory_create_map()
     int32_t count = 3;                                 // 映射2个页面
 
     int32_t result = memory_create_map(page_dir, vaddr, paddr, count, 0x0); // 假设权限为0x0
-    assert(result == 0);
+    avatar_assert(result == 0);
 
     // 测试映射结果：验证虚拟地址映射到的物理地址
     uint64_t mapped_paddr = memory_get_paddr(page_dir, vaddr);
-    assert(mapped_paddr == paddr);
+    avatar_assert(mapped_paddr == paddr);
 
     // 验证第二个虚拟地址
     uint64_t vaddr2 = vaddr + PAGE_SIZE; // 第二个页面
     uint64_t mapped_paddr2 = memory_get_paddr(page_dir, vaddr2);
-    assert(mapped_paddr2 == paddr + PAGE_SIZE);
+    avatar_assert(mapped_paddr2 == paddr + PAGE_SIZE);
 
     uint64_t vaddr3 = vaddr + PAGE_SIZE * 2; // 第二个页面
     uint64_t mapped_paddr3 = memory_get_paddr(page_dir, vaddr3);
-    assert(mapped_paddr3 == paddr + PAGE_SIZE * 2);
+    avatar_assert(mapped_paddr3 == paddr + PAGE_SIZE * 2);
 
     logger("test free page: \n");
     memory_free_page(page_dir, vaddr);
@@ -884,7 +864,7 @@ void test_memory_create_map()
     // 保证测试完成时总页数相同
     uint64_t end_total_nums = get_available_page_count(&g_alloc);
     logger("test end total nums: %d\n", end_total_nums);
-    assert(total_nums == end_total_nums);
+    avatar_assert(total_nums == end_total_nums);
 }
 
 // 测试 memory_alloc_page memory_free_page
@@ -894,7 +874,7 @@ void test_uvm_alloc_free()
     logger("test start total nums: %d\n", total_nums);
 
     pte_t *page_dir = create_uvm();
-    assert(page_dir != (pte_t *)0);
+    avatar_assert(page_dir != (pte_t *)0);
     logger("Page directory created at: %llx\n", (unsigned long)page_dir);
 
     memory_alloc_page(page_dir, 0x1000, 34, 0);
@@ -905,7 +885,7 @@ void test_uvm_alloc_free()
     // 保证测试完成时总页数相同
     uint64_t end_total_nums = get_available_page_count(&g_alloc);
     logger("test end total nums: %d\n", end_total_nums);
-    assert(total_nums == end_total_nums);
+    avatar_assert(total_nums == end_total_nums);
 }
 
 // 测试 内核将数据拷贝到指定进程空间下
@@ -915,7 +895,7 @@ void test_copydata_to_uvm()
     logger("test start total nums: %d\n", total_nums);
 
     pte_t *page_dir = create_uvm();
-    assert(page_dir != (pte_t *)0);
+    avatar_assert(page_dir != (pte_t *)0);
     logger("Page directory created at: %llx\n", (unsigned long)page_dir);
 
     // 准备内核数据
@@ -943,7 +923,7 @@ void test_copydata_to_uvm()
     // 保证测试完成时总页数相同
     uint64_t end_total_nums = get_available_page_count(&g_alloc);
     logger("test end total nums: %d\n", end_total_nums);
-    assert(total_nums == end_total_nums);
+    avatar_assert(total_nums == end_total_nums);
 }
 
 uint64_t mock_addr_alloc_page(void *alloc, int32_t count)
@@ -967,7 +947,7 @@ bool validate_memory_content(void *src_addr, void *dst_addr, size_t size)
 void validate_page_table(pte_t *page_dir, uint64_t vaddr, uint64_t paddr)
 {
     uint64_t fetched_paddr = memory_get_paddr(page_dir, vaddr);
-    assert(fetched_paddr == paddr);
+    avatar_assert(fetched_paddr == paddr);
 }
 
 // 现在只能测试一页以内
@@ -1002,12 +982,12 @@ void test_memory_copy_uvm_4level()
     copydata_to_uvm(src_pgd, 0x1000, src_phys, data_len);
 
     int32_t result = memory_copy_uvm_4level(dst_pgd, src_pgd);
-    assert(result == 0);
+    avatar_assert(result == 0);
 
     // Validate the data in the destination page table
     uint64_t dst_phys = memory_get_paddr(dst_pgd, 0x1000);
     logger("src: %llx, dest: %llx\n", src_phys, dst_phys);
-    assert(memcmp(phys_to_virt(src_phys), phys_to_virt(dst_phys), data_len) == 0);
+    avatar_assert(memcmp(phys_to_virt(src_phys), phys_to_virt(dst_phys), data_len) == 0);
 
     // Clean up
     memory_free_page(src_pgd, 0x1000);
@@ -1021,7 +1001,7 @@ void test_memory_copy_uvm_4level()
     // 保证测试完成时总页数相同
     uint64_t end_total_nums = get_available_page_count(&g_alloc);
     logger("test end total nums: %d\n", end_total_nums);
-    assert(total_nums == end_total_nums);
+    avatar_assert(total_nums == end_total_nums);
 }
 
 void kmem_test()
@@ -1038,7 +1018,7 @@ void kmem_test()
 
     uint64_t end_total_nums = get_available_page_count(&g_alloc);
     logger("test end total nums: %d\n", end_total_nums);
-    assert(total_nums == end_total_nums);
+    avatar_assert(total_nums == end_total_nums);
 
     logger("\n\n========== uvm tests: =========\n\n");
     test_create_uvm_find_pte();

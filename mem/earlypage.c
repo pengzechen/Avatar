@@ -21,6 +21,10 @@ static uint64_t high_pt1[PAGE_TABLE_ENTRIES] __attribute__((aligned(PAGE_TABLE_A
 static bool mmu_enable_flag = false;
 static size_t cacheline_bytes = 0;  // 缓存行大小，0表示未初始化
 
+/* 外部汇编函数声明 */
+extern void init_mmu(uint64_t ttbr0, uint64_t ttbr1);
+extern void init_mmu_el2(uint64_t ttbr0);
+
 /**
  * @brief 验证内存布局配置的一致性
  * @return true表示配置有效，false表示配置错误
@@ -150,10 +154,6 @@ void init_page_table(void)
     set_block_entry(&high_pt1[0], DEVICE_MEMORY_BASE, PTE_DEVICE_MEMORY, 0);  // 设备内存区域
     set_block_entry(&high_pt1[1], NORMAL_MEMORY_BASE, PTE_NORMAL_MEMORY, 0);  // 内核普通内存
 }
-
-/* 外部汇编函数声明 */
-extern void init_mmu(uint64_t ttbr0, uint64_t ttbr1);
-extern void init_mmu_el2(uint64_t ttbr0);
 
 /**
  * @brief 启用EL1的MMU
