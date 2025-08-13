@@ -5,6 +5,7 @@
 #include "mem/bitmap.h"
 #include "task/mutex.h"
 #include "mem/page.h"
+#include "mem/pmm.h"
 #include "os_cfg.h"
 
 // 将物理地址映射到虚拟地址
@@ -24,18 +25,14 @@
 // 向下对齐到 bound 边界
 #define DOWN2(size, bound) ((size) & ~((bound) - 1))
 
-typedef struct _addr_alloc_t
-{
-    mutex_t mutex;      // for test
-    bitmap_t bitmap;    // 辅助分配用的位图
-    uint64_t page_size; // 页大小
-    uint64_t start;     // 起始地址
-    uint64_t size;      // 地址大小
-} addr_alloc_t;
+// addr_alloc_t 结构已移除，所有内存管理现在由 PMM 统一处理
 
 void alloctor_init();
 void kmem_test();
-uint64_t fs_malloc_pages(int32_t page_count);
+// fs_malloc_pages 已删除，直接使用 pmm_alloc_pages_fs(&g_pmm, page_count)
+
+// 全局物理内存管理器访问接口
+extern pmm_t g_pmm;
 
 uint64_t mutex_test_add();
 uint64_t mutex_test_minus();

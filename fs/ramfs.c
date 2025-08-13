@@ -25,7 +25,7 @@ void ramfs_init()
     uint32_t pages = (fs_data_ptr - RAM_FS_MEM_START) / BLOCK_SIZE;
     logger("alloc %d pages memory for ramfs basic data\n", pages);
     // 进行内存分配，确保我们为文件系统的数据区域分配足够的内存
-    fs_malloc_pages(pages);
+    pmm_alloc_pages_fs(&g_pmm, pages);
 
     // 初始化指针
     fs_head = (Head *)(void *)(RAM_FS_MEM_START);
@@ -69,7 +69,7 @@ int32_t ramfs_open(const char *name)
             fs_files[i]->content.content_offset = 0; // 假设填充一个魔数，用于标识
             fs_files[i]->content.next = NULL;        // 目前还没有其他数据块
             fs_files[i]->content.prev = NULL;
-            uint64_t addr = fs_malloc_pages(1);
+            uint64_t addr = pmm_alloc_pages_fs(&g_pmm, 1);
             fs_files[i]->content.addr_offset = (void *)(addr - (uint64_t)fs_head);
 
             return i; // 返回文件描述符
@@ -186,7 +186,7 @@ size_t ramfs_write(int32_t fd, const void *buf, size_t count)
             if (content->next == NULL)
             {
                 // 创建新的数据块
-                Content *new_content = (Content *)fs_malloc_pages(1); // 使用 malloc_page 申请一页内存
+                Content *new_content = (Content *)pmm_alloc_pages_fs(&g_pmm, 1); // 使用 PMM 申请一页内存
                 if (new_content == NULL)
                 {
                     return -1; // 内存分配失败
