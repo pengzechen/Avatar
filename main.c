@@ -7,6 +7,7 @@
 #include "timer.h"
 #include "thread.h"
 #include "task/task.h"
+#include "task/mutex_test.h"
 #include "spinlock.h"
 #include "uart_pl011.h"
 #include "lib/avatar_string.h"
@@ -54,6 +55,7 @@ void main_entry()
     if (get_current_cpu_id() == 0)
     {
         alloctor_init();
+        mutex_test_init();  // 初始化 mutex 测试模块
         // kmem_test();
         schedule_init();
         task_manager_init();

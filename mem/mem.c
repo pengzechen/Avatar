@@ -14,17 +14,11 @@
 /* 内存管理宏定义现在由 mem/mem_utils.h 提供 */
 
 pmm_t g_pmm;  // 全局物理内存管理器
-static mutex_t test_mutex;  // 专门用于测试的mutex
-
-static pte_t kpage_dir;
 
 void alloctor_init() //  初始化内存管理器
 {
     // 初始化PMM（唯一的物理内存管理器）
     pmm_init(&g_pmm, KERNEL_RAM_START, KERNEL_RAM_SIZE, bitmap_buffer, OS_CFG_BITMAP_SIZE);
-
-    // 初始化测试用的mutex
-    mutex_init(&test_mutex);
 
     // 使用PMM的函数标记内核内存
     pmm_mark_kernel_allocated(&g_pmm);
@@ -548,51 +542,6 @@ int32_t memory_copy_uvm_4level(pte_t *dst_pgd, pte_t *src_pgd)
     }
 
     return 0;
-}
-
-uint64_t mutex_test_num = 6;
-
-uint64_t mutex_test_add()
-{
-    mutex_lock(&test_mutex);
-    for (int32_t i = 0; i < 10000; i++)
-    {
-        mutex_test_num++;
-        mutex_test_num--;
-        mutex_test_num++;
-        mutex_test_num--;
-        mutex_test_num++;
-        mutex_test_num--;
-        mutex_test_num++;
-        mutex_test_num--;
-    }
-    mutex_unlock(&test_mutex);
-    return mutex_test_num;
-}
-
-uint64_t mutex_test_minus()
-{
-    mutex_lock(&test_mutex);
-    for (int32_t i = 0; i < 10000; i++)
-    {
-        mutex_test_num++;
-        mutex_test_num--;
-        mutex_test_num++;
-        mutex_test_num--;
-        mutex_test_num++;
-        mutex_test_num--;
-        mutex_test_num++;
-        mutex_test_num--;
-    }
-    mutex_unlock(&test_mutex);
-    return mutex_test_num;
-}
-
-void mutex_test_print()
-{
-    mutex_lock(&test_mutex);
-    logger("mutex_test_num = %d, current task: %d\n", mutex_test_num, ((tcb_t *)(void *)read_tpidr_el0())->task_id);
-    mutex_unlock(&test_mutex);
 }
 
 // 获取系统当前可用的总页数

@@ -3,6 +3,7 @@
 #include "syscall_num.h"
 #include "task/task.h"
 #include "task/mutex.h"
+#include "task/mutex_test.h"
 #include "mem/mem.h"
 #include "pro.h"
 

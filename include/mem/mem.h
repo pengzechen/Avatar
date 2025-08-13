@@ -34,9 +34,7 @@ void kmem_test();
 // 全局物理内存管理器访问接口
 extern pmm_t g_pmm;
 
-uint64_t mutex_test_add();
-uint64_t mutex_test_minus();
-void mutex_test_print();
+// mutex 测试函数已移动到 task/mutex_test.h
 
 void *kalloc_pages(uint32_t);
 void kfree_pages(void *addr, uint32_t pages);
