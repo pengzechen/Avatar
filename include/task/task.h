@@ -10,6 +10,8 @@
 #include "pro.h"
 #include "vmm/vm.h"
 
+#define IPI_SCHED  2
+
 #pragma pack(1)
 typedef struct _contex_t
 {
@@ -84,6 +86,7 @@ typedef struct _task_manager_t
 {
 
     list_t ready_list[SMP_NUM]; // 就绪队列
+    spinlock_t ready_lock[SMP_NUM];
     list_t task_list;           // 所有已创建任务的队列
     list_t sleep_list;          // 延时队列
 

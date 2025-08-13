@@ -91,6 +91,8 @@ void main_entry()
     void *_sp = (void *)__sp;
     schedule_init_local(get_idle(), NULL); // 任务管理器任务当前在跑idle任务
 
+    enable_interrupts();
+
     asm volatile("mov sp, %0" ::"r"(_sp));
     extern void el0_task_entry();
     el0_task_entry();
