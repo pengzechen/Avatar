@@ -7,6 +7,7 @@
 #include "spinlock.h"
 #include "thread.h"
 #include "os_cfg.h"
+#include "mem/earlypage.h"
 #include "mem/page.h"
 #include "mem/mem.h"
 

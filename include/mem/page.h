@@ -109,7 +109,8 @@ typedef union
     uint64_t pte;
 } pte_t;
 
-extern size_t cacheline_bytes;
+// 安全获取缓存行大小的函数声明
+size_t get_cacheline_size(void);
 
 #define CTR_EL0_CWG_MASK 0xFF // CWG 字段在 CTR_EL0 中的位掩码
 
@@ -132,18 +133,19 @@ static inline int32_t invalidate_dcache_va_range(const void *p, unsigned long si
 {
     size_t off;
     const void *end = p + size;
+    size_t cache_line_size = get_cacheline_size();
 
     dsb(sy); /* So the CPU issues all writes to the range */
 
-    off = (unsigned long)p % cacheline_bytes;
+    off = (unsigned long)p % cache_line_size;
     if (off)
     {
         p -= off;
         __clean_and_invalidate_dcache_one(p);
-        p += cacheline_bytes;
-        size -= cacheline_bytes - off;
+        p += cache_line_size;
+        size -= cache_line_size - off;
     }
-    off = (unsigned long)end % cacheline_bytes;
+    off = (unsigned long)end % cache_line_size;
     if (off)
     {
         end -= off;
@@ -151,7 +153,7 @@ static inline int32_t invalidate_dcache_va_range(const void *p, unsigned long si
         __clean_and_invalidate_dcache_one(end);
     }
 
-    for (; p < end; p += cacheline_bytes)
+    for (; p < end; p += cache_line_size)
         __invalidate_dcache_one(p);
 
     dsb(sy); /* So we know the flushes happen before continuing */
@@ -162,8 +164,9 @@ static inline int32_t invalidate_dcache_va_range(const void *p, unsigned long si
 static inline int32_t clean_and_invalidate_dcache_va_range(const void *p, unsigned long size)
 {
     const void *end;
+    size_t cache_line_size = get_cacheline_size();
     dsb(sy); /* So the CPU issues all writes to the range */
-    for (end = p + size; p < end; p += cacheline_bytes)
+    for (end = p + size; p < end; p += cache_line_size)
         __clean_and_invalidate_dcache_one(p);
     dsb(sy); /* So we know the flushes happen before continuing */
     /* ARM callers assume that dcache_* functions cannot fail. */
@@ -194,7 +197,5 @@ static inline pte_t *read_ttbr0_el1(void)
     asm volatile("mrs %0, ttbr0_el1" : "=r"(val));
     return (pte_t *)(val);
 }
-
-uint64_t get_kpgdir();
 
 #endif // __PAGE_H__

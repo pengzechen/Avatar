@@ -17,6 +17,7 @@
 #include "mem/mem.h"
 #include "smp.h"
 #include "uart_pl011.h"
+#include "mem/earlypage.h"
 
 void print_avatar_logo(void)
 {
@@ -61,7 +62,6 @@ void vtimer_init_el2(void)
     logger_info("CNTVOFF_EL2 initialized to: 0x%llx\n", cntvoff);
 }
 
-extern size_t cacheline_bytes;
 int32_t inited_cpu_num_el2 = 0;
 spinlock_t lock_el2;
 
@@ -84,7 +84,7 @@ void main_entry_el2()
     {
         schedule_init();
         alloctor_init();
-        logger_info("cacheline_bytes: %d\n", cacheline_bytes);
+        logger_info("cacheline_bytes: %d\n", get_cacheline_size());
         task_manager_init();
 
         // 初始化虚拟化组件
