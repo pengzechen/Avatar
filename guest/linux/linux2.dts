@@ -16,8 +16,8 @@
 		compatible = "arm,psci-1.0\0arm,psci-0.2\0arm,psci";
 	};
 
-	memory@70000000 {
-		reg = <0x00 0x70000000 0x00 0xc000000>;
+	memory@50000000 {
+		reg = <0x00 0x50000000 0x00 0xc000000>;
 		device_type = "memory";
 	};
 
@@ -381,8 +381,8 @@
 	};
 
 	chosen {
-		linux,initrd-end = <0x78736355>;
-		linux,initrd-start = <0x78000000>;
+		linux,initrd-end = <0x58736355>;
+		linux,initrd-start = <0x58000000>;
 		bootargs = "root=/dev/vda rootfstype=ext4 rw console=ttyAMA0";
 		stdout-path = "/pl011@9000000";
 		rng-seed = <0x2042ef85 0x7359a362 0xa80384fa 0x494effd2 0xd1e13e05 0xb6fae544 0xd3a19513 0x1cebc2c8>;

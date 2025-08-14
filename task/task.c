@@ -140,7 +140,7 @@ tcb_t *create_vm_task(entry_t task_func, uint64_t stack_top, uint32_t affinity)
 
     task->cpu_info->ctx.elr = (uint64_t)task_func; // elr_el2
     task->cpu_info->ctx.spsr = SPSR_VALUE;         // spsr_el2
-    task->cpu_info->ctx.r[0] = (0x70000000);
+    task->cpu_info->ctx.r[0] = (uint64_t)task_func - 0x200000;
     task->cpu_info->sys_reg->spsr_el1 = 0x30C50830;
 
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &task->cpu_info->ctx, sizeof(trap_frame_t));
