@@ -16,8 +16,8 @@
 // 下面三个变量仅仅在 alloc_tcb 和 free_tcb 使用
 tcb_t g_task_dec[MAX_TASKS];
 cpu_t g_cpu_dec[MAX_TASKS];
-static uint8_t 
-idle_task_stack[SMP_NUM][IDLE_STACK_SIZE] __attribute__((aligned(4096)));
+static uint8_t
+    idle_task_stack[SMP_NUM][IDLE_STACK_SIZE] __attribute__((aligned(4096)));
 
 extern void switch_context(tcb_t *, tcb_t *);
 extern void switch_context_el2(tcb_t *, tcb_t *);
@@ -36,7 +36,7 @@ void task_add_to_readylist_head(tcb_t *task);
 void task_set_wakeup(tcb_t *task);
 void task_set_sleep(tcb_t *task, uint64_t ticks);
 
-// 
+//
 tcb_t *alloc_tcb()
 {
     static uint32_t task_count = 1; // 这个数字会不停累加下去
@@ -126,7 +126,7 @@ tcb_t *create_task(entry_t task_func, uint64_t stack_top, uint32_t affinity)
     return task;
 }
 
-tcb_t *create_vm_task(entry_t task_func, uint64_t stack_top, uint32_t affinity)
+tcb_t *create_vm_task(entry_t task_func, uint64_t stack_top, uint32_t affinity, uint64_t dtb_addr)
 {
     tcb_t *task = alloc_tcb();
     if (task == NULL)
@@ -140,7 +140,7 @@ tcb_t *create_vm_task(entry_t task_func, uint64_t stack_top, uint32_t affinity)
 
     task->cpu_info->ctx.elr = (uint64_t)task_func; // elr_el2
     task->cpu_info->ctx.spsr = SPSR_VALUE;         // spsr_el2
-    task->cpu_info->ctx.r[0] = (uint64_t)task_func - 0x200000;
+    task->cpu_info->ctx.r[0] = dtb_addr;           // Linux 通过 x0 传递 DTB 地址
     task->cpu_info->sys_reg->spsr_el1 = 0x30C50830;
 
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &task->cpu_info->ctx, sizeof(trap_frame_t));
@@ -589,7 +589,7 @@ void task_set_sleep(tcb_t *task, uint64_t ticks)
 // 将任务从延时队列移除 - 从指定CPU的睡眠队列移除
 void task_set_wakeup_percpu(tcb_t *task, uint32_t core_id)
 {
-    list_node_t * node = list_delete(&task_manager.sleep_list[core_id], &task->run_node);
+    list_node_t *node = list_delete(&task_manager.sleep_list[core_id], &task->run_node);
     avatar_assert(node != NULL);
     task->state = TASK_STATE_READY;
 }

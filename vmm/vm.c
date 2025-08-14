@@ -23,8 +23,8 @@
 static struct _vm_t vms[VM_NUM_MAX];
 static uint32_t vm_num = 0;
 
-
-void fake_timer() {
+void fake_timer()
+{
     // logger("fake timer\n");
     vgic_hw_inject_test(TIMER_VECTOR);
 }
@@ -82,19 +82,25 @@ void load_guest_image(int32_t vm_id)
 
     // 加载 dtb：可选
     size = img->dtb_end - img->dtb_start;
-    if (size > 0) {
+    if (size > 0)
+    {
         memcpy((void *)guest_dtb_start, img->dtb_start, size);
         logger_info("VM%d: DTB loaded (%zu bytes)\n", vm_id, size);
-    } else {
+    }
+    else
+    {
         logger_warn("VM%d: No DTB, skipping\n", vm_id);
     }
 
     // 加载 fs：可选
     size = img->fs_end - img->fs_start;
-    if (size > 0) {
+    if (size > 0)
+    {
         memcpy((void *)guest_fs_start, img->fs_start, size);
         logger_info("VM%d: FS loaded (%zu bytes)\n", vm_id, size);
-    } else {
+    }
+    else
+    {
         logger_warn("VM%d: No FS, skipping\n", vm_id);
     }
 }
@@ -154,9 +160,29 @@ static void guest_trap_init(void)
 void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
 {
     int32_t vcpu_num = guest_configs[configured_vm_id].smp_num;
-    
+
     uint64_t entry_addr = guest_configs[configured_vm_id].bin_loadaddr;
-    
+
+    // 拷贝 guest name
+    const char *guest_name = guest_configs[configured_vm_id].name;
+    if (guest_name != NULL)
+    {
+        // 使用安全的字符串拷贝方式
+        size_t name_len = strlen(guest_name);
+        if (name_len >= VM_NAME_MAX)
+        {
+            name_len = VM_NAME_MAX - 1;
+        }
+        memcpy(vm->vm_name, guest_name, name_len);
+        vm->vm_name[name_len] = '\0'; // 确保字符串以 null 结尾
+        logger_info("VM%d: Name set to '%s'\n", vm->vm_id, vm->vm_name);
+    }
+    else
+    {
+        my_snprintf(vm->vm_name, VM_NAME_MAX, "VM%d", vm->vm_id); // 默认名称
+        logger_warn("VM%d: No name configured, using default '%s'\n", vm->vm_id, vm->vm_name);
+    }
+
     //(1) 设置hcr
     guest_trap_init();
 
@@ -174,7 +200,9 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
         logger_error("Failed to allocate stack for primary vcpu \n");
         return;
     }
-    tcb_t *task = create_vm_task((void *)entry_addr, (uint64_t)stack + VM_STACK_SIZE, PRIMARY_VCPU_PCPU_MASK);
+    uint64_t dtb_addr = guest_configs[configured_vm_id].dtb_loadaddr;
+    tcb_t *task = create_vm_task((void *)entry_addr, (uint64_t)stack + VM_STACK_SIZE,
+                                 PRIMARY_VCPU_PCPU_MASK, dtb_addr);
     if (task == NULL)
     {
         logger_error("Failed to create vcpu task\n");
@@ -194,7 +222,8 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
             logger_error("Failed to allocate stack for vcpu %d\n", i);
             return;
         }
-        tcb_t *task = create_vm_task(test_guest, (uint64_t)stack + VM_STACK_SIZE, SECONDARY_VCPU_PCPU_MASK);
+        tcb_t *task = create_vm_task(test_guest, (uint64_t)stack + VM_STACK_SIZE,
+                                     SECONDARY_VCPU_PCPU_MASK, 0);
         if (task == NULL)
         {
             logger_error("Failed to create vcpu task %d\n", i);
@@ -231,8 +260,9 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
 
     // 初始化虚拟 GIC
     vm->vgic->vm = vm;
-    for (int32_t i=0; i<vm->vcpu_cnt; i++) {
-        vgic_core_state_t * state = alloc_gicc();
+    for (int32_t i = 0; i < vm->vcpu_cnt; i++)
+    {
+        vgic_core_state_t *state = alloc_gicc();
 
         state->id = i;
         state->vmcr = mmio_read32((void *)GICH_VMCR);
@@ -244,30 +274,37 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
 
         vm->vgic->core_state[i] = state;
     }
-    
-    for (int32_t i=0; i<vm->vcpu_cnt; i++) 
+
+    for (int32_t i = 0; i < vm->vcpu_cnt; i++)
         vgicc_dump(vm->vgic->core_state[i]);
 
     // 初始化虚拟定时器
-    vm->vtimer->vm = vm;  // 建立双向关联
+    vm->vtimer->vm = vm; // 建立双向关联
     vm->vtimer->vcpu_cnt = vm->vcpu_cnt;
-    for (int32_t i = 0; i < vm->vcpu_cnt; i++) {
+    for (int32_t i = 0; i < vm->vcpu_cnt; i++)
+    {
         vtimer_core_state_t *vtimer_state = alloc_vtimer_core_state(i);
-        if (vtimer_state) {
-            vm->vtimer->core_state[i] = vtimer_state;  // 类似 vgic 的方式
+        if (vtimer_state)
+        {
+            vm->vtimer->core_state[i] = vtimer_state; // 类似 vgic 的方式
             logger_info("Allocated vtimer core state for vCPU %d\n", i);
-        } else {
+        }
+        else
+        {
             logger_error("Failed to allocate vtimer core state for vCPU %d\n", i);
         }
     }
 
     // 初始化虚拟串口
-    vm->vpl011->vm = vm;  // 建立双向关联
+    vm->vpl011->vm = vm; // 建立双向关联
     vpl011_state_t *vpl011_state = alloc_vpl011_state();
-    if (vpl011_state) {
+    if (vpl011_state)
+    {
         vm->vpl011->state = vpl011_state;
         logger_info("Allocated vpl011 state for VM %d\n", vm->vm_id);
-    } else {
+    }
+    else
+    {
         logger_error("Failed to allocate vpl011 state for VM %d\n", vm->vm_id);
     }
 

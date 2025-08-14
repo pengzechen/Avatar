@@ -149,7 +149,8 @@ tcb_t *create_task(
 tcb_t *create_vm_task(
     entry_t task_func,
     uint64_t stack_top,
-    uint32_t);
+    uint32_t affinity,
+    uint64_t dtb_addr);
 
 void reset_task(tcb_t *task, entry_t task_func, uint64_t stack_top, uint32_t affinity);
 
