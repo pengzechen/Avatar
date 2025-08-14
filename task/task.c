@@ -86,7 +86,7 @@ void free_tcb(tcb_t *task)
     memset(task, 0, sizeof(tcb_t));
 }
 
-tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
+tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t affinity)
 {
     tcb_t *task = alloc_tcb();
     if (task == NULL)
@@ -95,7 +95,7 @@ tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
         return NULL; // 如果没有空闲的 TCB，返回 NULL
     }
     task->counter = SYS_TASK_TICK;
-    task->priority = priority;
+    task->affinity = affinity;
     list_insert_last(&task_manager.task_list, &task->all_node);
 
     task->cpu_info->ctx.elr = (uint64_t)task_func; // elr_el1
@@ -112,7 +112,7 @@ tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
     return task;
 }
 
-tcb_t *create_vm_task(void (*task_func)(), uint64_t stack_top, uint32_t priority)
+tcb_t *create_vm_task(void (*task_func)(), uint64_t stack_top, uint32_t affinity)
 {
     tcb_t *task = alloc_tcb();
     if (task == NULL)
@@ -121,7 +121,7 @@ tcb_t *create_vm_task(void (*task_func)(), uint64_t stack_top, uint32_t priority
         return NULL; // 如果没有空闲的 TCB，返回 NULL
     }
     task->counter = SYS_TASK_TICK;
-    task->priority = priority;
+    task->affinity = affinity;
     list_insert_last(&task_manager.task_list, &task->all_node);
 
     task->cpu_info->ctx.elr = (uint64_t)task_func; // elr_el2
@@ -137,10 +137,10 @@ tcb_t *create_vm_task(void (*task_func)(), uint64_t stack_top, uint32_t priority
     return task;
 }
 
-void reset_task(tcb_t *task, void (*task_func)(), uint64_t stack_top, uint32_t priority)
+void reset_task(tcb_t *task, void (*task_func)(), uint64_t stack_top, uint32_t affinity)
 {
     task->counter = SYS_TASK_TICK;
-    task->priority = priority;
+    task->affinity = affinity;
 
     task->cpu_info->ctx.elr = (uint64_t)task_func; // elr_el1
     task->cpu_info->ctx.spsr = SPSR_EL0_EL0t;      // spsr_el1
@@ -186,7 +186,7 @@ void print_current_task_list()
     {
         list_node_t *next = list_node_next(curr);
         tcb_t *task = list_node_parent(curr, tcb_t, all_node);
-        logger("id: %llx, elr: 0x%llx, priority: %d, state: %d\n", task->task_id, task->cpu_info->ctx.elr, task->priority, task->state);
+        logger("id: %llx, elr: 0x%llx, affinity: %d, state: %d\n", task->task_id, task->cpu_info->ctx.elr, task->affinity, task->state);
         curr = next;
     }
     logger("\n");
@@ -268,11 +268,11 @@ void timer_tick_schedule(uint64_t *sp)
         {
             // logger_task_debug("task %d sleep time arrive\n", task->task_id);
             task_set_wakeup(task);
-            task_add_to_readylist_head_remote(task, task->priority - 1); // 此时 task 状态会设置为 READY
+            task_add_to_readylist_head_remote(task, task->affinity - 1); // 此时 task 状态会设置为 READY
             task->counter = SYS_TASK_TICK;
             dsb(sy);
             // TODO: 这里还有问题，实际上应该调这个函数
-            gic_ipi_send_single(IPI_SCHED, task->priority - 1);
+            gic_ipi_send_single(IPI_SCHED, task->affinity - 1);
         }
         curr = next;
     }

@@ -61,7 +61,7 @@ typedef struct _tcb_t
     uint64_t sp;    // 栈地址
 
     task_state_t state;
-    uint32_t priority;
+    uint32_t affinity;
 
     int32_t task_id; // 任务ID
     int32_t counter;
@@ -117,14 +117,14 @@ static inline void flush(void)
     __asm__ volatile("isb");
 }
 
-static inline uint32_t can_run_on_core(uint32_t priority, uint32_t coreid)
+static inline uint32_t can_run_on_core(uint32_t affinity, uint32_t coreid)
 {
     if (coreid >= 32)
     {
         // 超出范围，priority 只有32位
         return false;
     }
-    return (priority & (1U << coreid)) != 0;
+    return (affinity & (1U << coreid)) != 0;
 }
 
 tcb_t *alloc_tcb();
@@ -140,7 +140,7 @@ tcb_t *create_vm_task(
     uint64_t stack_top,
     uint32_t);
 
-void reset_task(tcb_t *task, void (*task_func)(), uint64_t stack_top, uint32_t priority);
+void reset_task(tcb_t *task, void (*task_func)(), uint64_t stack_top, uint32_t affinity);
 
 void schedule_init();
 void task_manager_init(void);

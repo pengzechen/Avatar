@@ -54,8 +54,8 @@ void mutex_lock(mutex_t *m)
 
     spin_unlock(&m->lock);
 
-    // logger("core: %d, mutex locked by other task, current task (id: %d, priority: %d) yield!\n",
-    //     get_current_cpu_id(), curr->task_id, curr->priority);
+    // logger("core: %d, mutex locked by other task, current task (id: %d, affinity: %d) yield!\n",
+    //     get_current_cpu_id(), curr->task_id, curr->affinity);
 
     // 调度其他线程
     schedule();
@@ -94,18 +94,18 @@ void mutex_unlock(mutex_t *m)
     WRITE_ONCE(m->locked_count, 1);
     WRITE_ONCE(m->owner, task);
 
-    task_add_to_readylist_head_remote(task, task->priority - 1);
+    task_add_to_readylist_head_remote(task, task->affinity - 1);
     dsb(sy);
 
-    if (task->priority - 1 == get_current_cpu_id())
+    if (task->affinity - 1 == get_current_cpu_id())
         local_sched = true;
     else
-        target = task->priority - 1;
+        target = task->affinity - 1;
 
     spin_unlock(&m->lock);
 
-    // logger("core: %d, task %d unlock mutex for task %d (priority: %d)\n",
-    //     get_current_cpu_id(), curr->task_id, task->task_id, task->priority);
+    // logger("core: %d, task %d unlock mutex for task %d (affinity: %d)\n",
+    //     get_current_cpu_id(), curr->task_id, task->task_id, task->affinity);
 
     if (local_sched)
     {

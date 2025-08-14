@@ -169,11 +169,11 @@ void prepare_vm(process_t **process, void *elf_addr)
     memory_create_map(pro->pg_base, (uint64_t)pro->entry + 0x3000, virt_to_phys(pro->el0_stack), 1, 0);
 }
 
-void process_init(process_t *pro, void *elf_addr, uint32_t priority)
+void process_init(process_t *pro, void *elf_addr, uint32_t affinity)
 {
     prepare_vm(&pro, elf_addr);
 
-    tcb_t *main_thread = create_task((void (*)())(void *)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE * 2, priority);
+    tcb_t *main_thread = create_task((void (*)())(void *)pro->entry, (uint64_t)pro->el1_stack + PAGE_SIZE * 2, affinity);
 
     main_thread->pgdir = (uint64_t)pro->pg_base;
     main_thread->curr_pro = pro;
@@ -190,7 +190,7 @@ void run_process(process_t *pro)
     {
         tcb_t *task = list_node_parent(iter, tcb_t, process_node);
         logger("run processs: task: 0x%x\n", task);
-        task_add_to_readylist_tail_remote(task, task->priority - 1);
+        task_add_to_readylist_tail_remote(task, task->affinity - 1);
         // task_add_to_readylist_tail(task);
         iter = list_node_next(iter);
     }
@@ -284,7 +284,7 @@ int32_t pro_fork(void)
     // 分配任务结构
     tcb_t *child_task = alloc_tcb();
     child_task->counter = SYS_TASK_TICK;
-    child_task->priority = curr->priority;
+    child_task->affinity = curr->affinity;
     list_insert_last(&get_task_manager()->task_list, &child_task->all_node);
 
     memcpy((void *)(stack_top - sizeof(trap_frame_t)), &curr->cpu_info->ctx, sizeof(trap_frame_t));

@@ -512,7 +512,7 @@ void v_timer_tick(uint64_t now)
             if (!task) continue;
 
             // Only process vCPUs bound to the current pCPU
-            if (task->priority - 1 != get_current_cpu_id()) {
+            if (task->affinity - 1 != get_current_cpu_id()) {
                 continue;
             }
 
