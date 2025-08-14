@@ -22,7 +22,8 @@ __guest_fs_end_0:
 
 /* VM 1 BIN（强定义，必须存在） */
 .section .data.guest_bin.1
-    .incbin "../guest/testos/build/guest1_kernel.bin"
+    // .incbin "../guest/testos/build/guest1_kernel.bin"
+    .incbin "../guest/nimbos/kernel/target/aarch64/debug/nimbos.bin"
 
 /* VM 1 DTB（弱定义，可选） */
 .section .data.guest_dtb.1, "a"
