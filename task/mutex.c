@@ -113,7 +113,7 @@ void mutex_unlock(mutex_t *m)
     }
     else
     {
-        // gic_ipi_send_single(IPI_SCHED, target);
+        gic_ipi_send_single(IPI_SCHED, target);
         // logger("core: %d, send IPI to core: %d\n", get_current_cpu_id(), target);
     }
 }

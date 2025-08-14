@@ -16,6 +16,8 @@
 // 下面三个变量仅仅在 alloc_tcb 和 free_tcb 使用
 tcb_t g_task_dec[MAX_TASKS];
 cpu_t g_cpu_dec[MAX_TASKS];
+static uint8_t 
+idle_task_stack[SMP_NUM][IDLE_STACK_SIZE] __attribute__((aligned(4096)));
 
 extern void switch_context(tcb_t *, tcb_t *);
 extern void switch_context_el2(tcb_t *, tcb_t *);
@@ -34,6 +36,7 @@ void task_add_to_readylist_head(tcb_t *task);
 void task_set_wakeup(tcb_t *task);
 void task_set_sleep(tcb_t *task, uint64_t ticks);
 
+// 
 tcb_t *alloc_tcb()
 {
     static uint32_t task_count = 1; // 这个数字会不停累加下去
@@ -163,7 +166,7 @@ void schedule_init_local(tcb_t *task, void *new_sp)
 {
     irq_install(IPI_SCHED, schedule);
     gic_enable_int(IPI_SCHED, 1);
-    gic_set_ipriority(IPI_SCHED, 0x0);  // 最高优先级
+    gic_set_ipriority(IPI_SCHED, 0x0); // 最高优先级
 
     if (get_el() == 2)
     {
@@ -192,6 +195,48 @@ void print_current_task_list()
     logger("\n");
 }
 
+// 获取下一将要运行的任务 (第一个 ready 节点)
+// 从就绪队列中移除该任务
+static tcb_t *task_next_run(void)
+{
+    uint64_t core_id = get_current_cpu_id();
+    tcb_t *task_torun = NULL;
+
+    spin_lock(&task_manager.ready_lock[core_id]);
+    list_node_t *iter = list_first(&task_manager.ready_list[core_id]);
+    while (iter)
+    {
+        tcb_t *task = list_node_parent(iter, tcb_t, run_node);
+        if (task->state == TASK_STATE_READY)
+        {
+            task_torun = task;
+            // 在锁内直接移除，避免竞态条件
+            if (task != &task_manager.idle_task[core_id])
+            {
+                list_node_t *node = list_delete(&task_manager.ready_list[core_id], &task->run_node);
+                avatar_assert(node != NULL);
+            }
+            break;
+        }
+        else
+        {
+            logger_error("task %d state is not ready, state: %d\n", task->task_id, task->state);
+        }
+        iter = list_node_next(iter);
+    }
+    spin_unlock(&task_manager.ready_lock[core_id]);
+
+    if (task_torun != NULL)
+    {
+        return task_torun;
+    }
+    else
+    {
+        return &task_manager.idle_task[core_id];
+    }
+}
+
+// 将当前任务切换为 task_net_run
 void schedule()
 {
     tcb_t *curr = NULL;
@@ -209,15 +254,15 @@ void schedule()
         int offset = 0;
 
         offset += my_snprintf(buffer + offset, sizeof(buffer) - offset,
-                             "[warning]: core: %d, n = c task 0x%llx, id: %d. readylist: ",
-                             get_current_cpu_id(), curr, curr->task_id);
+                              "[warning]: core: %d, n = c task 0x%llx, id: %d. readylist: ",
+                              get_current_cpu_id(), curr, curr->task_id);
 
         list_node_t *iter = list_first(&task_manager.ready_list[core_id]);
         while (iter && offset < sizeof(buffer) - 50) // 保留足够空间
         {
             tcb_t *task = list_node_parent(iter, tcb_t, run_node);
             offset += my_snprintf(buffer + offset, sizeof(buffer) - offset,
-                                 "(id :%d, state: %d), ", task->task_id, task->state);
+                                  "(id :%d, state: %d), ", task->task_id, task->state);
             iter = list_node_next(iter);
         }
 
@@ -226,7 +271,7 @@ void schedule()
     }
 
     logger_task_debug("core %d switch prev_task %d to next_task %d\n",
-        get_current_cpu_id(), prev_task->task_id, next_task->task_id);
+                      get_current_cpu_id(), prev_task->task_id, next_task->task_id);
 
     // logger("next_task page dir: 0x%llx\n", next_task->pgdir);
     next_task->state = TASK_STATE_RUNNING;
@@ -248,6 +293,7 @@ void schedule()
     }
 }
 
+// 查看延时队列和counter
 void timer_tick_schedule(uint64_t *sp)
 {
     tcb_t *curr_task = NULL;
@@ -264,7 +310,7 @@ void timer_tick_schedule(uint64_t *sp)
         list_node_t *next = list_node_next(curr);
 
         tcb_t *task = list_node_parent(curr, tcb_t, run_node);
-        if (--task->sleep_ticks == 0)
+        if (--task->sleep_ticks <= 0)
         {
             // logger_task_debug("task %d sleep time arrive\n", task->task_id);
             task_set_wakeup(task);
@@ -297,8 +343,8 @@ void vm_in()
     tcb_t *curr = (tcb_t *)read_tpidr_el2();
     extern void restore_sysregs(cpu_sysregs_t *);
     extern void gicc_restore_core_state();
-    extern void vgic_try_inject_pending(tcb_t *task);
-    extern void vtimer_core_restore(tcb_t *task);
+    extern void vgic_try_inject_pending(tcb_t * task);
+    extern void vtimer_core_restore(tcb_t * task);
 
     // 先修改内存中的值
     if (!curr->curr_vm)
@@ -320,10 +366,10 @@ void vm_out()
     tcb_t *curr = (tcb_t *)read_tpidr_el2();
     extern void save_sysregs(cpu_sysregs_t *);
     extern void gicc_save_core_state();
-    extern void vtimer_core_save(tcb_t *task);
+    extern void vtimer_core_save(tcb_t * task);
     if (!curr->curr_vm)
         return;
-        
+
     save_sysregs(curr->cpu_info->sys_reg);
 
     // 保存虚拟定时器状态
@@ -332,6 +378,7 @@ void vm_out()
     gicc_save_core_state();
 }
 
+// 保存栈上的内容到task cpu中
 void save_cpu_ctx(trap_frame_t *sp)
 {
     tcb_t *curr = NULL;
@@ -348,15 +395,7 @@ void save_cpu_ctx(trap_frame_t *sp)
     curr->cpu_info->pctx = sp;
 }
 
-// 这个函数会直接改变 trap frame 里面的内容
-void switch_context_el(tcb_t *old, tcb_t *new, uint64_t *sp)
-{
-    memcpy(sp, &new->cpu_info->ctx, sizeof(trap_frame_t)); // 恢复下一个任务的cpu ctx
-}
-
 // ================= 任务管理 =================
-
-static uint8_t idle_task_stack[SMP_NUM][IDLE_STACK_SIZE] __attribute__((aligned(4096)));
 
 void idle_task_el1()
 {
@@ -389,7 +428,7 @@ void el1_idle_init()
     idel->counter = -1;
     idel->cpu_info = &task_manager.idle_cpu[core_id];
     idel->cpu_info->ctx.elr = (uint64_t)idle_task_el1; // elr_el1
-    idel->cpu_info->ctx.spsr = SPSR_EL1_EL1h;        // spsr_el1
+    idel->cpu_info->ctx.spsr = SPSR_EL1_EL1h;          // spsr_el1
     idel->cpu_info->ctx.usp = 0;
     idel->pgdir = get_kpgdir(); // pgdir
 
@@ -409,7 +448,7 @@ void el2_idle_init()
     idel->counter = -1;
     idel->cpu_info = &task_manager.idle_cpu[core_id];
     idel->cpu_info->ctx.elr = (uint64_t)idle_task_el1; // elr_el2
-    idel->cpu_info->ctx.spsr = SPSR_EL2_EL2h;        // spsr_el2
+    idel->cpu_info->ctx.spsr = SPSR_EL2_EL2h;          // spsr_el2
     idel->cpu_info->ctx.usp = 0;
     idel->pgdir = get_kpgdir(); // pgdir
 
@@ -441,6 +480,8 @@ task_manager_t *get_task_manager()
     return &task_manager;
 }
 
+// ============ 就绪队列相关操作 ============
+
 void task_add_to_readylist_tail_remote(tcb_t *task, uint32_t core_id)
 {
     if (core_id >= SMP_NUM)
@@ -466,8 +507,6 @@ void task_add_to_readylist_head_remote(tcb_t *task, uint32_t core_id)
         spin_unlock(&task_manager.ready_lock[core_id]);
     }
 }
-
-// ============ 就绪队列相关操作 ============
 
 // 将任务插入就绪队列 (后插),设置为就绪状态
 void task_add_to_readylist_tail(tcb_t *task)
@@ -501,48 +540,25 @@ void task_add_to_readylist_head(tcb_t *task)
 void task_remove_from_readylist(tcb_t *task)
 {
     uint64_t core_id = get_current_cpu_id();
+    task_remove_from_readylist_remote(task, core_id);
+}
+
+// 从指定核心的就绪队列移除任务
+void task_remove_from_readylist_remote(tcb_t *task, uint32_t core_id)
+{
+    if (core_id >= SMP_NUM)
+    {
+        logger_error("error: wrong core id %d\n", core_id);
+        return;
+    }
+
     if (task != &task_manager.idle_task[core_id])
     {
         spin_lock(&task_manager.ready_lock[core_id]);
-        list_node_t * node = list_delete(&task_manager.ready_list[core_id], &task->run_node);
+        list_node_t *node = list_delete(&task_manager.ready_list[core_id], &task->run_node);
         avatar_assert(node != NULL);
         spin_unlock(&task_manager.ready_lock[core_id]);
     }
-}
-
-// 获取下一将要运行的任务 (第一个 ready 节点)
-// 并且把它放回就绪队列的尾部
-static tcb_t *task_next_run(void)
-{
-    uint64_t core_id = get_current_cpu_id();
-
-    tcb_t *task_torun = NULL;
-
-    spin_lock(&task_manager.ready_lock[core_id]);
-    list_node_t *iter = list_first(&task_manager.ready_list[core_id]);
-    while (iter)
-    {
-        tcb_t *task = list_node_parent(iter, tcb_t, run_node);
-        if (task->state == TASK_STATE_READY)
-        {
-            task_torun = task;
-            break;
-        }
-        else
-        {
-            logger_error("task %d state is not ready, state: %d\n", task->task_id, task->state);
-        }
-        iter = list_node_next(iter);
-    }
-    // logger_task_debug("core %d, no task in ready list, return idle\n", core_id);
-    spin_unlock(&task_manager.ready_lock[core_id]);
-
-    if (task_torun != NULL) {
-        task_remove_from_readylist(task_torun);
-        return task_torun;
-    }
-    else
-    return &task_manager.idle_task[core_id];
 }
 
 // ============ 延时队列相关操作 ============
@@ -616,7 +632,7 @@ void task_wait_for_irq(void)
     else
         curr_task = (tcb_t *)(void *)read_tpidr_el0();
     curr_task->state = TASK_STATE_WAIT_IRQ;
-    schedule();  // 调度出去
+    schedule(); // 调度出去
 
     // 唤醒点类似这样
     /*

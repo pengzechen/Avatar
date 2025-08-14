@@ -153,6 +153,7 @@ void task_add_to_readylist_tail_remote(tcb_t *task, uint32_t core_id);
 void task_add_to_readylist_head_remote(tcb_t *task, uint32_t core_id);
 
 void task_remove_from_readylist(tcb_t *task);
+void task_remove_from_readylist_remote(tcb_t *task, uint32_t core_id);
 void schedule();
 
 tcb_t *get_idle();
