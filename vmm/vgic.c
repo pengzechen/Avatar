@@ -209,7 +209,7 @@ void vgicd_read(stage2_fault_info_t *info, trap_frame_t *el2_ctx, void *paddr)
 // handle gicd emu
 void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 {
-    tcb_t *curr = (tcb_t *)read_tpidr_el2();
+    tcb_t *curr = curr_task_el2();
     struct _vm_t *vm = curr->curr_vm;
     vgic_t *vgic = vm->vgic;
 
@@ -488,7 +488,7 @@ void intc_handler(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
                 uint8_t target_list_filter = (sgir_val >> 24) & 0x3;
                 uint8_t cpu_target_list = (sgir_val >> 16) & 0xFF;
 
-                tcb_t *curr = (tcb_t *)read_tpidr_el2();
+                tcb_t *curr = curr_task_el2();
                 struct _vm_t *vm = curr->curr_vm;
 
                 uint32_t curr_id = get_vcpuid(curr);
@@ -771,7 +771,7 @@ list_t *get_vcpus(tcb_t *task)
     struct _vm_t *vm = NULL;
     if (!task)
     {
-        tcb_t *task = (tcb_t *)read_tpidr_el2();
+        task = curr_task_el2();
     }
     vm = task->curr_vm;
     return &vm->vcpus;
@@ -781,7 +781,7 @@ int32_t get_vcpuid(tcb_t *task)
 {
     if (!task)
     {
-        tcb_t *task = (tcb_t *)read_tpidr_el2();
+        task = curr_task_el2();
     }
     return (task->cpu_info->sys_reg->mpidr_el1 & 0xff);
 }
@@ -790,7 +790,7 @@ vgic_core_state_t *get_vgicc_by_vcpu(tcb_t *task)
 {
     if (!task)
     {
-        tcb_t *task = (tcb_t *)read_tpidr_el2();
+        task = curr_task_el2();
     }
     struct _vm_t *vm = task->curr_vm;
     vgic_t *vgic = vm->vgic;
@@ -965,7 +965,7 @@ static void vgicc_dump_if_changed(vgic_core_state_t *state, uint32_t vcpu_id, ui
 // 检查虚拟中断注入的完整状态
 void vgic_check_injection_status(void)
 {
-    tcb_t *curr = (tcb_t *)read_tpidr_el2();
+    tcb_t *curr = curr_task_el2();
 
     logger_info("====== VGIC Injection Status Check ======\n");
 
@@ -1056,7 +1056,7 @@ void vgic_inject_sgi(tcb_t *task, int32_t int_id)
                 int_id, get_vcpuid(task), task->task_id, get_current_cpu_id());
 
     // 如果当前正在运行此 vCPU，尝试立即注入
-    if (task == (tcb_t *)read_tpidr_el2())
+    if (task == curr_task_el2())
     {
         logger_vgic_debug("Try inject pending SGI for running vCPU %d (task %d)\n",
                           get_vcpuid(task), task->task_id);
@@ -1118,7 +1118,7 @@ void vgic_inject_ppi(tcb_t *task, int32_t irq_id)
                       irq_id, get_vcpuid(task), task->task_id, get_current_cpu_id());
 
     // 如果当前正在运行此 vCPU，尝试立即注入到 GICH_LR
-    if (task == (tcb_t *)read_tpidr_el2())
+    if (task == curr_task_el2())
     {
         logger_vgic_debug("Try inject pending PPI for running vCPU %d (task %d)\n",
                           get_vcpuid(task), task->task_id);
@@ -1175,7 +1175,7 @@ void vgic_inject_spi(tcb_t *task, int32_t irq_id)
                       irq_id, get_vcpuid(task), task->task_id, get_current_cpu_id());
 
     // 如果当前正在运行此 vCPU，尝试立即注入到 GICH_LR
-    if (task == (tcb_t *)read_tpidr_el2())
+    if (task == curr_task_el2())
     {
         logger_vgic_debug("Try inject pending SPI for running vCPU %d (task %d)\n",
                           get_vcpuid(task), task->task_id);
@@ -1324,7 +1324,7 @@ void vgic_try_inject_pending(tcb_t *task)
 // --------------------------------------------------------
 void gicc_save_core_state()
 {
-    tcb_t *curr = (tcb_t *)read_tpidr_el2();
+    tcb_t *curr = curr_task_el2();
     if (!curr->curr_vm)
         return;
     vgic_core_state_t *state = get_vgicc_by_vcpu(curr);
@@ -1340,7 +1340,7 @@ void gicc_save_core_state()
 
 void gicc_restore_core_state()
 {
-    tcb_t *curr = (tcb_t *)read_tpidr_el2();
+    tcb_t *curr = curr_task_el2();
     if (!curr->curr_vm)
         return;
     vgic_core_state_t *state = get_vgicc_by_vcpu(curr);
@@ -1364,7 +1364,7 @@ void vgic_passthrough_irq(int32_t irq_id)
 {
     // find vms and vcpus need to inject 
     // todo
-    tcb_t * task = (tcb_t *)read_tpidr_el2();
+    tcb_t * task = curr_task_el2();
     vgic_inject_spi(task, irq_id);
 }
 
@@ -1375,7 +1375,7 @@ void vgic_hw_inject_test(uint32_t vector)
     logger_info("vgic inject vector: %d\n", vector);
 
     // 检查当前是否有运行的虚拟机
-    tcb_t *curr = (tcb_t *)read_tpidr_el2();
+    tcb_t *curr = curr_task_el2();
     if (!curr || !curr->curr_vm)
     {
         logger_warn("No current VM for interrupt injection\n");
@@ -1437,7 +1437,7 @@ void vgic_sw_inject_test(uint32_t vector)
     logger_info("vgic inject vector: %d\n", vector);
 
     // 检查当前是否有运行的虚拟机
-    tcb_t *curr = (tcb_t *)read_tpidr_el2();
+    tcb_t *curr = curr_task_el2();
     if (!curr || !curr->curr_vm)
     {
         logger_warn("No current VM for interrupt injection\n");

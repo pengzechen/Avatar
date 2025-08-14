@@ -12,6 +12,14 @@
 
 #define IPI_SCHED  2
 
+// 任务入口函数类型定义
+typedef void (*entry_t)(void);
+
+// 获取当前任务的宏定义
+#define curr_task_el1()  ((tcb_t *)(void *)read_tpidr_el0())
+#define curr_task_el2()  ((tcb_t *)(void *)read_tpidr_el2())
+#define curr_task()      (get_el() == 2 ? curr_task_el2() : curr_task_el1())
+
 #pragma pack(1)
 typedef struct _contex_t
 {
@@ -88,14 +96,17 @@ typedef struct _tcb_t
 typedef struct _task_manager_t
 {
 
+    list_t task_list;           // 所有已创建任务的队列
+
     list_t ready_list[SMP_NUM]; // 就绪队列
     spinlock_t ready_lock[SMP_NUM];
-    list_t task_list;           // 所有已创建任务的队列
-    list_t sleep_list;          // 延时队列
+    
+    list_t sleep_list[SMP_NUM]; // 延时队列 - 改为per-CPU
+    spinlock_t sleep_lock[SMP_NUM]; // 每个CPU的睡眠队列锁
 
     tcb_t idle_task[SMP_NUM]; // 空闲任务
     cpu_t idle_cpu[SMP_NUM];
-    spinlock_t lock;
+    spinlock_t lock; // 全局锁，用于task_list等全局资源
 
 } task_manager_t;
 
@@ -131,16 +142,16 @@ tcb_t *alloc_tcb();
 
 // @param: task_func: el0 任务真正的入口, sp: el0 任务的内核栈
 tcb_t *create_task(
-    void (*task_func)(), // el0 任务真正的入口
+    entry_t task_func,   // el0 任务真正的入口
     uint64_t,            // el0 任务的内核栈
     uint32_t);
 
 tcb_t *create_vm_task(
-    void (*task_func)(),
+    entry_t task_func,
     uint64_t stack_top,
     uint32_t);
 
-void reset_task(tcb_t *task, void (*task_func)(), uint64_t stack_top, uint32_t affinity);
+void reset_task(tcb_t *task, entry_t task_func, uint64_t stack_top, uint32_t affinity);
 
 void schedule_init();
 void task_manager_init(void);
@@ -155,6 +166,11 @@ void task_add_to_readylist_head_remote(tcb_t *task, uint32_t core_id);
 void task_remove_from_readylist(tcb_t *task);
 void task_remove_from_readylist_remote(tcb_t *task, uint32_t core_id);
 void schedule();
+
+// 睡眠队列相关函数
+void task_set_sleep(tcb_t *task, uint64_t ticks);
+void task_set_wakeup(tcb_t *task);
+void task_set_wakeup_percpu(tcb_t *task, uint32_t core_id);
 
 tcb_t *get_idle();
 void el1_idle_init(); // 初始化空闲任务

@@ -78,18 +78,29 @@ void free_tcb(tcb_t *task)
 
     // 每个核删除自己的节点
     uint32_t core_id = get_current_cpu_id();
-    spin_lock(&task_manager.lock);
+
+    // 从就绪队列移除
+    spin_lock(&task_manager.ready_lock[core_id]);
     list_delete(&task_manager.ready_list[core_id], &task->run_node);
+    spin_unlock(&task_manager.ready_lock[core_id]);
+
+    // 从睡眠队列移除（需要检查所有CPU的睡眠队列）
+    for (uint32_t i = 0; i < SMP_NUM; i++)
+    {
+        spin_lock(&task_manager.sleep_lock[i]);
+        list_delete(&task_manager.sleep_list[i], &task->run_node);
+        spin_unlock(&task_manager.sleep_lock[i]);
+    }
 
     // 从任务管理的任务列表中移除任务
+    spin_lock(&task_manager.lock);
     list_delete(&task_manager.task_list, &task->all_node);
-    list_delete(&task_manager.sleep_list, &task->wait_node);
     spin_unlock(&task_manager.lock);
 
     memset(task, 0, sizeof(tcb_t));
 }
 
-tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t affinity)
+tcb_t *create_task(entry_t task_func, uint64_t stack_top, uint32_t affinity)
 {
     tcb_t *task = alloc_tcb();
     if (task == NULL)
@@ -115,7 +126,7 @@ tcb_t *create_task(void (*task_func)(), uint64_t stack_top, uint32_t affinity)
     return task;
 }
 
-tcb_t *create_vm_task(void (*task_func)(), uint64_t stack_top, uint32_t affinity)
+tcb_t *create_vm_task(entry_t task_func, uint64_t stack_top, uint32_t affinity)
 {
     tcb_t *task = alloc_tcb();
     if (task == NULL)
@@ -140,7 +151,7 @@ tcb_t *create_vm_task(void (*task_func)(), uint64_t stack_top, uint32_t affinity
     return task;
 }
 
-void reset_task(tcb_t *task, void (*task_func)(), uint64_t stack_top, uint32_t affinity)
+void reset_task(tcb_t *task, entry_t task_func, uint64_t stack_top, uint32_t affinity)
 {
     task->counter = SYS_TASK_TICK;
     task->affinity = affinity;
@@ -239,11 +250,7 @@ static tcb_t *task_next_run(void)
 // 将当前任务切换为 task_net_run
 void schedule()
 {
-    tcb_t *curr = NULL;
-    if (get_el() == 2)
-        curr = (tcb_t *)(void *)read_tpidr_el2();
-    else
-        curr = (tcb_t *)(void *)read_tpidr_el0();
+    tcb_t *curr = curr_task();
 
     uint32_t core_id = get_current_cpu_id();
     tcb_t *next_task = task_next_run();
@@ -296,15 +303,15 @@ void schedule()
 // 查看延时队列和counter
 void timer_tick_schedule(uint64_t *sp)
 {
-    tcb_t *curr_task = NULL;
-    if (get_el() == 2)
-        curr_task = (tcb_t *)(void *)read_tpidr_el2();
-    else
-        curr_task = (tcb_t *)(void *)read_tpidr_el0();
+    tcb_t *curr_task = curr_task();
 
-    // 睡眠处理
-    spin_lock(&task_manager.lock);
-    list_node_t *curr = list_first(&task_manager.sleep_list);
+    // 睡眠处理 - 只处理当前CPU的睡眠队列
+    // 注意：在中断上下文中，当前CPU的中断已被禁用，且每个CPU只访问自己的睡眠队列
+    // 因此不需要加锁保护
+    uint32_t core_id = get_current_cpu_id();
+    bool has_wakeup = false; // 标记是否有任务被唤醒
+
+    list_node_t *curr = list_first(&task_manager.sleep_list[core_id]);
     while (curr)
     {
         list_node_t *next = list_node_next(curr);
@@ -313,25 +320,30 @@ void timer_tick_schedule(uint64_t *sp)
         if (--task->sleep_ticks <= 0)
         {
             // logger_task_debug("task %d sleep time arrive\n", task->task_id);
-            task_set_wakeup(task);
-            task_add_to_readylist_head_remote(task, task->affinity - 1); // 此时 task 状态会设置为 READY
+            task_set_wakeup(task); // 从当前CPU的睡眠队列移除
+            // 任务在当前CPU睡眠，唤醒后直接加入当前CPU的就绪队列头部（高优先级）
+            task_add_to_readylist_head(task);
             task->counter = SYS_TASK_TICK;
-            dsb(sy);
-            // TODO: 这里还有问题，实际上应该调这个函数
-            gic_ipi_send_single(IPI_SCHED, task->affinity - 1);
+            has_wakeup = true; // 有任务被唤醒
         }
         curr = next;
     }
-    spin_unlock(&task_manager.lock);
 
-    // 时间片耗尽
+    // 时间片处理
+    bool need_schedule = false;
     if (--curr_task->counter <= 0)
     {
         if (curr_task != get_idle())
         {
             curr_task->counter = SYS_TASK_TICK;
-            task_add_to_readylist_tail(curr_task); // 会设置状态为 READY
+            task_add_to_readylist_tail(curr_task); // 时间片耗尽，放到队尾
         }
+        need_schedule = true; // 时间片耗尽需要调度
+    }
+
+    // 调度决策：有任务唤醒或时间片耗尽都需要调度
+    if (has_wakeup || need_schedule)
+    {
         schedule();
     }
 }
@@ -340,7 +352,7 @@ void timer_tick_schedule(uint64_t *sp)
 // 这时候的 curr 已经是下一个任务了
 void vm_in()
 {
-    tcb_t *curr = (tcb_t *)read_tpidr_el2();
+    tcb_t *curr = curr_task_el2();
     extern void restore_sysregs(cpu_sysregs_t *);
     extern void gicc_restore_core_state();
     extern void vgic_try_inject_pending(tcb_t * task);
@@ -363,7 +375,7 @@ void vm_in()
 
 void vm_out()
 {
-    tcb_t *curr = (tcb_t *)read_tpidr_el2();
+    tcb_t *curr = curr_task_el2();
     extern void save_sysregs(cpu_sysregs_t *);
     extern void gicc_save_core_state();
     extern void vtimer_core_save(tcb_t * task);
@@ -381,15 +393,7 @@ void vm_out()
 // 保存栈上的内容到task cpu中
 void save_cpu_ctx(trap_frame_t *sp)
 {
-    tcb_t *curr = NULL;
-    if (get_el() == 2)
-    {
-        curr = (tcb_t *)read_tpidr_el2();
-    }
-    else
-    {
-        curr = (tcb_t *)(void *)read_tpidr_el0();
-    }
+    tcb_t *curr = curr_task();
 
     memcpy(&curr->cpu_info->ctx, sp, sizeof(trap_frame_t));
     curr->cpu_info->pctx = sp;
@@ -468,9 +472,11 @@ void task_manager_init(void)
     for (int32_t i = 0; i < SMP_NUM; i++)
     {
         list_init(&task_manager.ready_list[i]);
+        list_init(&task_manager.sleep_list[i]); // 初始化per-CPU睡眠队列
+        spinlock_init(&task_manager.ready_lock[i]);
+        spinlock_init(&task_manager.sleep_lock[i]); // 初始化per-CPU睡眠队列锁
     }
     list_init(&task_manager.task_list);
-    list_init(&task_manager.sleep_list);
 
     spinlock_init(&task_manager.lock);
 }
@@ -563,7 +569,7 @@ void task_remove_from_readylist_remote(tcb_t *task, uint32_t core_id)
 
 // ============ 延时队列相关操作 ============
 
-// 将任务加入延时队列
+// 将任务加入延时队列 - 加入到当前CPU的睡眠队列
 void task_set_sleep(tcb_t *task, uint64_t ticks)
 {
     if (ticks <= 0)
@@ -574,14 +580,27 @@ void task_set_sleep(tcb_t *task, uint64_t ticks)
     task->sleep_ticks = ticks;
     task->state = TASK_STATE_WAITING;
 
-    list_insert_last(&task_manager.sleep_list, &task->run_node);
+    uint32_t core_id = get_current_cpu_id();
+    spin_lock(&task_manager.sleep_lock[core_id]);
+    list_insert_last(&task_manager.sleep_list[core_id], &task->run_node);
+    spin_unlock(&task_manager.sleep_lock[core_id]);
 }
 
-// 将任务从延时队列移除
+// 将任务从延时队列移除 - 从指定CPU的睡眠队列移除
+void task_set_wakeup_percpu(tcb_t *task, uint32_t core_id)
+{
+    list_node_t * node = list_delete(&task_manager.sleep_list[core_id], &task->run_node);
+    avatar_assert(node != NULL);
+    task->state = TASK_STATE_READY;
+}
+
+// 将任务从延时队列移除 - 兼容性函数，从当前CPU的睡眠队列移除
 void task_set_wakeup(tcb_t *task)
 {
-    list_delete(&task_manager.sleep_list, &task->run_node);
-    task->state = TASK_STATE_READY;
+    uint32_t core_id = get_current_cpu_id();
+    spin_lock(&task_manager.sleep_lock[core_id]);
+    task_set_wakeup_percpu(task, core_id);
+    spin_unlock(&task_manager.sleep_lock[core_id]);
 }
 
 void sys_sleep_tick(uint64_t ms)
@@ -593,7 +612,7 @@ void sys_sleep_tick(uint64_t ms)
     }
 
     // 从就绪队列移除，加入睡眠队列
-    tcb_t *curr = (tcb_t *)(void *)read_tpidr_el0();
+    tcb_t *curr = curr_task_el1();
     task_set_sleep(curr, ms / 10);
     // logger_task_debug("sleep %d ms, tick: %d\n", ms, curr->sleep_ticks);
 
@@ -603,11 +622,7 @@ void sys_sleep_tick(uint64_t ms)
 
 void task_yield(void)
 {
-    tcb_t *curr_task;
-    if (get_el() == 2)
-        curr_task = (tcb_t *)(void *)read_tpidr_el2();
-    else
-        curr_task = (tcb_t *)(void *)read_tpidr_el0();
+    tcb_t *curr_task = curr_task();
 
     // idle 任务不需要让出 CPU（它本来就是在等别人用 CPU）
     if (curr_task == &task_manager.idle_task[get_current_cpu_id()])
@@ -626,11 +641,7 @@ void task_yield(void)
 // vwfi
 void task_wait_for_irq(void)
 {
-    tcb_t *curr_task;
-    if (get_el() == 2)
-        curr_task = (tcb_t *)(void *)read_tpidr_el2();
-    else
-        curr_task = (tcb_t *)(void *)read_tpidr_el0();
+    tcb_t *curr_task = curr_task();
     curr_task->state = TASK_STATE_WAIT_IRQ;
     schedule(); // 调度出去
 

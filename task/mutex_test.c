@@ -93,8 +93,8 @@ uint64_t mutex_test_minus(void)
 void mutex_test_print(void)
 {
     mutex_lock(&test_mutex);
-    logger("mutex_test_counter = %llu, current task: %d\n", 
-           mutex_test_counter, ((tcb_t *)(void *)read_tpidr_el0())->task_id);
+    logger("mutex_test_counter = %llu, current task: %d\n",
+           mutex_test_counter, curr_task_el1()->task_id);
     mutex_unlock(&test_mutex);
 }
 

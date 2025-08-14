@@ -14,7 +14,7 @@ int32_t vpsci_cpu_on(trap_frame_t *ctx_el2)
     uint64_t entry = ctx_el2->r[2];
     uint64_t context = ctx_el2->r[3];
 
-    tcb_t *curr = (tcb_t *)read_tpidr_el2();
+    tcb_t *curr = curr_task_el2();
     struct _vm_t *vm = curr->curr_vm;
 
     list_node_t *iter = list_first(&vm->vcpus);

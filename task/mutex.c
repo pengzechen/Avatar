@@ -23,7 +23,7 @@ void mutex_init(mutex_t *mutex)
 // 定义一个函数，用于锁定互斥锁
 void mutex_lock(mutex_t *m)
 {
-    tcb_t *curr = (tcb_t *)(void *)read_tpidr_el0();
+    tcb_t *curr = curr_task_el1();
 
     // 1) 快速路径：0 -> 1，acquire
     if (atomic_cmpxchg_acquire(&m->locked_count, 0, 1) == 0)
@@ -64,7 +64,7 @@ void mutex_lock(mutex_t *m)
 // 解锁互斥锁
 void mutex_unlock(mutex_t *m)
 {
-    tcb_t *curr = (tcb_t *)(void *)read_tpidr_el0();
+    tcb_t *curr = curr_task_el1();
 
     if (READ_ONCE(m->owner) != curr)
     {

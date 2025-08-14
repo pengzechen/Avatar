@@ -362,7 +362,7 @@ int32_t vpl011_mmio_handler(uint64_t gpa, uint32_t reg_num, uint32_t len,
                            uint64_t *reg_data, bool is_write)
 {
     /* Get current task and its vpl011 state */
-    tcb_t *current_task = (tcb_t*)read_tpidr_el2();
+    tcb_t *current_task = curr_task_el2();
     if (!current_task) {
         logger_error("vpl011_mmio_handler: no current task\n");
         return 0;

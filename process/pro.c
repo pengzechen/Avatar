@@ -209,7 +209,7 @@ void exit_process(process_t *pro)
 // int32_t execve (const char *__path, char * const __argv[], char * const __envp[]);
 int32_t pro_execve(char *name, char **__argv, char **__envp)
 {
-    tcb_t *curr = (tcb_t *)(void *)read_tpidr_el0();
+    tcb_t *curr = curr_task_el1();
     process_t *pro = curr->curr_pro;
 
     for (int32_t i = 0; __argv[i] != NULL; i++)
@@ -266,7 +266,7 @@ int32_t pro_execve(char *name, char **__argv, char **__envp)
 
 int32_t pro_fork(void)
 {
-    tcb_t *curr = (tcb_t *)(void *)read_tpidr_el0();
+    tcb_t *curr = curr_task_el1();
     process_t *pro = curr->curr_pro;
 
     process_t *child_pro = alloc_process("new");

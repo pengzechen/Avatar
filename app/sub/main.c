@@ -8,7 +8,7 @@ int _start()
         for (int i = 0; i < 1000; i++)
         {
 
-            uint64_t x = mutex_test_minus();
+            // uint64_t x = mutex_test_minus();
             // putc('A');
             // putc('B');
             // putc('C');
@@ -21,14 +21,14 @@ int _start()
             // putc('J');
             // putc('K');
             // putc('L');
-            // putc('M');
-            // putc('\r');
-            // putc('\n');
-            // sleep(20);
+            putc('s');
+            putc('\r');
+            putc('\n');
+            sleep(100);
             // while(1);
             // ;
         }
-        mutex_test_print();
+        // mutex_test_print();
     }
     sleep(10000000);
 
