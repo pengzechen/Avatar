@@ -5,6 +5,7 @@
 #include "io.h"
 #include "thread.h"
 #include "gic.h"
+#include "mem/barrier.h"
 
 // 初始化互斥锁
 void mutex_init(mutex_t *mutex)
@@ -20,86 +21,99 @@ void mutex_init(mutex_t *mutex)
 }
 
 // 定义一个函数，用于锁定互斥锁
-void mutex_lock(mutex_t *mutex)
+void mutex_lock(mutex_t *m)
 {
     tcb_t *curr = (tcb_t *)(void *)read_tpidr_el0();
-    // 如果互斥锁没有被锁定
-    if (mutex->locked_count == 0)
-    {
-        // 将互斥锁的锁定计数设置为1
-        mutex->locked_count = 1;
-        // 将互斥锁的所有者设置为当前线程控制块
-        mutex->owner = curr;
-        // 如果互斥锁已经被当前线程锁定
-    }
-    else if (mutex->owner == curr)
-    {
-        // 将互斥锁的锁定计数加1
-        mutex->locked_count++;
-        // 如果互斥锁已经被其他线程锁定
-    }
-    else
-    {
-        spin_lock(&mutex->lock);
-        list_insert_last(&mutex->wait_list, &curr->wait_node);
-        spin_unlock(&mutex->lock);
 
-        logger("core: %d, mutex locked by other task, current task (id: %d, priority: %d) yield!\n",
-            get_current_cpu_id(), curr->task_id, curr->priority);
+    // 1) 快速路径：0 -> 1，acquire
+    if (atomic_cmpxchg_acquire(&m->locked_count, 0, 1) == 0)
+    {
+        WRITE_ONCE(m->owner, curr);
+        return;
+    } // 如果互斥锁已经被当前线程锁定
 
-        // 调度其他线程
-        schedule();
+    // 2) 递归持有
+    if (READ_ONCE(m->owner) == curr)
+    {
+        // 简化：递增即可（当前核独占）
+        WRITE_ONCE(m->locked_count, READ_ONCE(m->locked_count) + 1);
+        return;
     }
+
+    // 3) 慢路径：入等待队列并阻塞
+    spin_lock(&m->lock);
+
+    // 双检：避免窗口期在拿锁
+    if (atomic_cmpxchg_acquire(&m->locked_count, 0, 1) == 0)
+    {
+        WRITE_ONCE(m->owner, curr);
+        spin_unlock(&m->lock);
+        return;
+    }
+    list_insert_last(&m->wait_list, &curr->wait_node);
+
+    spin_unlock(&m->lock);
+
+    // logger("core: %d, mutex locked by other task, current task (id: %d, priority: %d) yield!\n",
+    //     get_current_cpu_id(), curr->task_id, curr->priority);
+
+    // 调度其他线程
+    schedule();
 }
 
 // 解锁互斥锁
-void mutex_unlock(mutex_t *mutex)
+void mutex_unlock(mutex_t *m)
 {
     tcb_t *curr = (tcb_t *)(void *)read_tpidr_el0();
-    // 如果当前线程是互斥锁的拥有者
-    if (mutex->owner == curr)
+
+    if (READ_ONCE(m->owner) != curr)
     {
-        // 互斥锁的锁定计数减一
-        if (--mutex->locked_count == 0)
-        {
-            // 将互斥锁的拥有者置为空
-            mutex->owner = (tcb_t *)0;
+        return;
+    }
 
-            // 如果等待队列中有线程
-            if (list_count(&mutex->wait_list))
-            {
-                bool local_sched = false;
-                int32_t target = -1;
-                
-                spin_lock(&mutex->lock);
-                list_node_t *task_node = list_delete_first(&mutex->wait_list);
-                tcb_t *task = list_node_parent(task_node, tcb_t, wait_node);
+    // 递归计数 -1，release 语义
+    if (atomic_dec_return_release(&m->locked_count) > 0)
+        return;
 
-                task_add_to_readylist_head_remote(task, task->priority - 1);
-                
-                if (task->priority - 1 == get_current_cpu_id())
-                    local_sched = true;
-                else 
-                    target = task->priority - 1;
+    // 走到这里：完全释放（locked_count == 0）
+    spin_lock(&m->lock);
 
-                // 互斥锁的锁定计数置为1
-                mutex->locked_count = 1;
-                // 将互斥锁的拥有者置为该线程
-                mutex->owner = task;
-                spin_unlock(&mutex->lock);
+    list_node_t *node = list_delete_first(&m->wait_list);
+    if (!node)
+    {
+        // 无等待者：清空 owner，彻底解锁
+        WRITE_ONCE(m->owner, NULL);
+        spin_unlock(&m->lock);
+        return;
+    }
 
-                logger("core: %d, task %d unlock mutex for task %d (priority: %d)\n",
-                    get_current_cpu_id(), curr->task_id, task->task_id, task->priority);
+    bool local_sched = false;
+    int32_t target = -1;
+    tcb_t *task = list_node_parent(node, tcb_t, wait_node);
 
-                // 调度
-                if (local_sched)
-                    schedule();
-                else
-                {
-                    gic_ipi_send_single(IPI_SCHED, target);
-                    // logger("core: %d, send IPI to core: %d\n", get_current_cpu_id(), task->priority - 1);
-                }
-            }
-        }
+    WRITE_ONCE(m->locked_count, 1);
+    WRITE_ONCE(m->owner, task);
+
+    task_add_to_readylist_head_remote(task, task->priority - 1);
+    dsb(sy);
+
+    if (task->priority - 1 == get_current_cpu_id())
+        local_sched = true;
+    else
+        target = task->priority - 1;
+
+    spin_unlock(&m->lock);
+
+    // logger("core: %d, task %d unlock mutex for task %d (priority: %d)\n",
+    //     get_current_cpu_id(), curr->task_id, task->task_id, task->priority);
+
+    if (local_sched)
+    {
+        schedule();
+    }
+    else
+    {
+        // gic_ipi_send_single(IPI_SCHED, target);
+        // logger("core: %d, send IPI to core: %d\n", get_current_cpu_id(), target);
     }
 }

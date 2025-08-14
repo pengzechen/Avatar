@@ -57,15 +57,18 @@ typedef struct _tcb_t
     contex_t ctx;
     cpu_t *cpu_info;
 
-    int32_t task_id; // 任务ID
-
     uint64_t pgdir; // 页表基址
     uint64_t sp;    // 栈地址
 
     task_state_t state;
-    uint32_t counter;
-    uint32_t sleep_ticks;
     uint32_t priority;
+
+    int32_t task_id; // 任务ID
+    int32_t counter;
+    
+    int32_t sleep_ticks;
+    uint32_t reserved;
+    
 
     list_node_t run_node;   // 运行相关结点
     list_node_t wait_node;  // 等待队列

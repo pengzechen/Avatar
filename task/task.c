@@ -269,8 +269,10 @@ void timer_tick_schedule(uint64_t *sp)
             // logger_task_debug("task %d sleep time arrive\n", task->task_id);
             task_set_wakeup(task);
             task_add_to_readylist_head_remote(task, task->priority - 1); // 此时 task 状态会设置为 READY
+            task->counter = SYS_TASK_TICK;
+            dsb(sy);
             // TODO: 这里还有问题，实际上应该调这个函数
-            // gic_ipi_send_single(IPI_SCHED, task->priority - 1);
+            gic_ipi_send_single(IPI_SCHED, task->priority - 1);
         }
         curr = next;
     }
@@ -279,14 +281,10 @@ void timer_tick_schedule(uint64_t *sp)
     // 时间片耗尽
     if (--curr_task->counter <= 0)
     {
-        if (curr_task != &task_manager.idle_task[get_current_cpu_id()])
+        if (curr_task != get_idle())
         {
             curr_task->counter = SYS_TASK_TICK;
             task_add_to_readylist_tail(curr_task); // 会设置状态为 READY
-        }
-        else
-        {
-            curr_task->counter = SYS_TASK_TICK / 5;
         }
         schedule();
     }
@@ -388,7 +386,7 @@ void el1_idle_init()
     uint64_t core_id = get_current_cpu_id();
     tcb_t *idel = &task_manager.idle_task[core_id];
     idel->task_id = -(core_id + 1);
-    idel->counter = 10;
+    idel->counter = -1;
     idel->cpu_info = &task_manager.idle_cpu[core_id];
     idel->cpu_info->ctx.elr = (uint64_t)idle_task_el1; // elr_el1
     idel->cpu_info->ctx.spsr = SPSR_EL1_EL1h;        // spsr_el1
@@ -408,7 +406,7 @@ void el2_idle_init()
     uint64_t core_id = get_current_cpu_id();
     tcb_t *idel = &task_manager.idle_task[core_id];
     idel->task_id = -(core_id + 1);
-    idel->counter = 10;
+    idel->counter = -1;
     idel->cpu_info = &task_manager.idle_cpu[core_id];
     idel->cpu_info->ctx.elr = (uint64_t)idle_task_el1; // elr_el2
     idel->cpu_info->ctx.spsr = SPSR_EL2_EL2h;        // spsr_el2
