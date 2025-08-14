@@ -16,11 +16,25 @@ static uint32_t _vpl011_num = 0;
 static vpl011_state_t _vpl011_states[VM_NUM_MAX];
 static uint32_t _vpl011_state_num = 0;
 
+/* VM Console Switching */
+static uint32_t current_console_vm = 0;  /* Currently active VM for console I/O */
+static bool console_switching_enabled = true;
+static bool in_escape_sequence = false;
+
 /* String matching buffer for timestamp detection */
 #define MATCH_BUFFER_SIZE 256
 #define TARGET_STRING "Run /init as init process"
 static char match_buffer[MATCH_BUFFER_SIZE];
 static uint32_t match_buffer_pos = 0;
+
+/* --------------------------------------------------------
+ * ==================    函数声明    ==================
+ * -------------------------------------------------------- */
+
+static void vpl011_handle_hypervisor_command(char c);
+static void vpl011_execute_hypervisor_command(const char *cmd);
+static uint32_t find_vm_id_by_vuart(vpl011_state_t *vuart);
+static void vpl011_output_char_with_prefix(vpl011_state_t *vuart, char c);
 
 /* --------------------------------------------------------
  * ==================    辅助函数    ==================
@@ -89,7 +103,14 @@ void vpl011_global_init(void)
     memset(_vpl011_states, 0, sizeof(_vpl011_states));
     _vpl011_num = 0;
     _vpl011_state_num = 0;
+
+    /* Initialize console switching */
+    current_console_vm = 0;  /* Start with VM 0 */
+    console_switching_enabled = true;
+    in_escape_sequence = false;
+
     logger_info("Virtual PL011 global initialized\n");
+    logger_info("Console switching enabled. Use ESC+h for help\n");
 }
 
 vpl011_t *alloc_vpl011(void)
@@ -283,8 +304,8 @@ void vpl011_write(vpl011_state_t *vuart, uint32_t offset, uint32_t value)
                 vuart->fr |= VUART_FR_TXFF;
             }
 
-            /* Forward to physical UART immediately for now */
-            uart_putchar(output_char);
+            /* Forward to physical UART with VM prefix if not current console */
+            vpl011_output_char_with_prefix(vuart, output_char);
 
             /* 检查字符串匹配并可能输出时间戳 */
             // check_string_match_and_output_timestamp(output_char);
@@ -462,10 +483,260 @@ void vpl011_inject_rx_char(vpl011_state_t *vuart, char c)
 
 void vpl011_handle_physical_uart_rx(char c)
 {
-    /* Inject the character to all active VMs' virtual UARTs */
-    for (uint32_t i = 0; i < _vpl011_num; i++) {
-        if (_vpl011s[i].state && _vpl011s[i].vm) {
-            vpl011_inject_rx_char(_vpl011s[i].state, c);
+    /* Handle console switching escape sequences */
+    if (console_switching_enabled) {
+        if (c == 0x1B) {  /* ESC key */
+            in_escape_sequence = true;
+            return;
         }
+
+        if (in_escape_sequence) {
+            in_escape_sequence = false;
+
+            /* Handle escape commands */
+            switch (c) {
+            case '0':  /* ESC+0: Switch to hypervisor console */
+                vpl011_switch_to_hypervisor();
+                return;
+            case '1':  /* ESC+1: Switch to VM 0 */
+            case '2':  /* ESC+2: Switch to VM 1 */
+            case '3':  /* ESC+3: Switch to VM 2 */
+            case '4':  /* ESC+4: Switch to VM 3 */
+                vpl011_switch_to_vm(c - '1');
+                return;
+            case 'h':  /* ESC+h: Show help */
+                vpl011_show_help();
+                return;
+            case 's':  /* ESC+s: Show status */
+                vpl011_show_status();
+                return;
+            default:
+                /* Unknown escape sequence, ignore */
+                return;
+            }
+        }
+    }
+
+    /* Normal character processing */
+    if (current_console_vm == 0xFFFFFFFF) {
+        /* Hypervisor console mode - handle commands */
+        vpl011_handle_hypervisor_command(c);
+        return;
+    }
+
+    /* Forward to the currently active VM only */
+    if (current_console_vm < _vpl011_num &&
+        _vpl011s[current_console_vm].state &&
+        _vpl011s[current_console_vm].vm) {
+        vpl011_inject_rx_char(_vpl011s[current_console_vm].state, c);
+    }
+}
+
+/* --------------------------------------------------------
+ * ==================    VM控制台切换    ==================
+ * -------------------------------------------------------- */
+
+void vpl011_switch_to_vm(uint32_t vm_id)
+{
+    if (vm_id >= _vpl011_num || !_vpl011s[vm_id].vm) {
+        uart_putstr("\r\n[CONSOLE] Invalid VM ID: ");
+        uart_putchar('0' + vm_id);
+        uart_putstr("\r\n");
+        return;
+    }
+
+    current_console_vm = vm_id;
+    uart_putstr("\r\n[CONSOLE] Switched to VM ");
+    uart_putchar('0' + vm_id);
+    uart_putstr(" (");
+    if (_vpl011s[vm_id].vm->vm_name[0] != '\0') {
+        uart_putstr(_vpl011s[vm_id].vm->vm_name);
+    } else {
+        uart_putstr("unnamed");
+    }
+    uart_putstr(")\r\n");
+}
+
+void vpl011_switch_to_hypervisor(void)
+{
+    current_console_vm = 0xFFFFFFFF;  /* Special value for hypervisor */
+    uart_putstr("\r\n[CONSOLE] Switched to Hypervisor console\r\n");
+    uart_putstr("Type 'help' for available commands\r\n");
+}
+
+void vpl011_show_help(void)
+{
+    uart_putstr("\r\n=== Console Switching Help ===\r\n");
+    uart_putstr("ESC + 0    : Switch to hypervisor console\r\n");
+    uart_putstr("ESC + 1-4  : Switch to VM 0-3\r\n");
+    uart_putstr("ESC + h    : Show this help\r\n");
+    uart_putstr("ESC + s    : Show status\r\n");
+    uart_putstr("==============================\r\n");
+}
+
+void vpl011_show_status(void)
+{
+    uart_putstr("\r\n=== Console Status ===\r\n");
+
+    if (current_console_vm == 0xFFFFFFFF) {
+        uart_putstr("Current: Hypervisor console\r\n");
+    } else {
+        uart_putstr("Current: VM ");
+        uart_putchar('0' + current_console_vm);
+        uart_putstr("\r\n");
+    }
+
+    uart_putstr("Available VMs:\r\n");
+    for (uint32_t i = 0; i < _vpl011_num; i++) {
+        if (_vpl011s[i].vm) {
+            uart_putstr("  VM ");
+            uart_putchar('0' + i);
+            uart_putstr(": ");
+            if (_vpl011s[i].vm->vm_name[0] != '\0') {
+                uart_putstr(_vpl011s[i].vm->vm_name);
+            } else {
+                uart_putstr("unnamed");
+            }
+            if (i == current_console_vm) {
+                uart_putstr(" (active)");
+            }
+            uart_putstr("\r\n");
+        }
+    }
+    uart_putstr("======================\r\n");
+}
+
+uint32_t vpl011_get_current_console_vm(void)
+{
+    return current_console_vm;
+}
+
+void vpl011_set_console_switching(bool enabled)
+{
+    console_switching_enabled = enabled;
+    uart_putstr("\r\n[CONSOLE] Console switching ");
+    uart_putstr(enabled ? "enabled" : "disabled");
+    uart_putstr("\r\n");
+}
+
+/* --------------------------------------------------------
+ * ==================    输出处理    ==================
+ * -------------------------------------------------------- */
+
+static uint32_t find_vm_id_by_vuart(vpl011_state_t *vuart)
+{
+    for (uint32_t i = 0; i < _vpl011_num; i++) {
+        if (_vpl011s[i].state == vuart) {
+            return i;
+        }
+    }
+    return 0xFFFFFFFF;  /* Not found */
+}
+
+static void vpl011_output_char_with_prefix(vpl011_state_t *vuart, char c)
+{
+    static bool at_line_start = true;
+    uint32_t vm_id = find_vm_id_by_vuart(vuart);
+
+    /* If this is the current console VM, output directly without prefix */
+    if (vm_id == current_console_vm) {
+        uart_putchar(c);
+        at_line_start = (c == '\n');
+        return;
+    }
+
+    /* For non-current VMs, add prefix at line start */
+    if (at_line_start && c != '\n' && c != '\r') {
+        uart_putstr("[VM");
+        uart_putchar('0' + vm_id);
+        uart_putstr("] ");
+        at_line_start = false;
+    }
+
+    uart_putchar(c);
+
+    if (c == '\n') {
+        at_line_start = true;
+    }
+}
+
+/* --------------------------------------------------------
+ * ==================    Hypervisor命令处理    ==================
+ * -------------------------------------------------------- */
+
+#define HV_CMD_BUFFER_SIZE 64
+static char hv_cmd_buffer[HV_CMD_BUFFER_SIZE];
+static uint32_t hv_cmd_pos = 0;
+
+static void vpl011_handle_hypervisor_command(char c)
+{
+    /* Echo the character */
+    uart_putchar(c);
+
+    if (c == '\r' || c == '\n') {
+        /* End of command */
+        uart_putstr("\r\n");
+        hv_cmd_buffer[hv_cmd_pos] = '\0';
+
+        if (hv_cmd_pos > 0) {
+            vpl011_execute_hypervisor_command(hv_cmd_buffer);
+        }
+
+        /* Reset buffer and show prompt */
+        hv_cmd_pos = 0;
+        uart_putstr("hypervisor> ");
+    } else if (c == '\b' || c == 0x7F) {
+        /* Backspace */
+        if (hv_cmd_pos > 0) {
+            hv_cmd_pos--;
+            uart_putstr("\b \b");  /* Erase character on screen */
+        }
+    } else if (c >= 32 && c < 127) {
+        /* Printable character */
+        if (hv_cmd_pos < HV_CMD_BUFFER_SIZE - 1) {
+            hv_cmd_buffer[hv_cmd_pos++] = c;
+        }
+    }
+}
+
+static void vpl011_execute_hypervisor_command(const char *cmd)
+{
+    if (strcmp(cmd, "help") == 0) {
+        uart_putstr("Available commands:\r\n");
+        uart_putstr("  help     - Show this help\r\n");
+        uart_putstr("  status   - Show VM status\r\n");
+        uart_putstr("  vm <id>  - Switch to VM console\r\n");
+        uart_putstr("  list     - List all VMs\r\n");
+        uart_putstr("  exit     - Exit hypervisor console\r\n");
+    } else if (strcmp(cmd, "status") == 0) {
+        vpl011_show_status();
+    } else if (strcmp(cmd, "list") == 0) {
+        uart_putstr("VM List:\r\n");
+        for (uint32_t i = 0; i < _vpl011_num; i++) {
+            if (_vpl011s[i].vm) {
+                uart_putstr("  VM ");
+                uart_putchar('0' + i);
+                uart_putstr(": ");
+                if (_vpl011s[i].vm->vm_name[0] != '\0') {
+                    uart_putstr(_vpl011s[i].vm->vm_name);
+                } else {
+                    uart_putstr("unnamed");
+                }
+                uart_putstr("\r\n");
+            }
+        }
+    } else if (strncmp(cmd, "vm ", 3) == 0 && cmd[3] >= '0' && cmd[3] <= '9') {
+        uint32_t vm_id = cmd[3] - '0';
+        vpl011_switch_to_vm(vm_id);
+    } else if (strcmp(cmd, "exit") == 0) {
+        if (_vpl011_num > 0) {
+            vpl011_switch_to_vm(0);  /* Switch to VM 0 by default */
+        } else {
+            uart_putstr("No VMs available to switch to\r\n");
+        }
+    } else {
+        uart_putstr("Unknown command: ");
+        uart_putstr(cmd);
+        uart_putstr("\r\nType 'help' for available commands\r\n");
     }
 }

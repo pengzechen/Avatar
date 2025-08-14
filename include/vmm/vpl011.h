@@ -106,4 +106,12 @@ void vpl011_inject_rx_char(vpl011_state_t *vuart, char c);
 void vpl011_update_interrupts(vpl011_state_t *vuart);
 void vpl011_handle_physical_uart_rx(char c);
 
+/* Console switching functions */
+void vpl011_switch_to_vm(uint32_t vm_id);
+void vpl011_switch_to_hypervisor(void);
+void vpl011_show_help(void);
+void vpl011_show_status(void);
+uint32_t vpl011_get_current_console_vm(void);
+void vpl011_set_console_switching(bool enabled);
+
 #endif /* __VPL011_H__ */
