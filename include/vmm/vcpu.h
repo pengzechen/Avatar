@@ -5,6 +5,8 @@
 #include "../spinlock.h"
 #include "../avatar_types.h"
 #include "../exception.h"
+#include "task/task.h"
+#include "lib/list.h"
 
 typedef struct _cpu_sysregs
 {
@@ -89,6 +91,8 @@ typedef struct _cpu_sysregs
 
 extern cpu_sysregs_t cpu_sysregs[];
 
+typedef struct _tcb_t tcb_t;
+
 // #define select_user_reg(reg) (&(vcpu.regs[reg]))
 
 extern void set_stage2_pgd(unsigned long, unsigned long);
@@ -96,5 +100,8 @@ extern void restore_sysregs(cpu_sysregs_t *);
 extern void save_sysregs(cpu_sysregs_t *);
 extern void get_all_sysregs(cpu_sysregs_t *);
 extern void save_cpu_ctx(trap_frame_t *);
+
+int32_t get_vcpuid(tcb_t *task);
+list_t *get_vcpus(tcb_t *task);                    // if task==NULL, return current vm's vcpus
 
 #endif // __VCPU_H__

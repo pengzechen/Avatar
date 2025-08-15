@@ -6,7 +6,7 @@
 #include "vmm/vcpu.h"
 #include "lib/list.h"
 #include "os_cfg.h"
-
+#include "thread.h"
 #include "pro.h"
 #include "vmm/vm.h"
 
@@ -19,6 +19,8 @@ typedef void (*entry_t)(void);
 #define curr_task_el1()  ((tcb_t *)(void *)read_tpidr_el0())
 #define curr_task_el2()  ((tcb_t *)(void *)read_tpidr_el2())
 #define curr_task()      (get_el() == 2 ? curr_task_el2() : curr_task_el1())
+
+typedef struct _cpu_sysregs cpu_sysregs_t;
 
 #pragma pack(1)
 typedef struct _contex_t
