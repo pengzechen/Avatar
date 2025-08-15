@@ -154,13 +154,21 @@ static void handle_hvc_call(union esr_el2 *esr, trap_frame_t *ctx)
     logger_info("HVC call: function_id=0x%lx\n", function_id);
 
     // Handle PSCI calls
-    if (function_id == PSCI_0_2_FN64_CPU_ON) {
-        logger_info("PSCI CPU_ON call\n");
-        int32_t ret = vpsci_cpu_on(ctx);
-        ctx->r[0] = ret;
-    } else {
-        logger_warn("Unhandled HVC call: 0x%lx\n", function_id);
-        ctx->r[0] = -1; // Return PSCI_RET_NOT_SUPPORTED
+    switch (function_id) {
+        case PSCI_0_2_FN64_CPU_ON:
+            logger_info("PSCI CPU_ON call\n");
+            ctx->r[0] = vpsci_cpu_on(ctx);
+            break;
+
+        case PSCI_0_2_FN_CPU_ON:
+            logger_info("PSCI CPU_ON (32-bit) call\n");
+            ctx->r[0] = vpsci_cpu_on(ctx);
+            break;
+
+        default:
+            logger_warn("Unhandled HVC call: 0x%lx\n", function_id);
+            ctx->r[0] = PSCI_RET_NOT_SUPPORTED;
+            break;
     }
 
     advance_pc(esr, ctx);
@@ -174,9 +182,40 @@ static void handle_smc_call(union esr_el2 *esr, trap_frame_t *ctx)
     uint64_t function_id = ctx->r[0];
     logger_info("SMC call: function_id=0x%lx\n", function_id);
 
-    // SMC calls should typically be forwarded to EL3
-    // For now, just return success for basic compatibility
-    ctx->r[0] = 0;
+    // Handle PSCI calls - SMC uses 32-bit function IDs
+    switch (function_id) {
+        case PSCI_0_2_FN_PSCI_VERSION:
+            logger_info("PSCI VERSION call\n");
+            // Return PSCI version 0.2
+            ctx->r[0] = PSCI_VERSION(0, 2);
+            break;
+
+        case PSCI_0_2_FN_CPU_ON:
+            logger_info("PSCI CPU_ON call\n");
+            ctx->r[0] = vpsci_cpu_on(ctx);
+            break;
+        
+        case PSCI_0_2_FN64_CPU_ON:
+            logger_info("PSCI CPU_ON call\n");
+            ctx->r[0] = vpsci_cpu_on(ctx);
+            break;
+
+        case PSCI_0_2_FN_MIGRATE_INFO_TYPE:
+            logger_info("PSCI MIGRATE_INFO_TYPE call\n");
+            // 在虚拟化环境中，我们模拟多核 Trusted OS
+            // 返回 PSCI_0_2_TOS_MP (2) 表示：
+            // - Trusted OS 是多核的
+            // - 不需要在 CPU 操作时进行迁移
+            // 这是虚拟化环境的标准做法
+            ctx->r[0] = PSCI_0_2_TOS_MP;
+            break;
+
+        default:
+            logger_warn("Unhandled SMC call: 0x%lx\n", function_id);
+            ctx->r[0] = PSCI_RET_NOT_SUPPORTED;
+            break;
+    }
+
     advance_pc(esr, ctx);
 }
 
