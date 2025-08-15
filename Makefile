@@ -179,6 +179,14 @@ $(BUILD_DIR)/%.o: vmm/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
+$(BUILD_DIR)/%.o: vmm/vdev/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
+
+$(BUILD_DIR)/%.o: vmm/vdev/virtio/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
+
 $(BUILD_DIR)/%.o: lib/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
