@@ -65,7 +65,6 @@ vtimer_core_state_t *alloc_vtimer_core_state(uint32_t vcpu_id)
     return vt;
 }
 
-// 类似 VGIC 的 alloc_gicc 函数
 vtimer_core_state_t *alloc_vtimer_core(void)
 {
     if (_vtimer_state_num >= VM_NUM_MAX * VCPU_NUM_MAX) {
@@ -74,22 +73,6 @@ vtimer_core_state_t *alloc_vtimer_core(void)
     }
 
     return &_vtimer_states[_vtimer_state_num++];
-}
-
-vtimer_core_state_t *get_vtimer_by_vcpu(tcb_t *task)
-{
-    if (!task || !task->curr_vm || !task->curr_vm->vtimer) {
-        return NULL;
-    }
-    extern int32_t get_vcpuid(tcb_t *task);
-    uint32_t vcpu_id = get_vcpuid(task);
-    vtimer_t *vtimer = task->curr_vm->vtimer;
-
-    if (vcpu_id < vtimer->vcpu_cnt && vtimer->core_state[vcpu_id]) {
-        return vtimer->core_state[vcpu_id];
-    }
-
-    return NULL;
 }
 
 void vtimer_core_init(vtimer_core_state_t *vt, uint32_t vcpu_id)
@@ -108,6 +91,24 @@ void vtimer_core_init(vtimer_core_state_t *vt, uint32_t vcpu_id)
 
     logger_info("Virtual timer core state initialized for vCPU %d\n", vcpu_id);
 }
+
+
+vtimer_core_state_t *get_vtimer_by_vcpu(tcb_t *task)
+{
+    if (!task || !task->curr_vm || !task->curr_vm->vtimer) {
+        return NULL;
+    }
+    extern int32_t get_vcpuid(tcb_t *task);
+    uint32_t vcpu_id = get_vcpuid(task);
+    vtimer_t *vtimer = task->curr_vm->vtimer;
+
+    if (vcpu_id < vtimer->vcpu_cnt && vtimer->core_state[vcpu_id]) {
+        return vtimer->core_state[vcpu_id];
+    }
+
+    return NULL;
+}
+
 
 // 为VM设置虚拟时间偏移
 void vtimer_set_vm_offset(vtimer_t *vtimer)

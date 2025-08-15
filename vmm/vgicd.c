@@ -458,6 +458,111 @@ static void handle_gicd_sgir_write(stage2_fault_info_t *info, trap_frame_t *el2_
     logger_vgic_debug("GICD_SGIR write completed\n");
 }
 
+// 处理未实现的寄存器访问
+static void handle_unimplemented_register(const char *reg_name, bool is_write)
+{
+    logger_warn("%s %s not implemented\n", reg_name, is_write ? "write" : "read");
+}
+
+// 处理 GICD_TYPER 寄存器读操作
+static void handle_gicd_typer_read(vgic_t *vgic, stage2_fault_info_t *info, trap_frame_t *el2_ctx)
+{
+    uint32_t typer = gic_get_typer();
+    // 清除原有的 CPU 数量字段 (bits [7:5])
+    typer &= ~(0x7 << 5);
+    // 设置虚拟机的 vCPU 数量 (CPU number = value + 1)
+    uint32_t vcpu_count = vgic->vm->vcpu_cnt;
+    if (vcpu_count > 0)
+    {
+        typer |= ((vcpu_count - 1) & 0x7) << 5;
+    }
+    vgicd_read(info, el2_ctx, &typer);
+    logger_vgic_debug("GICD_TYPER read: typer=0x%x, vcpu_cnt=%d\n", typer, vcpu_count);
+}
+
+// 处理 GICD_IIDR 寄存器读操作
+static void handle_gicd_iidr_read(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
+{
+    uint32_t iidr = gic_get_iidr();
+    vgicd_read(info, el2_ctx, &iidr);
+    logger_vgic_debug("GICD_IIDR read: iidr=0x%x\n", iidr);
+}
+
+// 处理 GICD_ICFGR SPI 配置寄存器写操作
+static void handle_gicd_icfgr_spi_write(vgic_t *vgic, stage2_fault_info_t *info, trap_frame_t *el2_ctx, paddr_t gpa)
+{
+    reg_access_params_t params = parse_reg_access(info, el2_ctx);
+    uint32_t reg_offset = (gpa - GICD_ICFGR(0)) / 4;
+
+    vgic->gicd_icfgr[reg_offset] = params.value;
+    uint32_t masked_value = params.value & 0xAAAAAAAA;
+    write32(masked_value, (void *)gpa);
+
+    logger_vgic_debug("GICD_ICFGR(spi) write: reg_offset=%d, len=%d, reg_value=0x%x, masked=0x%x\n",
+                      reg_offset, params.len, params.value, masked_value);
+}
+
+// 处理 GICD_ITARGETSR SPI 目标寄存器写操作
+static void handle_gicd_itargetsr_spi_write(vgic_t *vgic, stage2_fault_info_t *info, trap_frame_t *el2_ctx, paddr_t gpa)
+{
+    reg_access_params_t params = parse_reg_access(info, el2_ctx);
+    uint32_t word_offset = (gpa - GICD_ITARGETSR(0)) / 4;
+    ((uint32_t *)vgic->gicd_itargetsr)[word_offset] = params.value;
+
+    logger_vgic_debug("GICD_ITARGETSR(spi) write: word_offset=%d, len=%d, reg_value=0x%x\n",
+                      word_offset, params.len, params.value);
+}
+
+// 处理 GICD_ICFGR SGI+PPI 配置寄存器读操作
+static void handle_gicd_icfgr_sgi_ppi_read(stage2_fault_info_t *info, trap_frame_t *el2_ctx, paddr_t gpa)
+{
+    uint32_t cfg_word;
+    uint32_t reg_offset = (gpa - GICD_ICFGR(0)) / 4;
+
+    if (reg_offset == 0)
+    {
+        cfg_word = 0x0000AAAA;
+    }
+    else
+    {
+        cfg_word = 0x00000000;
+    }
+
+    vgicd_read(info, el2_ctx, &cfg_word);
+    logger_vgic_debug("GICD_ICFGR(sgi-ppi) read: reg_offset=%d, cfg_word=0x%x\n", reg_offset, cfg_word);
+}
+
+// 处理 GICD_ICFGR SPI 配置寄存器读操作
+static void handle_gicd_icfgr_spi_read(vgic_t *vgic, stage2_fault_info_t *info, trap_frame_t *el2_ctx, paddr_t gpa)
+{
+    uint32_t reg_offset = (gpa - GICD_ICFGR(0)) / 4;
+    uint32_t cfg_word = vgic->gicd_icfgr[reg_offset];
+    vgicd_read(info, el2_ctx, &cfg_word);
+
+    logger_vgic_debug("GICD_ICFGR(spi) read: reg_offset=%d, cfg_word=0x%x\n", reg_offset, cfg_word);
+}
+
+// 处理 GICD_ITARGETSR SGI+PPI 目标寄存器读操作
+static void handle_gicd_itargetsr_sgi_ppi_read(tcb_t *curr, stage2_fault_info_t *info, trap_frame_t *el2_ctx)
+{
+    uint32_t vcpu_id = get_vcpuid(curr);
+    uint8_t value = 1 << vcpu_id;
+    uint32_t target_word = (value << 24) | (value << 16) | (value << 8) | value;
+    vgicd_read(info, el2_ctx, &target_word);
+
+    logger_vgic_debug("GICD_ITARGETSR(sgi-ppi) read: vcpu_id=%d, target_word=0x%x\n", vcpu_id, target_word);
+}
+
+// 处理 GICD_ITARGETSR SPI 目标寄存器读操作
+static void handle_gicd_itargetsr_spi_read(vgic_t *vgic, stage2_fault_info_t *info, trap_frame_t *el2_ctx, paddr_t gpa)
+{
+    uint32_t word_offset = (gpa - GICD_ITARGETSR(0)) / 4;
+    uint32_t target_word = ((uint32_t *)vgic->gicd_itargetsr)[word_offset];
+    vgicd_read(info, el2_ctx, &target_word);
+
+    logger_vgic_debug("GICD_ITARGETSR(spi) read: word_offset=%d, target_word=0x%x\n", word_offset, target_word);
+}
+
 // 处理 GICD 写操作
 static void handle_gicd_write_operations(tcb_t *curr, struct _vm_t *vm, vgic_t *vgic,
                                          stage2_fault_info_t *info, trap_frame_t *el2_ctx, paddr_t gpa)
@@ -500,12 +605,12 @@ static void handle_gicd_write_operations(tcb_t *curr, struct _vm_t *vm, vgic_t *
     // SPI set pending (GICD_ISPENDER(1) and above)
     else if (GICD_ISPENDER(1) <= gpa && gpa < GICD_ICPENDER(0))
     {
-        logger_warn("GICD_ISPENDER(spi) write not implemented\n");
+        handle_unimplemented_register("GICD_ISPENDER(spi)", true);
     }
     // SPI clear pending (GICD_ICPENDER(1) and above)
     else if (GICD_ICPENDER(1) <= gpa && gpa < GICD_ISACTIVER(0))
     {
-        logger_warn("GICD_ICPENDER(spi) write not implemented\n");
+        handle_unimplemented_register("GICD_ICPENDER(spi)", true);
     }
     /* I priority reg*/
     // SGI + PPI priority write (per-vCPU)
@@ -522,28 +627,13 @@ static void handle_gicd_write_operations(tcb_t *curr, struct _vm_t *vm, vgic_t *
     // SPI configuration register write
     else if (GICD_ICFGR(GIC_FIRST_SPI / 16) <= gpa && gpa < GICD_ICFGR(SPI_ID_MAX / 16))
     {
-        // 保持原有的 ICFGR 处理逻辑
-        reg_access_params_t params = parse_reg_access(info, el2_ctx);
-        uint32_t reg_offset = (gpa - GICD_ICFGR(0)) / 4;
-
-        vgic->gicd_icfgr[reg_offset] = params.value;
-        uint32_t masked_value = params.value & 0xAAAAAAAA;
-        write32(masked_value, (void *)gpa);
-
-        logger_vgic_debug("GICD_ICFGR(spi) write: reg_offset=%d, len=%d, reg_value=0x%x, masked=0x%x\n",
-                          reg_offset, params.len, params.value, masked_value);
+        handle_gicd_icfgr_spi_write(vgic, info, el2_ctx, gpa);
     }
     /* I target reg*/
     // SPI target register write
     else if (GICD_ITARGETSR(GIC_FIRST_SPI / 4) <= gpa && gpa < GICD_ITARGETSR(SPI_ID_MAX / 4))
     {
-        // 保持原有的 ITARGETSR 处理逻辑
-        reg_access_params_t params = parse_reg_access(info, el2_ctx);
-        uint32_t word_offset = (gpa - GICD_ITARGETSR(0)) / 4;
-        ((uint32_t *)vgic->gicd_itargetsr)[word_offset] = params.value;
-
-        logger_vgic_debug("GICD_ITARGETSR(spi) write: word_offset=%d, len=%d, reg_value=0x%x\n",
-                          word_offset, params.len, params.value);
+        handle_gicd_itargetsr_spi_write(vgic, info, el2_ctx, gpa);
     }
     /* sgi reg*/
     else if (gpa == GICD_SGIR) // wo
@@ -553,18 +643,12 @@ static void handle_gicd_write_operations(tcb_t *curr, struct _vm_t *vm, vgic_t *
     /* pend sgi reg*/
     else if (GICD_SPENDSGIR(0) <= gpa && gpa < GICD_SPENDSGIR(MAX_SGI_ID / 4))
     {
-        // 保持原有的 SPENDSGIR 处理逻辑（注释掉的代码）
-        reg_access_params_t params = parse_reg_access(info, el2_ctx);
-        uint32_t sgi_reg_idx = (gpa - GICD_SPENDSGIR(0)) / 4;
-        logger_vgic_debug("GICD_SPENDSGIR write: reg_idx=%d, value=0x%x\n", sgi_reg_idx, params.value);
+        handle_unimplemented_register("GICD_SPENDSGIR", true);
     }
     /* clear pend sgi reg*/
     else if (GICD_CPENDSGIR(0) <= gpa && gpa < GICD_CPENDSGIR(MAX_SGI_ID / 4))
     {
-        // 保持原有的 CPENDSGIR 处理逻辑（注释掉的代码）
-        reg_access_params_t params = parse_reg_access(info, el2_ctx);
-        uint32_t sgi_reg_idx = (gpa - GICD_CPENDSGIR(0)) / 4;
-        logger_vgic_debug("GICD_CPENDSGIR write: reg_idx=%d, value=0x%x\n", sgi_reg_idx, params.value);
+        handle_unimplemented_register("GICD_CPENDSGIR", true);
     }
 }
 
@@ -578,23 +662,11 @@ static void handle_gicd_read_operations(tcb_t *curr, struct _vm_t *vm, vgic_t *v
     }
     else if (gpa == GICD_TYPER) // ro
     {
-        uint32_t typer = gic_get_typer();
-        // 清除原有的 CPU 数量字段 (bits [7:5])
-        typer &= ~(0x7 << 5);
-        // 设置虚拟机的 vCPU 数量 (CPU number = value + 1)
-        uint32_t vcpu_count = vgic->vm->vcpu_cnt;
-        if (vcpu_count > 0)
-        {
-            typer |= ((vcpu_count - 1) & 0x7) << 5;
-        }
-        vgicd_read(info, el2_ctx, &typer);
-        logger_vgic_debug("GICD_TYPER read: typer=0x%x, vcpu_cnt=%d\n", typer, vcpu_count);
+        handle_gicd_typer_read(vgic, info, el2_ctx);
     }
     else if (gpa == GICD_IIDR) // ro
     {
-        uint32_t iidr = gic_get_iidr();
-        vgicd_read(info, el2_ctx, &iidr);
-        logger_vgic_debug("GICD_IIDR read: iidr=0x%x\n", iidr);
+        handle_gicd_iidr_read(info, el2_ctx);
     }
     /*  is enable reg*/
     // SGI and PPI enable read (GICD_ISENABLER(0))
@@ -632,12 +704,12 @@ static void handle_gicd_read_operations(tcb_t *curr, struct _vm_t *vm, vgic_t *v
     // SPI pending read (GICD_ISPENDER(1) and above)
     else if (GICD_ISPENDER(1) <= gpa && gpa < GICD_ICPENDER(0))
     {
-        logger_warn("GICD_ISPENDER(spi) read not implemented\n");
+        handle_unimplemented_register("GICD_ISPENDER(spi)", false);
     }
     // SPI pending read (GICD_ICPENDER(1) and above)
     else if (GICD_ICPENDER(1) <= gpa && gpa < GICD_IPRIORITYR(0))
     {
-        logger_warn("GICD_ICPENDER(spi) read not implemented\n");
+        handle_unimplemented_register("GICD_ICPENDER(spi)", false);
     }
     /* I priority reg*/
     // SGI+PPI priority read (per-vCPU)
@@ -654,50 +726,23 @@ static void handle_gicd_read_operations(tcb_t *curr, struct _vm_t *vm, vgic_t *v
     // SGI+PPI configuration register read (固定配置)
     else if (GICD_ICFGR(0) <= gpa && gpa < GICD_ICFGR(GIC_FIRST_SPI / 16))
     {
-        // 保持原有的 ICFGR 读取逻辑
-        uint32_t cfg_word;
-        uint32_t reg_offset = (gpa - GICD_ICFGR(0)) / 4;
-
-        if (reg_offset == 0)
-        {
-            cfg_word = 0x0000AAAA;
-        }
-        else
-        {
-            cfg_word = 0x00000000;
-        }
-
-        vgicd_read(info, el2_ctx, &cfg_word);
-        logger_vgic_debug("GICD_ICFGR(sgi-ppi) read: reg_offset=%d, cfg_word=0x%x\n", reg_offset, cfg_word);
+        handle_gicd_icfgr_sgi_ppi_read(info, el2_ctx, gpa);
     }
     // SPI configuration register read
     else if (GICD_ICFGR(GIC_FIRST_SPI / 16) <= gpa && gpa < GICD_ICFGR(SPI_ID_MAX / 16))
     {
-        uint32_t reg_offset = (gpa - GICD_ICFGR(0)) / 4;
-        uint32_t cfg_word = vgic->gicd_icfgr[reg_offset];
-        vgicd_read(info, el2_ctx, &cfg_word);
-
-        logger_vgic_debug("GICD_ICFGR(spi) read: reg_offset=%d, cfg_word=0x%x\n", reg_offset, cfg_word);
+        handle_gicd_icfgr_spi_read(vgic, info, el2_ctx, gpa);
     }
     /* I target reg*/
     // SGI+PPI target register read (returns current vCPU mask)
     else if (GICD_ITARGETSR(0) <= gpa && gpa < GICD_ITARGETSR(GIC_FIRST_SPI / 4))
     {
-        uint32_t vcpu_id = get_vcpuid(curr);
-        uint8_t value = 1 << vcpu_id;
-        uint32_t target_word = (value << 24) | (value << 16) | (value << 8) | value;
-        vgicd_read(info, el2_ctx, &target_word);
-
-        logger_vgic_debug("GICD_ITARGETSR(sgi-ppi) read: vcpu_id=%d, target_word=0x%x\n", vcpu_id, target_word);
+        handle_gicd_itargetsr_sgi_ppi_read(curr, info, el2_ctx);
     }
     // SPI target register read
     else if (GICD_ITARGETSR(GIC_FIRST_SPI / 4) <= gpa && gpa < GICD_ITARGETSR(SPI_ID_MAX / 4))
     {
-        uint32_t word_offset = (gpa - GICD_ITARGETSR(0)) / 4;
-        uint32_t target_word = ((uint32_t *)vgic->gicd_itargetsr)[word_offset];
-        vgicd_read(info, el2_ctx, &target_word);
-
-        logger_vgic_debug("GICD_ITARGETSR(spi) read: word_offset=%d, target_word=0x%x\n", word_offset, target_word);
+        handle_gicd_itargetsr_spi_read(vgic, info, el2_ctx, gpa);
     }
 }
 
