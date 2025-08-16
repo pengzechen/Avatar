@@ -62,6 +62,11 @@ SECTIONS
         __testapp_bin_end = .;
         . = ALIGN((1 << 10));
 
+        . = ALIGN(64);
+        __virtio_start = .;
+        . += 0x1000000; /* 16MB VirtIO */
+        __virtio_end = .;
+
         *(.data)
     }
 

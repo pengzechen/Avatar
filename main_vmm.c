@@ -92,6 +92,7 @@ void main_entry_el2()
         vtimer_global_init();
         vpl011_global_init();
 
+        extern int virtio_block_test(void);
         virtio_block_test();
 
         while(1);

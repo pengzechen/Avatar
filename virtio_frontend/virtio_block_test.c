@@ -2,6 +2,7 @@
 #include "io.h"
 #include "lib/avatar_string.h"
 #include "timer.h"
+#include "virtio_alloctor.h"
 
 // 测试数据
 static uint8_t test_write_buffer[512];
@@ -121,11 +122,11 @@ int virtio_blk_test_performance(virtio_blk_device_t *blk_dev)
 {
     logger_info("=== Performance Test ===\n");
     
-    const uint32_t test_sectors = 10;
+    const uint32_t test_sectors = 20;
     const uint32_t iterations = 5;
     uint64_t test_start_sector = blk_dev->capacity - 20;
     
-    uint8_t *test_buffer = virtio_alloc_static(test_sectors * 512, 16);
+    uint8_t *test_buffer = virtio_alloc(test_sectors * 512, 16);
     if (!test_buffer) {
         logger_error("Failed to allocate test buffer\n");
         return -1;
@@ -192,6 +193,12 @@ int virtio_blk_test_performance(virtio_blk_device_t *blk_dev)
 int virtio_block_test(void)
 {
     logger_info("Starting VirtIO Block device test\n");
+
+    if (virtio_allocator_init() < 0)
+    {
+        logger_error("Failed to initialize VirtIO allocator\n");
+        return -1;
+    }
     
     // 初始化前端子系统
     if (virtio_blk_frontend_init() < 0) {

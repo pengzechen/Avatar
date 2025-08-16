@@ -15,6 +15,7 @@
 #define VIRTIO_MMIO_DEVICE_FEATURES_SEL 0x014
 #define VIRTIO_MMIO_DRIVER_FEATURES     0x020
 #define VIRTIO_MMIO_DRIVER_FEATURES_SEL 0x024
+#define VIRTIO_MMIO_GUEST_PAGE_SIZE     0x028 // Legacy only
 #define VIRTIO_MMIO_QUEUE_SEL           0x030
 #define VIRTIO_MMIO_QUEUE_NUM_MAX       0x034
 #define VIRTIO_MMIO_QUEUE_NUM           0x038
@@ -43,6 +44,8 @@
 #define VIRTIO_STATUS_FEATURES_OK       8
 #define VIRTIO_STATUS_DEVICE_NEEDS_RESET 64
 #define VIRTIO_STATUS_FAILED            128
+
+
 
 // VirtIO Magic Number
 #define VIRTIO_MMIO_MAGIC               0x74726976  // "virt"
@@ -75,92 +78,125 @@
 #define VIRTIO_BLK_F_TOPOLOGY   10
 
 // VirtQueue 描述符
-typedef struct virtq_desc {
-    uint64_t addr;      // 缓冲区物理地址
-    uint32_t len;       // 缓冲区长度
-    uint16_t flags;     // 标志位
-    uint16_t next;      // 下一个描述符索引
-} virtq_desc_t;
+// VirtIO queue descriptor
+typedef struct
+{
+    uint64_t addr;
+    uint32_t len;
+    uint16_t flags;
+    uint16_t next;
+} __attribute__((packed)) virtq_desc_t;
 
-// VirtQueue 可用环
-typedef struct virtq_avail {
+// VirtIO available ring
+typedef struct
+{
     uint16_t flags;
     uint16_t idx;
-    uint16_t ring[];    // 可变长度数组
-} virtq_avail_t;
+    uint16_t ring[];
+} __attribute__((packed)) virtq_avail_t;
 
-// VirtQueue 已用环元素
-typedef struct virtq_used_elem {
-    uint32_t id;        // 描述符链头索引
-    uint32_t len;       // 写入的字节数
-} virtq_used_elem_t;
+// VirtIO used ring element
+typedef struct
+{
+    uint32_t id;
+    uint32_t len;
+} __attribute__((packed)) virtq_used_elem_t;
 
-// VirtQueue 已用环
-typedef struct virtq_used {
+typedef struct
+{
     uint16_t flags;
     uint16_t idx;
-    virtq_used_elem_t ring[];   // 可变长度数组
-} virtq_used_t;
+    virtq_used_elem_t ring[];
+} __attribute__((packed)) virtq_used_t;
 
-// VirtQueue 结构
-typedef struct virtio_queue {
-    uint32_t queue_id;          // 队列ID
-    uint32_t queue_size;        // 队列大小
-    uint16_t last_used_idx;     // 上次处理的已用索引
-    uint16_t free_head;         // 空闲描述符链头
-    uint32_t num_free;          // 空闲描述符数量
-    
-    // 队列内存布局
-    uint64_t desc_addr;         // 描述符表地址
-    uint64_t avail_addr;        // 可用环地址
-    uint64_t used_addr;         // 已用环地址
-    
-    virtq_desc_t *desc;         // 描述符表
-    virtq_avail_t *avail;       // 可用环
-    virtq_used_t *used;         // 已用环
+
+typedef struct
+{
+    uint32_t queue_id;
+    uint32_t queue_size;
+    uint64_t desc_addr;
+    uint64_t avail_addr;
+    uint64_t used_addr;
+    virtq_desc_t *desc;
+    virtq_avail_t *avail;
+    virtq_used_t *used;
+    uint16_t last_used_idx;
+    uint16_t free_head;
+    uint16_t num_free;
 } virtio_queue_t;
 
-// VirtIO 设备结构
-typedef struct virtio_device {
-    uint64_t base_addr;         // MMIO 基地址
-    uint32_t device_index;      // 设备索引
-    uint32_t device_id;         // 设备ID
-    uint32_t vendor_id;         // 厂商ID
-    uint32_t version;           // 版本
-    uint64_t device_features;   // 设备特性
-    uint64_t driver_features;   // 驱动特性
-    uint32_t num_queues;        // 队列数量
-    virtio_queue_t queues[16];  // 队列数组（最多16个）
+typedef struct
+{
+    uint64_t base_addr;
+    uint32_t version;
+    uint32_t device_id;
+    uint32_t vendor_id;
+    uint64_t device_features;
+    uint64_t driver_features;
+    uint8_t status;
+    uint32_t device_index;     // Device index for memory allocation
+    virtio_queue_t queues[16]; // Support up to 16 queues
+    uint32_t num_queues;
 } virtio_device_t;
 
-// VirtIO Block 请求头
-typedef struct virtio_blk_req {
-    uint32_t type;              // 请求类型
+
+
+// VirtIO Block request header
+typedef struct
+{
+    uint32_t type;
     uint32_t reserved;
-    uint64_t sector;            // 起始扇区
-} virtio_blk_req_t;
+    uint64_t sector;
+} __attribute__((packed)) virtio_blk_req_t;
 
-// VirtIO Block 配置
-typedef struct virtio_blk_config {
-    uint64_t capacity;          // 设备容量（扇区数）
-    uint32_t size_max;          // 最大段大小
-    uint32_t seg_max;           // 最大段数
-    uint32_t blk_size;          // 块大小
-} virtio_blk_config_t;
+// VirtIO Block configuration structure
+typedef struct
+{
+    uint64_t capacity;
+    uint32_t size_max;
+    uint32_t seg_max;
+    struct
+    {
+        uint16_t cylinders;
+        uint8_t heads;
+        uint8_t sectors;
+    } geometry;
+    uint32_t blk_size;
+    struct
+    {
+        uint8_t physical_block_exp;
+        uint8_t alignment_offset;
+        uint16_t min_io_size;
+        uint32_t opt_io_size;
+    } topology;
+    uint8_t writeback;
+    uint8_t unused0[3];
+    uint32_t max_discard_sectors;
+    uint32_t max_discard_seg;
+    uint32_t discard_sector_alignment;
+    uint32_t max_write_zeroes_sectors;
+    uint32_t max_write_zeroes_seg;
+    uint8_t write_zeroes_may_unmap;
+    uint8_t unused1[3];
+} __attribute__((packed)) virtio_blk_config_t;
 
-// VirtIO Block 设备
-typedef struct virtio_blk_device {
-    virtio_device_t *dev;       // VirtIO 设备
-    virtio_blk_config_t config; // 配置
-    uint32_t block_size;        // 块大小
-    uint64_t capacity;          // 容量
+// VirtIO Block device structure
+typedef struct
+{
+    virtio_device_t *dev;
+    virtio_blk_config_t config;
+    uint32_t block_size;
+    uint64_t capacity;
 } virtio_blk_device_t;
 
-// 静态内存池配置
-#define VIRTIO_MAX_DEVICES      4
-#define VIRTIO_QUEUE_SIZE       16
-#define VIRTIO_BUFFER_POOL_SIZE 64
-#define VIRTIO_BUFFER_SIZE      4096
+
+
+// VirtIO 扫描配置
+#define VIRTIO_SCAN_BASE_ADDR   0x0a000000  // Start scanning from 0x0a00_0000
+#define VIRTIO_SCAN_STEP        0x200       // Step size 0x200
+#define VIRTIO_SCAN_COUNT       32          // Scan 32 positions
+
+
 
 // 函数声明
 int virtio_blk_frontend_init(void);

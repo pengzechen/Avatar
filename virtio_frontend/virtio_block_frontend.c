@@ -4,52 +4,13 @@
 #include "timer.h"
 #include "mmio.h"
 #include "mem/barrier.h"
-
-// 静态内存池
-static uint8_t virtio_memory_pool[VIRTIO_MAX_DEVICES * VIRTIO_QUEUE_SIZE * 3 * 4096] __attribute__((aligned(4096)));
-static bool virtio_memory_used[VIRTIO_MAX_DEVICES * VIRTIO_QUEUE_SIZE * 3];
-static uint32_t virtio_memory_offset = 0;
-
-// 缓冲区池
-static uint8_t virtio_buffer_pool[VIRTIO_BUFFER_POOL_SIZE * VIRTIO_BUFFER_SIZE] __attribute__((aligned(16)));
-static bool virtio_buffer_used[VIRTIO_BUFFER_POOL_SIZE];
-
-// 设备池
-static virtio_device_t virtio_devices[VIRTIO_MAX_DEVICES];
-static bool virtio_device_used[VIRTIO_MAX_DEVICES];
-
-// 使用项目中已有的内存屏障定义
-// rmb(), wmb(), mb() 已在 mem/barrier.h 中定义
+#include "virtio_alloctor.h"
 
 // 初始化 VirtIO 前端子系统
 int virtio_blk_frontend_init(void)
 {
-    // 初始化内存池
-    memset(virtio_memory_used, 0, sizeof(virtio_memory_used));
-    memset(virtio_buffer_used, 0, sizeof(virtio_buffer_used));
-    memset(virtio_device_used, 0, sizeof(virtio_device_used));
-    virtio_memory_offset = 0;
-    
     logger_info("VirtIO Block frontend initialized\n");
-    logger_info("Memory pool: %u bytes, Buffer pool: %u x %u bytes\n",
-                sizeof(virtio_memory_pool), VIRTIO_BUFFER_POOL_SIZE, VIRTIO_BUFFER_SIZE);
-    
     return 0;
-}
-
-// 静态内存分配
-void *virtio_alloc_static(uint32_t size, uint32_t align)
-{
-    // 简化的静态分配器
-    for (uint32_t i = 0; i < VIRTIO_BUFFER_POOL_SIZE; i++) {
-        if (!virtio_buffer_used[i] && size <= VIRTIO_BUFFER_SIZE) {
-            virtio_buffer_used[i] = true;
-            return &virtio_buffer_pool[i * VIRTIO_BUFFER_SIZE];
-        }
-    }
-    
-    logger_error("virtio_alloc_static: no free buffers (size=%u)\n", size);
-    return NULL;
 }
 
 // 静态内存释放
@@ -57,35 +18,7 @@ void virtio_free_static(void *ptr)
 {
     if (!ptr) return;
     
-    uint8_t *buf_ptr = (uint8_t*)ptr;
-    for (uint32_t i = 0; i < VIRTIO_BUFFER_POOL_SIZE; i++) {
-        if (&virtio_buffer_pool[i * VIRTIO_BUFFER_SIZE] == buf_ptr) {
-            virtio_buffer_used[i] = false;
-            return;
-        }
-    }
-}
-
-// 获取队列内存地址
-uint64_t virtio_get_queue_desc_addr(uint32_t device_index, uint32_t queue_id)
-{
-    uint32_t offset = (device_index * 16 + queue_id) * 3 * 4096;
-    if (offset + 4096 > sizeof(virtio_memory_pool)) {
-        return 0;
-    }
-    return (uint64_t)&virtio_memory_pool[offset];
-}
-
-uint64_t virtio_get_queue_avail_addr(uint32_t device_index, uint32_t queue_id)
-{
-    uint64_t desc_addr = virtio_get_queue_desc_addr(device_index, queue_id);
-    return desc_addr ? desc_addr + 4096 : 0;
-}
-
-uint64_t virtio_get_queue_used_addr(uint32_t device_index, uint32_t queue_id)
-{
-    uint64_t avail_addr = virtio_get_queue_avail_addr(device_index, queue_id);
-    return avail_addr ? avail_addr + 4096 : 0;
+    logger_debug("free %p\n", ptr);
 }
 
 // MMIO 读写操作 - 使用项目中已有的安全 MMIO 函数
@@ -237,13 +170,15 @@ int virtio_queue_setup(virtio_device_t *dev, uint32_t queue_id, uint32_t queue_s
         virtio_write32(dev, VIRTIO_MMIO_QUEUE_READY, 1);
     } else {
         // 传统模式
+        virtio_write32(dev, VIRTIO_MMIO_GUEST_PAGE_SIZE, 4096);
         virtio_write32(dev, VIRTIO_MMIO_QUEUE_ALIGN, 4096);
         virtio_write32(dev, VIRTIO_MMIO_QUEUE_PFN, queue->desc_addr >> 12);
     }
     
     dev->num_queues = queue_id + 1;
     
-    logger_info("Queue %d setup complete: size=%d\n", queue_id, queue_size);
+    logger_warn("Queue %d setup complete: size=%d, desc=0x%lx, avail=0x%lx, used=0x%lx\n",
+              queue_id, queue_size, queue->desc_addr, queue->avail_addr, queue->used_addr);
     return 0;
 }
 
@@ -394,21 +329,12 @@ void virtio_blk_get_config(virtio_blk_device_t *blk_dev)
 int virtio_blk_init(virtio_blk_device_t *blk_dev, uint64_t base_addr, uint32_t device_index)
 {
     // 分配设备结构
-    virtio_device_t *dev = NULL;
-    for (uint32_t i = 0; i < VIRTIO_MAX_DEVICES; i++) {
-        if (!virtio_device_used[i]) {
-            dev = &virtio_devices[i];
-            virtio_device_used[i] = true;
-            memset(dev, 0, sizeof(virtio_device_t));
-            break;
-        }
-    }
-
-    if (!dev) {
-        logger_error("No free VirtIO device slots\n");
+    virtio_device_t * dev = virtio_alloc(sizeof(virtio_device_t), 8);
+    if (!blk_dev->dev)
+    {
+        logger_error("Failed to allocate device structure\n");
         return -1;
     }
-
     blk_dev->dev = dev;
 
     // 初始化 VirtIO 设备
@@ -444,7 +370,7 @@ int virtio_blk_init(virtio_blk_device_t *blk_dev, uint64_t base_addr, uint32_t d
     }
 
     // 设置队列（块设备通常使用队列 0）
-    if (virtio_queue_setup(dev, 0, VIRTIO_QUEUE_SIZE) < 0) {
+    if (virtio_queue_setup(dev, 0, 16) < 0) {
         logger_error("Failed to setup queue\n");
         return -1;
     }
@@ -472,8 +398,8 @@ int virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     uint32_t total_size = count * sector_size;
 
     // 分配请求结构
-    virtio_blk_req_t *req = (virtio_blk_req_t *)virtio_alloc_static(sizeof(virtio_blk_req_t), 8);
-    uint8_t *status = (uint8_t *)virtio_alloc_static(1, 1);
+    virtio_blk_req_t *req = (virtio_blk_req_t *)virtio_alloc(sizeof(virtio_blk_req_t), 8);
+    uint8_t *status = (uint8_t *)virtio_alloc(1, 1);
 
     if (!req || !status) {
         logger_error("Failed to allocate request structures\n");
@@ -566,8 +492,8 @@ int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     uint32_t total_size = count * sector_size;
 
     // 分配请求结构
-    virtio_blk_req_t *req = (virtio_blk_req_t *)virtio_alloc_static(sizeof(virtio_blk_req_t), 8);
-    uint8_t *status = (uint8_t *)virtio_alloc_static(1, 1);
+    virtio_blk_req_t *req = (virtio_blk_req_t *)virtio_alloc(sizeof(virtio_blk_req_t), 8);
+    uint8_t *status = (uint8_t *)virtio_alloc(1, 1);
 
     if (!req || !status) {
         logger_error("Failed to allocate request structures\n");
@@ -647,10 +573,7 @@ int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     return 0;
 }
 
-// VirtIO 扫描配置
-#define VIRTIO_SCAN_BASE_ADDR   0x0a000000  // Start scanning from 0x0a00_0000
-#define VIRTIO_SCAN_STEP        0x200       // Step size 0x200
-#define VIRTIO_SCAN_COUNT       32          // Scan 32 positions
+
 
 // 扫描 VirtIO Block 设备
 uint64_t scan_for_virtio_block_device(uint32_t found_device_id)
@@ -678,7 +601,7 @@ uint64_t scan_for_virtio_block_device(uint32_t found_device_id)
         uint32_t device_id = mmio_read32((volatile void*)(addr + VIRTIO_MMIO_DEVICE_ID));
         uint32_t vendor_id = mmio_read32((volatile void*)(addr + VIRTIO_MMIO_VENDOR_ID));
 
-        logger_info("VirtIO device at 0x%lx: ID=%u, Vendor=0x%x, Version=%u\n",
+        logger_debug("VirtIO device at 0x%lx: ID=%u, Vendor=0x%x, Version=%u\n",
                    addr, device_id, vendor_id, version);
 
         if (device_id == found_device_id) {
