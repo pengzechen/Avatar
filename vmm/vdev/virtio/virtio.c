@@ -16,6 +16,7 @@ static uint32_t _virtqueue_pool_used = 0;
 // VirtIO Magic Number
 #define VIRTIO_MMIO_MAGIC   0x74726976  // "virt"
 
+// 清空结构
 void virtio_global_init(void)
 {
     memset(_virtio_devices, 0, sizeof(_virtio_devices));
@@ -25,6 +26,7 @@ void virtio_global_init(void)
     logger_info("VirtIO subsystem initialized\n");
 }
 
+// 被对应的virtio设备create调用
 virtio_device_t *virtio_create_device(uint32_t device_id, uint64_t base_addr, uint32_t irq)
 {
     if (_virtio_device_count >= (VM_NUM_MAX * 8)) {
@@ -80,6 +82,7 @@ virtio_device_t *virtio_create_device(uint32_t device_id, uint64_t base_addr, ui
     return dev;
 }
 
+// 被对应的virtio设备destroy调用
 void virtio_destroy_device(virtio_device_t *dev)
 {
     if (!dev) return;
@@ -98,6 +101,7 @@ void virtio_destroy_device(virtio_device_t *dev)
     memset(dev, 0, sizeof(virtio_device_t));
 }
 
+// virtio 读事件
 bool virtio_mmio_read(virtio_device_t *dev, uint64_t offset, uint32_t *value, uint32_t size)
 {
     if (!dev || !value) return false;
@@ -169,6 +173,7 @@ bool virtio_mmio_read(virtio_device_t *dev, uint64_t offset, uint32_t *value, ui
     return true;
 }
 
+// virtio 写事件
 bool virtio_mmio_write(virtio_device_t *dev, uint64_t offset, uint32_t value, uint32_t size)
 {
     if (!dev) return false;
@@ -284,6 +289,23 @@ bool virtio_mmio_write(virtio_device_t *dev, uint64_t offset, uint32_t value, ui
     return true;
 }
 
+// VirtIO MMIO 陷入处理函数
+bool handle_virtio_mmio_access(uint64_t addr, uint32_t *value, bool is_write, uint32_t size)
+{
+    virtio_device_t *dev = virtio_find_device_by_addr(addr);
+    if (!dev) {
+        return false;
+    }
+    
+    uint64_t offset = addr - dev->base_addr;
+    
+    if (is_write) {
+        return virtio_mmio_write(dev, offset, *value, size);
+    } else {
+        return virtio_mmio_read(dev, offset, value, size);
+    }
+}
+
 // VirtIO 设备查找函数
 virtio_device_t *virtio_find_device_by_addr(uint64_t addr)
 {
@@ -294,4 +316,28 @@ virtio_device_t *virtio_find_device_by_addr(uint64_t addr)
         }
     }
     return NULL;
+}
+
+// 调试函数：打印VirtIO设备状态
+void virtio_debug_device(virtio_device_t *dev)
+{
+    if (!dev) return;
+    
+    logger_info("=== VirtIO Device Debug ===\n");
+    logger_info("Device ID: %d\n", dev->device_id);
+    logger_info("Vendor ID: 0x%x\n", dev->vendor_id);
+    logger_info("Base Address: 0x%llx\n", dev->base_addr);
+    logger_info("IRQ: %d\n", dev->irq);
+    logger_info("Status: 0x%x\n", dev->status);
+    logger_info("Device Features: 0x%llx\n", dev->device_features);
+    logger_info("Driver Features: 0x%llx\n", dev->driver_features);
+    logger_info("Interrupt Status: 0x%x\n", dev->interrupt_status);
+    logger_info("Number of Queues: %d\n", dev->num_queues);
+    
+    for (uint32_t i = 0; i < dev->num_queues; i++) {
+        virtqueue_t *vq = &dev->queues[i];
+        logger_info("Queue %d: num=%d, ready=%d, last_avail=%d, used=%d\n",
+                   i, vq->num, vq->ready, vq->last_avail_idx, vq->used_idx);
+    }
+    logger_info("===========================\n");
 }

@@ -45,7 +45,7 @@ TASKSET_CMD := $(if $(CPU_AFFINITY),taskset -c $(CPU_AFFINITY),)
 
 # 目录配置
 SRC_DIRS := . boot exception io mem timer task process spinlock \
-            vmm lib fs app syscall
+            vmm lib fs app syscall virtio_frontend
 INCLUDE_DIRS := include guest
 INCLUDE := $(addprefix -I, $(INCLUDE_DIRS))
 
@@ -74,7 +74,12 @@ Q := @
 endif
 
 # QEMU配置  --trace qemu_mutex_lock
-QEMU_ARGS := -m 4G -smp $(SMP) -cpu cortex-a72 -nographic -M virt -M gic_version=2 -accel tcg,thread=multi 
+QEMU_ARGS := -m 4G -smp $(SMP) -cpu cortex-a72 -nographic -M virt -M gic_version=2 -accel tcg,thread=multi
+
+# VirtIO Block 设备配置
+QEMU_ARGS += -drive file=test.img,if=none,format=raw,id=hd0
+QEMU_ARGS += -device virtio-blk-device,drive=hd0
+
 ifeq ($(HV),1)
 QEMU_ARGS += -M virtualization=on
 LD := boot/link_vmm.lds
@@ -98,7 +103,7 @@ READELF := $(TOOL_PREFIX)readelf
 # 自动发现源文件（排除guest和clib目录）
 # 分别处理根目录和其他目录，确保完全排除clib
 ROOT_C_SOURCES := $(shell find . -maxdepth 1 -name "*.c" 2>/dev/null)
-OTHER_C_SOURCES := $(shell find boot exception io mem timer task process spinlock vmm lib fs syscall -name "*.c" 2>/dev/null)
+OTHER_C_SOURCES := $(shell find boot exception io mem timer task process spinlock vmm lib fs syscall virtio_frontend -name "*.c" 2>/dev/null)
 # 手动添加app目录中的非main.c文件（避免包含app子目录中的main.c）
 APP_C_SOURCES := $(shell find app -maxdepth 1 -name "*.c" 2>/dev/null)
 # 手动添加guest目录中需要的C文件
@@ -106,7 +111,7 @@ GUEST_C_SOURCES := guest/guests.c
 C_SOURCES := $(ROOT_C_SOURCES) $(OTHER_C_SOURCES) $(APP_C_SOURCES) $(GUEST_C_SOURCES)
 
 ROOT_S_SOURCES := $(shell find . -maxdepth 1 -name "*.S" 2>/dev/null)
-OTHER_S_SOURCES := $(shell find boot exception io mem timer task process spinlock vmm lib fs syscall -name "*.S" 2>/dev/null)
+OTHER_S_SOURCES := $(shell find boot exception io mem timer task process spinlock vmm lib fs syscall virtio_frontend -name "*.S" 2>/dev/null)
 # 手动添加app目录中需要的汇编文件（排除syscall.S）
 APP_S_SOURCES := $(shell find app -maxdepth 1 -name "*.S" 2>/dev/null | grep -v syscall.S)
 S_SOURCES := $(ROOT_S_SOURCES) $(OTHER_S_SOURCES) $(APP_S_SOURCES)
@@ -200,6 +205,10 @@ $(BUILD_DIR)/%.o: syscall/%.c | $(BUILD_DIR)
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
 $(BUILD_DIR)/%.o: guest/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
+
+$(BUILD_DIR)/%.o: virtio_frontend/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 

@@ -168,10 +168,6 @@ void virtio_queue_notify(virtio_device_t *dev, uint32_t queue_idx);
 // 中断处理
 void virtio_inject_irq(virtio_device_t *dev, uint32_t int_type);
 
-// 特性处理
-bool virtio_has_feature(virtio_device_t *dev, uint32_t feature);
-void virtio_set_features(virtio_device_t *dev, uint64_t features);
-
 // 设备查找
 virtio_device_t *virtio_find_device_by_addr(uint64_t addr);
 

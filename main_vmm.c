@@ -18,6 +18,7 @@
 #include "smp.h"
 #include "uart_pl011.h"
 #include "mem/earlypage.h"
+#include "virtio_block_frontend.h"
 
 void print_avatar_logo(void)
 {
@@ -91,6 +92,10 @@ void main_entry_el2()
         vtimer_global_init();
         vpl011_global_init();
 
+        virtio_block_test();
+
+        while(1);
+
         struct _vm_t *vm = alloc_vm();
         if (vm == NULL)
         {
@@ -100,14 +105,14 @@ void main_entry_el2()
         vm_init(vm, 0); // 初始化一个虚拟机
         run_vm(vm);
 
-        vm = alloc_vm();
-        if (vm == NULL)
-        {
-            logger_error("Failed to allocate vm\n");
-            return;
-        }
-        vm_init(vm, 1); // 初始化第二个虚拟机
-        run_vm(vm);
+        // vm = alloc_vm();
+        // if (vm == NULL)
+        // {
+        //     logger_error("Failed to allocate vm\n");
+        //     return;
+        // }
+        // vm_init(vm, 1); // 初始化第二个虚拟机
+        // run_vm(vm);
 
         logger("\nHello VMM:\nthere's some vmm tests: \n");
         logger("scrlr_el2: 0x%llx\n", read_sctlr_el2());

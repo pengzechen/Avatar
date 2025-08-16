@@ -13,3 +13,5 @@ build/**/*.d
 /app/info.lds
 /app/app.h
 /app/**/build
+
+test.img

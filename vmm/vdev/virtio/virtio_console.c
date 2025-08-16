@@ -104,6 +104,7 @@ void virtio_console_destroy(virtio_console_t *console)
 }
 
 // 处理发送队列（Guest -> Host）
+// 会调用 vgic inject
 static void console_handle_tx_queue(virtio_console_t *console)
 {
     if (!console || !console->dev) return;
@@ -157,6 +158,7 @@ static void console_handle_tx_queue(virtio_console_t *console)
 }
 
 // 处理接收队列（Host -> Guest）
+// 会调用 vgic inject
 static void console_handle_rx_queue(virtio_console_t *console)
 {
     if (!console || !console->dev) return;
