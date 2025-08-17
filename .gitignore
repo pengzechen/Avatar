@@ -15,3 +15,4 @@ build/**/*.d
 /app/**/build
 
 test.img
+test2.img

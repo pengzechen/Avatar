@@ -35,6 +35,18 @@ void fake_console()
     vgic_passthrough_irq(PL011_INT);
 }
 
+void paththrough_irq79()
+{
+    // logger("passthrough irq\n");
+    vgic_passthrough_irq(79);
+}
+
+void paththrough_irq78()
+{
+    // logger("passthrough irq\n");
+    vgic_passthrough_irq(78);
+}
+
 void mmio_map_gicd()
 {
     for (int32_t i = 0; i < MMIO_PAGES_GICD; i++)
@@ -311,6 +323,8 @@ void vm_init(struct _vm_t *vm, int32_t configured_vm_id)
     // 这两个 fake 都可以去掉了！
     // irq_install(HV_TIMER_VECTOR, fake_timer);
     // irq_install(PL011_INT, fake_console);
+    irq_install(79, paththrough_irq79);
+    irq_install(78, paththrough_irq78);
 }
 
 void run_vm(struct _vm_t *vm)

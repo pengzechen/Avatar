@@ -224,6 +224,7 @@ uint64_t scan_for_virtio_block_device(uint32_t device_id);
 
 // 调试函数
 void virtio_blk_print_info(virtio_blk_device_t *blk_dev);
+int virtio_block_test(void);
 
 // 设备检测函数
 void virtio_detect_devices(void);

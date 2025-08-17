@@ -79,6 +79,8 @@ QEMU_ARGS := -m 4G -smp $(SMP) -cpu cortex-a72 -nographic -M virt -M gic_version
 # VirtIO Block 设备配置
 QEMU_ARGS += -drive file=test.img,if=none,format=raw,id=hd0
 QEMU_ARGS += -device virtio-blk-device,drive=hd0
+QEMU_ARGS += -drive file=test2.img,if=none,format=raw,id=hd1
+QEMU_ARGS += -device virtio-blk-device,drive=hd1
 
 ifeq ($(HV),1)
 QEMU_ARGS += -M virtualization=on
