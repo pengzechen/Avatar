@@ -13,41 +13,6 @@ int virtio_blk_frontend_init(void)
     return 0;
 }
 
-// 静态内存释放
-void virtio_free_static(void *ptr)
-{
-    if (!ptr) return;
-    
-    logger_debug("free %p\n", ptr);
-}
-
-// MMIO 读写操作 - 使用项目中已有的安全 MMIO 函数
-uint32_t virtio_read32(virtio_device_t *dev, uint64_t offset)
-{
-    return mmio_read32((volatile void*)(dev->base_addr + offset));
-}
-
-void virtio_write32(virtio_device_t *dev, uint64_t offset, uint32_t value)
-{
-    mmio_write32(value, (volatile void*)(dev->base_addr + offset));
-}
-
-uint64_t virtio_read64(virtio_device_t *dev, uint64_t offset)
-{
-    return mmio_read64((volatile void*)(dev->base_addr + offset));
-}
-
-void virtio_set_status(virtio_device_t *dev, uint32_t status)
-{
-    uint32_t current = virtio_read32(dev, VIRTIO_MMIO_STATUS);
-    virtio_write32(dev, VIRTIO_MMIO_STATUS, current | status);
-}
-
-uint32_t virtio_get_status(virtio_device_t *dev)
-{
-    return virtio_read32(dev, VIRTIO_MMIO_STATUS);
-}
-
 // VirtIO MMIO 设备初始化
 int virtio_mmio_init(virtio_device_t *dev, uint64_t base_addr, uint32_t device_index)
 {
@@ -430,16 +395,16 @@ int virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     int desc_id = virtio_queue_add_buf(blk_dev->dev, 0, buffers, lengths, 1, 2);
     if (desc_id < 0) {
         logger_error("Failed to add buffer to queue\n");
-        virtio_free_static(req);
-        virtio_free_static(status);
+        virtio_free(req);
+        virtio_free(status);
         return -1;
     }
 
     // 通知队列
     if (virtio_queue_kick(blk_dev->dev, 0) < 0) {
         logger_error("Failed to kick queue\n");
-        virtio_free_static(req);
-        virtio_free_static(status);
+        virtio_free(req);
+        virtio_free(status);
         return -1;
     }
 
@@ -459,23 +424,23 @@ int virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
 
     if (result < 0) {
         logger_error("Timeout waiting for block read completion\n");
-        virtio_free_static(req);
-        virtio_free_static(status);
+        virtio_free(req);
+        virtio_free(status);
         return -1;
     }
 
     // 检查状态
     if (*status != VIRTIO_BLK_S_OK) {
         logger_error("Block read failed with status: %d\n", *status);
-        virtio_free_static(req);
-        virtio_free_static(status);
+        virtio_free(req);
+        virtio_free(status);
         return -1;
     }
 
     logger_debug("Block read completed successfully, len=%u\n", len);
 
-    virtio_free_static(req);
-    virtio_free_static(status);
+    virtio_free(req);
+    virtio_free(status);
     return 0;
 }
 
@@ -524,16 +489,16 @@ int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     int desc_id = virtio_queue_add_buf(blk_dev->dev, 0, buffers, lengths, 2, 1);
     if (desc_id < 0) {
         logger_error("Failed to add buffer to queue\n");
-        virtio_free_static(req);
-        virtio_free_static(status);
+        virtio_free(req);
+        virtio_free(status);
         return -1;
     }
 
     // 通知队列
     if (virtio_queue_kick(blk_dev->dev, 0) < 0) {
         logger_error("Failed to kick queue\n");
-        virtio_free_static(req);
-        virtio_free_static(status);
+        virtio_free(req);
+        virtio_free(status);
         return -1;
     }
 
@@ -548,28 +513,28 @@ int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
             break;
         }
         // 小延迟
-        for (volatile int i = 0; i < 100; i++);
+        for (volatile int i = 0; i < 10; i++);
     }
 
     if (result < 0) {
         logger_error("Timeout waiting for block write completion\n");
-        virtio_free_static(req);
-        virtio_free_static(status);
+        virtio_free(req);
+        virtio_free(status);
         return -1;
     }
 
     // 检查状态
     if (*status != VIRTIO_BLK_S_OK) {
         logger_error("Block write failed with status: %d\n", *status);
-        virtio_free_static(req);
-        virtio_free_static(status);
+        virtio_free(req);
+        virtio_free(status);
         return -1;
     }
 
     logger_debug("Block write completed successfully, len=%u\n", len);
 
-    virtio_free_static(req);
-    virtio_free_static(status);
+    virtio_free(req);
+    virtio_free(status);
     return 0;
 }
 

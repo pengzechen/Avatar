@@ -148,7 +148,7 @@ int virtio_blk_test_performance(virtio_blk_device_t *blk_dev)
             if (virtio_blk_write_sector(blk_dev, test_start_sector + j, 
                                        test_buffer + j * 512, 1) < 0) {
                 logger_error("Write failed in iteration %u, sector %u\n", i, j);
-                virtio_free_static(test_buffer);
+                virtio_free(test_buffer);
                 return -1;
             }
         }
@@ -163,7 +163,7 @@ int virtio_blk_test_performance(virtio_blk_device_t *blk_dev)
             if (virtio_blk_read_sector(blk_dev, test_start_sector + j,
                                       test_buffer + j * 512, 1) < 0) {
                 logger_error("Read failed in iteration %u, sector %u\n", i, j);
-                virtio_free_static(test_buffer);
+                virtio_free(test_buffer);
                 return -1;
             }
         }
@@ -183,7 +183,7 @@ int virtio_blk_test_performance(virtio_blk_device_t *blk_dev)
     logger_info("  Average write time: %llu ticks (%u sectors)\n", avg_write_time, test_sectors);
     logger_info("  Average read time: %llu ticks (%u sectors)\n", avg_read_time, test_sectors);
     
-    virtio_free_static(test_buffer);
+    virtio_free(test_buffer);
     logger_info("Performance test completed\n");
     
     return 0;

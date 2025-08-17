@@ -2,6 +2,7 @@
 #define __VIRTIO_BLOCK_FRONTEND_H__
 
 #include "avatar_types.h"
+#include "mmio.h"
 
 // VirtIO Block 设备 ID
 #define VIRTIO_ID_BLOCK     2
@@ -205,13 +206,6 @@ int virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector, void *
 int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector, const void *buffer, uint32_t count);
 void virtio_blk_get_config(virtio_blk_device_t *blk_dev);
 
-// 底层 VirtIO 操作（使用项目中的 mmio.h 和 mem/barrier.h）
-uint32_t virtio_read32(virtio_device_t *dev, uint64_t offset);
-void virtio_write32(virtio_device_t *dev, uint64_t offset, uint32_t value);
-uint64_t virtio_read64(virtio_device_t *dev, uint64_t offset);
-void virtio_set_status(virtio_device_t *dev, uint32_t status);
-uint32_t virtio_get_status(virtio_device_t *dev);
-
 // 队列操作
 int virtio_queue_setup(virtio_device_t *dev, uint32_t queue_id, uint32_t queue_size);
 int virtio_queue_add_buf(virtio_device_t *dev, uint32_t queue_id, 
@@ -220,9 +214,7 @@ int virtio_queue_add_buf(virtio_device_t *dev, uint32_t queue_id,
 int virtio_queue_kick(virtio_device_t *dev, uint32_t queue_id);
 int virtio_queue_get_buf(virtio_device_t *dev, uint32_t queue_id, uint32_t *len);
 
-// 内存管理
-void *virtio_alloc_static(uint32_t size, uint32_t align);
-void virtio_free_static(void *ptr);
+
 uint64_t virtio_get_queue_desc_addr(uint32_t device_index, uint32_t queue_id);
 uint64_t virtio_get_queue_avail_addr(uint32_t device_index, uint32_t queue_id);
 uint64_t virtio_get_queue_used_addr(uint32_t device_index, uint32_t queue_id);
@@ -249,5 +241,36 @@ void avatar_virtio_block_print_status(void);
 int vmm_backend_read_from_host_storage(uint64_t sector, void *buffer, uint32_t count);
 int vmm_backend_write_to_host_storage(uint64_t sector, const void *buffer, uint32_t count);
 int vmm_backend_get_storage_info(uint64_t *total_sectors, uint32_t *sector_size);
+
+
+
+
+// MMIO 读写操作 - 使用项目中已有的安全 MMIO 函数
+static inline uint32_t virtio_read32(virtio_device_t *dev, uint64_t offset)
+{
+    return mmio_read32((volatile void*)(dev->base_addr + offset));
+}
+
+static inline void virtio_write32(virtio_device_t *dev, uint64_t offset, uint32_t value)
+{
+    mmio_write32(value, (volatile void*)(dev->base_addr + offset));
+}
+
+static inline uint64_t virtio_read64(virtio_device_t *dev, uint64_t offset)
+{
+    return mmio_read64((volatile void*)(dev->base_addr + offset));
+}
+
+static inline void virtio_set_status(virtio_device_t *dev, uint32_t status)
+{
+    uint32_t current = virtio_read32(dev, VIRTIO_MMIO_STATUS);
+    virtio_write32(dev, VIRTIO_MMIO_STATUS, current | status);
+}
+
+static inline uint32_t virtio_get_status(virtio_device_t *dev)
+{
+    return virtio_read32(dev, VIRTIO_MMIO_STATUS);
+}
+
 
 #endif /* __VIRTIO_BLOCK_FRONTEND_H__ */

@@ -23,6 +23,7 @@ typedef struct
 int virtio_allocator_init(void);
 void *virtio_alloc(uint32_t size, uint32_t alignment);
 void *virtio_alloc_aligned(uint32_t size, uint32_t alignment);
+void virtio_free(void *ptr);
 uint64_t virtio_get_used_memory(void);
 uint64_t virtio_get_free_memory(void);
 void virtio_allocator_info(void);
@@ -32,5 +33,8 @@ uint64_t virtio_get_device_base_addr(uint32_t device_index);
 uint64_t virtio_get_queue_desc_addr(uint32_t device_index, uint32_t queue_id);
 uint64_t virtio_get_queue_avail_addr(uint32_t device_index, uint32_t queue_id);
 uint64_t virtio_get_queue_used_addr(uint32_t device_index, uint32_t queue_id);
+
+// Test function
+void virtio_allocator_test(void);
 
 #endif // _VIRTIO_ALLOCATOR_H
