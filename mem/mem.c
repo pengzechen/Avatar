@@ -22,6 +22,13 @@ void alloctor_init() //  初始化内存管理器
 
     // 使用PMM的函数标记内核内存
     pmm_mark_kernel_allocated(&g_pmm);
+
+    // 初始化内核小块内存分配器
+    kallocator_init();
+
+    kallocator_test();
+    
+    kallocator_stress_test();
 }
 
 // ============= 内核内存分配释放 ================
@@ -890,4 +897,7 @@ void kmem_test()
 
     logger("\n\n=========copy uvm to uvm tests: =========\n\n");
     test_memory_copy_uvm_4level();
+
+    logger("\n\n=========kernel allocator tests: =========\n\n");
+    kallocator_test();
 }

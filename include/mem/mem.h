@@ -6,6 +6,7 @@
 #include "task/mutex.h"
 #include "mem/page.h"
 #include "mem/pmm.h"
+#include "mem/kallocator.h"
 #include "os_cfg.h"
 
 // 将物理地址映射到虚拟地址
