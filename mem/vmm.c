@@ -26,9 +26,9 @@ void alloctor_init() //  初始化内存管理器
     // 初始化内核小块内存分配器
     kallocator_init();
 
-    kallocator_test();
+    // kallocator_test();
     
-    kallocator_stress_test();
+    // kallocator_stress_test();
 }
 
 // ============= 内核内存分配释放 ================
