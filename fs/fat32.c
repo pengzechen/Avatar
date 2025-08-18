@@ -180,18 +180,40 @@ int32_t fat32_open(const char *name)
     if (!fat32_is_mounted()) {
         return -1;
     }
-    
+
     fat32_file_handle_t *handle;
-    fat32_error_t result = fat32_file_open(g_fat32_context.disk, 
+    fat32_error_t result = fat32_file_open(g_fat32_context.disk,
                                           &g_fat32_context.fs_info,
-                                          name, 
+                                          name,
                                           FAT32_O_RDWR | FAT32_O_CREAT,
                                           &handle);
-    
+
     if (result != FAT32_OK) {
         return -1;
     }
-    
+
+    // 简化实现：返回句柄指针作为文件描述符
+    // 实际实现中应该使用文件描述符表
+    return (int32_t)(uintptr_t)handle;
+}
+
+int32_t fat32_open_readonly(const char *name)
+{
+    if (!fat32_is_mounted()) {
+        return -1;
+    }
+
+    fat32_file_handle_t *handle;
+    fat32_error_t result = fat32_file_open(g_fat32_context.disk,
+                                          &g_fat32_context.fs_info,
+                                          name,
+                                          FAT32_O_RDONLY,
+                                          &handle);
+
+    if (result != FAT32_OK) {
+        return -1;
+    }
+
     // 简化实现：返回句柄指针作为文件描述符
     // 实际实现中应该使用文件描述符表
     return (int32_t)(uintptr_t)handle;

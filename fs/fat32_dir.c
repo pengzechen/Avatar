@@ -430,14 +430,11 @@ fat32_error_t fat32_dir_convert_to_short_name(const char *long_name, uint8_t *sh
 
     if (base_len > 8) base_len = 8;  // 基本名最多8个字符
 
-    // 复制基本名（转换为大写）
+    // 复制基本名（保持原始大小写）
     for (size_t i = 0; i < base_len; i++) {
         char c = long_name[i];
-        if (c >= 'a' && c <= 'z') {
-            c = c - 'a' + 'A';
-        }
         // 简化实现：只允许字母、数字和一些特殊字符
-        if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
             c == '_' || c == '-' || c == '~') {
             short_name[i] = c;
         } else {
@@ -445,14 +442,11 @@ fat32_error_t fat32_dir_convert_to_short_name(const char *long_name, uint8_t *sh
         }
     }
 
-    // 复制扩展名（转换为大写）
+    // 复制扩展名（保持原始大小写）
     if (ext_len > 0 && dot_pos != NULL) {
         for (size_t i = 0; i < ext_len; i++) {
             char c = dot_pos[1 + i];
-            if (c >= 'a' && c <= 'z') {
-                c = c - 'a' + 'A';
-            }
-            if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+            if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
                 c == '_' || c == '-' || c == '~') {
                 short_name[8 + i] = c;
             } else {

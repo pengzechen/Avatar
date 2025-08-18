@@ -295,9 +295,9 @@ static void shell_cmd_cat(int argc, char **args)
     char target_path[MAX_PATH_LEN];
     resolve_path(args[1], target_path);
 
-    int32_t fd = fat32_open(target_path);
+    int32_t fd = fat32_open_readonly(target_path);
     if (fd <= 0) {
-        logger("Error: Cannot open file '%s'\n", target_path);
+        logger("Error: File '%s' not found\n", target_path);
         return;
     }
 

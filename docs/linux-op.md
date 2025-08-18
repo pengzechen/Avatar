@@ -15,4 +15,5 @@ mkfs.vfat -F 32 test2.img
 ## 在宿主机挂载
 sudo mkdir -p /mnt/testimg
 sudo mount -o loop test.img /mnt/testimg
+sudo mount -o loop,uid=$(id -u),gid=$(id -g),umask=000 test2.img /mnt/testimg
 sudo umount /mnt/testimg

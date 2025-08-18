@@ -118,11 +118,19 @@ fat32_error_t fat32_cleanup(void);
 
 /**
  * @brief 打开文件（兼容接口）
- * 
+ *
  * @param name 文件名
  * @return int32_t 文件描述符，-1表示失败
  */
 int32_t fat32_open(const char *name);
+
+/**
+ * @brief 以只读模式打开文件（兼容接口）
+ *
+ * @param name 文件名
+ * @return int32_t 文件描述符，-1表示失败（文件不存在时不会创建）
+ */
+int32_t fat32_open_readonly(const char *name);
 
 /**
  * @brief 关闭文件（兼容接口）
