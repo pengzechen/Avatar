@@ -35,6 +35,14 @@ static fat32_error_t fat32_dir_find_free_entry(fat32_disk_t *disk,
 /* ============================================================================
  * 目录操作函数实现
  * ============================================================================ */
+/*
+dir_cluster 表示 目录的起始簇号。告诉函数“我操作哪个目录”，从这个簇开始沿着簇链查找目录项。
+entry_index 目录项在 目录文件 中的索引号（从 0 开始编号）。
+
+有了 dir_cluster 和 entry_index，你就能唯一定位到 目录中的某个具体目录项（directory entry）。
+
+fat32_dir_entry_t => 一个文件(可能是真实文件,也可能是目录文件)
+*/
 
 fat32_error_t fat32_dir_read_entry(fat32_disk_t *disk,
                                    const fat32_fs_info_t *fs_info,
@@ -135,6 +143,7 @@ fat32_error_t fat32_dir_find_entry(fat32_disk_t *disk,
                                    const fat32_fs_info_t *fs_info,
                                    uint32_t dir_cluster,
                                    const char *filename,
+                                   /* out */
                                    fat32_dir_entry_t *dir_entry,
                                    uint32_t *entry_index)
 {
@@ -299,6 +308,7 @@ void fat32_dir_iterator_init(fat32_dir_iterator_t *iterator, uint32_t dir_cluste
     iterator->end_of_dir = 0;
 }
 
+// 通过迭代器获取下一个目录项。
 fat32_error_t fat32_dir_iterator_next(fat32_disk_t *disk,
                                       const fat32_fs_info_t *fs_info,
                                       fat32_dir_iterator_t *iterator,
@@ -349,6 +359,7 @@ fat32_error_t fat32_dir_iterator_next(fat32_disk_t *disk,
     return FAT32_OK;
 }
 
+// 判断目录里是否有有效文件或子目录。
 fat32_error_t fat32_dir_is_empty(fat32_disk_t *disk,
                                  const fat32_fs_info_t *fs_info,
                                  uint32_t dir_cluster,
@@ -616,7 +627,7 @@ static fat32_error_t fat32_dir_find_free_entry(fat32_disk_t *disk,
 
 fat32_error_t fat32_dir_create_directory(fat32_disk_t *disk,
                                          fat32_fs_info_t *fs_info,
-                                         uint32_t parent_cluster,
+                                         uint32_t parent_cluster, /* 父目录的起始簇号 */
                                          const char *dirname,
                                          uint32_t *new_dir_cluster)
 {

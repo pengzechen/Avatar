@@ -84,16 +84,16 @@ void main_entry_el2()
     if (get_current_cpu_id() == 0)
     {
         schedule_init();
-        alloctor_init();
-        logger_info("cacheline_bytes: %d\n", get_cacheline_size());
         task_manager_init();
+
+        logger_info("cacheline_bytes: %d\n", get_cacheline_size());
+        alloctor_init();
 
         // 初始化虚拟化组件
         vtimer_global_init();
         vpl011_global_init();
 
         virtio_block_test();
-        while(1);
 
         struct _vm_t *vm = alloc_vm();
         if (vm == NULL)

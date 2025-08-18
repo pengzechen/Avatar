@@ -26,41 +26,47 @@ static uint8_t g_file_handle_initialized = 0;
  * 私有函数声明
  * ============================================================================ */
 
-static fat32_error_t fat32_file_parse_path(const char *filepath, 
-                                           char *dirname, 
-                                           char *filename);
+static fat32_error_t
+fat32_file_parse_path(const char *filepath, 
+                     char *dirname, 
+                     char *filename);
 
-static fat32_error_t fat32_file_find_directory(fat32_disk_t *disk,
-                                               const fat32_fs_info_t *fs_info,
-                                               const char *dirpath,
-                                               uint32_t *dir_cluster);
+static fat32_error_t
+fat32_file_find_directory(fat32_disk_t *disk,
+                            const fat32_fs_info_t *fs_info,
+                            const char *dirpath,
+                            uint32_t *dir_cluster);
 
-static fat32_error_t fat32_file_read_cluster_data(fat32_disk_t *disk,
-                                                  const fat32_fs_info_t *fs_info,
-                                                  uint32_t cluster_num,
-                                                  uint32_t offset,
-                                                  void *buffer,
-                                                  uint32_t size,
-                                                  uint32_t *bytes_read);
+static fat32_error_t
+fat32_file_read_cluster_data(fat32_disk_t *disk,
+                            const fat32_fs_info_t *fs_info,
+                            uint32_t cluster_num,
+                            uint32_t offset,
+                            void *buffer,
+                            uint32_t size,
+                            uint32_t *bytes_read);
 
-static fat32_error_t fat32_file_write_cluster_data(fat32_disk_t *disk,
-                                                   fat32_fs_info_t *fs_info,
-                                                   uint32_t cluster_num,
-                                                   uint32_t offset,
-                                                   const void *buffer,
-                                                   uint32_t size,
-                                                   uint32_t *bytes_written);
+static fat32_error_t
+fat32_file_write_cluster_data(fat32_disk_t *disk,
+                            fat32_fs_info_t *fs_info,
+                            uint32_t cluster_num,
+                            uint32_t offset,
+                            const void *buffer,
+                            uint32_t size,
+                            uint32_t *bytes_written);
 
-static fat32_error_t fat32_file_update_dir_entry(fat32_disk_t *disk,
-                                                 fat32_fs_info_t *fs_info,
-                                                 const char *filepath,
-                                                 uint32_t new_size,
-                                                 uint32_t first_cluster);
+static fat32_error_t
+fat32_file_update_dir_entry(fat32_disk_t *disk,
+                            fat32_fs_info_t *fs_info,
+                            const char *filepath,
+                            uint32_t new_size,
+                            uint32_t first_cluster);
 
-static fat32_error_t fat32_file_extend_if_needed(fat32_disk_t *disk,
-                                                 fat32_fs_info_t *fs_info,
-                                                 fat32_file_handle_t *file_handle,
-                                                 uint32_t required_size);
+static fat32_error_t
+fat32_file_extend_if_needed(fat32_disk_t *disk,
+                            fat32_fs_info_t *fs_info,
+                            fat32_file_handle_t *file_handle,
+                            uint32_t required_size);
 
 /* ============================================================================
  * 文件句柄管理函数实现
@@ -299,35 +305,6 @@ fat32_error_t fat32_file_close(fat32_disk_t *disk,
     return fat32_file_handle_free(file_handle);
 }
 
-uint32_t fat32_file_tell(const fat32_file_handle_t *file_handle)
-{
-    avatar_assert(file_handle != NULL);
-    
-    if (!fat32_file_is_valid_handle(file_handle)) {
-        return 0;
-    }
-    
-    return file_handle->file_position;
-}
-
-fat32_error_t fat32_file_flush(fat32_disk_t *disk,
-                               fat32_fs_info_t *fs_info,
-                               fat32_file_handle_t *file_handle)
-{
-    avatar_assert(disk != NULL);
-    avatar_assert(fs_info != NULL);
-    avatar_assert(file_handle != NULL);
-    
-    if (!fat32_file_is_valid_handle(file_handle)) {
-        return FAT32_ERROR_INVALID_PARAM;
-    }
-    
-    // 简化实现中没有缓存，直接返回成功
-    // 实际实现中需要将缓存的数据写入磁盘
-    
-    return FAT32_OK;
-}
-
 fat32_error_t fat32_file_read(fat32_disk_t *disk,
                               const fat32_fs_info_t *fs_info,
                               fat32_file_handle_t *file_handle,
@@ -422,6 +399,131 @@ fat32_error_t fat32_file_read(fat32_disk_t *disk,
     *bytes_read = total_read;
     return FAT32_OK;
 }
+
+fat32_error_t fat32_file_write(fat32_disk_t *disk,
+                               fat32_fs_info_t *fs_info,
+                               fat32_file_handle_t *file_handle,
+                               const void *buffer,
+                               uint32_t size,
+                               uint32_t *bytes_written)
+{
+    avatar_assert(disk != NULL);
+    avatar_assert(fs_info != NULL);
+    avatar_assert(file_handle != NULL);
+    avatar_assert(buffer != NULL);
+    avatar_assert(bytes_written != NULL);
+
+    *bytes_written = 0;
+
+    if (!fat32_file_is_valid_handle(file_handle)) {
+        return FAT32_ERROR_INVALID_PARAM;
+    }
+
+    if (!fat32_file_is_writable(file_handle)) {
+        return FAT32_ERROR_ACCESS_DENIED;
+    }
+
+    if (size == 0) {
+        return FAT32_OK;
+    }
+
+    // 计算写入后的文件大小
+    uint32_t end_position = file_handle->file_position + size;
+
+    // 如果需要扩展文件，先分配足够的簇
+    if (end_position > file_handle->file_size) {
+        fat32_error_t result = fat32_file_extend_if_needed(disk, fs_info, file_handle, end_position);
+        if (result != FAT32_OK) {
+            return result;
+        }
+    }
+
+    const uint8_t *write_buffer = (const uint8_t *)buffer;
+    uint32_t total_written = 0;
+    uint32_t current_cluster = file_handle->current_cluster;
+    uint32_t cluster_offset = file_handle->cluster_offset;
+
+    // 如果文件为空或当前簇无效，需要分配第一个簇
+    if (current_cluster < 2) {
+        if (file_handle->first_cluster < 2) {
+            // 分配第一个簇
+            fat32_error_t result = fat32_fat_allocate_cluster(disk, fs_info, &current_cluster);
+            if (result != FAT32_OK) {
+                return result;
+            }
+            file_handle->first_cluster = current_cluster;
+            file_handle->current_cluster = current_cluster;
+        } else {
+            current_cluster = file_handle->first_cluster;
+            file_handle->current_cluster = current_cluster;
+        }
+        cluster_offset = 0;
+        file_handle->cluster_offset = 0;
+    }
+
+    while (total_written < size && current_cluster >= 2) {
+        uint32_t bytes_in_cluster = size - total_written;
+        uint32_t remaining_in_cluster = fs_info->bytes_per_cluster - cluster_offset;
+
+        if (bytes_in_cluster > remaining_in_cluster) {
+            bytes_in_cluster = remaining_in_cluster;
+        }
+
+        uint32_t cluster_bytes_written;
+        fat32_error_t result = fat32_file_write_cluster_data(disk, fs_info, current_cluster,
+                                                            cluster_offset, write_buffer + total_written,
+                                                            bytes_in_cluster, &cluster_bytes_written);
+        if (result != FAT32_OK) {
+            break;
+        }
+
+        total_written += cluster_bytes_written;
+        cluster_offset += cluster_bytes_written;
+
+        // 如果写满了当前簇，移动到下一个簇
+        if (cluster_offset >= fs_info->bytes_per_cluster) {
+            uint32_t next_cluster;
+            result = fat32_fat_get_next_cluster(disk, fs_info, current_cluster, &next_cluster);
+            if (result != FAT32_OK) {
+                break;
+            }
+
+            if (next_cluster == 0) {
+                // 需要分配新簇
+                result = fat32_fat_extend_cluster_chain(disk, fs_info, current_cluster, &next_cluster);
+                if (result != FAT32_OK) {
+                    break;
+                }
+            }
+
+            current_cluster = next_cluster;
+            cluster_offset = 0;
+        }
+
+        if (cluster_bytes_written < bytes_in_cluster) {
+            break;  // 写入不完整
+        }
+    }
+
+    // 更新文件句柄状态
+    file_handle->file_position += total_written;
+    file_handle->current_cluster = current_cluster;
+    file_handle->cluster_offset = cluster_offset;
+
+    // 更新文件大小
+    if (file_handle->file_position > file_handle->file_size) {
+        file_handle->file_size = file_handle->file_position;
+    }
+
+    // 标记文件为已修改
+    if (total_written > 0) {
+        file_handle->modified = 1;
+    }
+
+    *bytes_written = total_written;
+    return FAT32_OK;
+}
+
 
 fat32_error_t fat32_file_seek(fat32_file_handle_t *file_handle,
                               int32_t offset,
@@ -673,9 +775,130 @@ static fat32_error_t fat32_file_write_cluster_data(fat32_disk_t *disk,
     return FAT32_OK;
 }
 
+static fat32_error_t fat32_file_extend_if_needed(fat32_disk_t *disk,
+                                                 fat32_fs_info_t *fs_info,
+                                                 fat32_file_handle_t *file_handle,
+                                                 uint32_t required_size)
+{
+    avatar_assert(disk != NULL);
+    avatar_assert(fs_info != NULL);
+    avatar_assert(file_handle != NULL);
+
+    if (required_size <= file_handle->file_size) {
+        return FAT32_OK;  // 无需扩展
+    }
+
+    // 计算当前文件占用的簇数
+    uint32_t current_clusters = 0;
+    if (file_handle->file_size > 0) {
+        current_clusters = (file_handle->file_size + fs_info->bytes_per_cluster - 1) / fs_info->bytes_per_cluster;
+    }
+
+    // 计算需要的簇数
+    uint32_t required_clusters = (required_size + fs_info->bytes_per_cluster - 1) / fs_info->bytes_per_cluster;
+
+    if (required_clusters <= current_clusters) {
+        return FAT32_OK;  // 当前簇数足够
+    }
+
+    uint32_t clusters_to_add = required_clusters - current_clusters;
+
+    if (file_handle->first_cluster < 2) {
+        // 文件还没有分配簇，分配第一个簇链
+        return fat32_fat_allocate_cluster_chain(disk, fs_info, required_clusters, &file_handle->first_cluster);
+    } else {
+        // 找到簇链的最后一个簇
+        uint32_t last_cluster = file_handle->first_cluster;
+        uint32_t next_cluster;
+
+        while (1) {
+            fat32_error_t result = fat32_fat_get_next_cluster(disk, fs_info, last_cluster, &next_cluster);
+            if (result != FAT32_OK) {
+                return result;
+            }
+
+            if (next_cluster == 0) {
+                break;  // 找到最后一个簇
+            }
+
+            last_cluster = next_cluster;
+        }
+
+        // 在簇链末尾添加新簇
+        for (uint32_t i = 0; i < clusters_to_add; i++) {
+            uint32_t new_cluster;
+            fat32_error_t result = fat32_fat_extend_cluster_chain(disk, fs_info, last_cluster, &new_cluster);
+            if (result != FAT32_OK) {
+                return result;
+            }
+            last_cluster = new_cluster;
+        }
+    }
+
+    return FAT32_OK;
+}
+
+static fat32_error_t fat32_file_update_dir_entry(fat32_disk_t *disk,
+                                                 fat32_fs_info_t *fs_info,
+                                                 const char *filepath,
+                                                 uint32_t new_size,
+                                                 uint32_t first_cluster)
+{
+    avatar_assert(disk != NULL);
+    avatar_assert(fs_info != NULL);
+    avatar_assert(filepath != NULL);
+
+    // 解析文件路径
+    char dirname[FAT32_MAX_PATH];
+    char filename[FAT32_MAX_FILENAME];
+    fat32_error_t result = fat32_file_parse_path(filepath, dirname, filename);
+    if (result != FAT32_OK) {
+        return result;
+    }
+
+    // 查找目录
+    uint32_t dir_cluster;
+    result = fat32_file_find_directory(disk, fs_info, dirname, &dir_cluster);
+    if (result != FAT32_OK) {
+        return result;
+    }
+
+    // 查找文件的目录项
+    fat32_dir_entry_t dir_entry;
+    uint32_t entry_index;
+    result = fat32_dir_find_entry(disk, fs_info, dir_cluster, filename, &dir_entry, &entry_index);
+    if (result != FAT32_OK) {
+        return result;
+    }
+
+    // 更新目录项
+    dir_entry.file_size = new_size;
+    fat32_dir_set_first_cluster(&dir_entry, first_cluster);
+
+    // 更新修改时间（简化实现，使用固定值）
+    dir_entry.write_time = 0x0000;
+    dir_entry.write_date = 0x0021;
+
+    // 写回目录项
+    return fat32_dir_write_entry(disk, fs_info, dir_cluster, entry_index, &dir_entry);
+}
+
+
 /* ============================================================================
  * 文件管理函数实现
  * ============================================================================ */
+
+uint32_t fat32_file_tell(const fat32_file_handle_t *file_handle)
+{
+    avatar_assert(file_handle != NULL);
+    
+    if (!fat32_file_is_valid_handle(file_handle)) {
+        return 0;
+    }
+    
+    return file_handle->file_position;
+}
+
 
 fat32_error_t fat32_file_create(fat32_disk_t *disk,
                                 fat32_fs_info_t *fs_info,
@@ -756,6 +979,7 @@ fat32_error_t fat32_file_delete(fat32_disk_t *disk,
     return fat32_dir_delete_entry(disk, fs_info, dir_cluster, entry_index);
 }
 
+// not implemented
 fat32_error_t fat32_file_rename(fat32_disk_t *disk,
                                 fat32_fs_info_t *fs_info,
                                 const char *old_path,
@@ -763,6 +987,25 @@ fat32_error_t fat32_file_rename(fat32_disk_t *disk,
 {
     // 简化实现：暂不支持重命名
     return FAT32_ERROR_ACCESS_DENIED;
+}
+
+// not implemented
+fat32_error_t fat32_file_flush(fat32_disk_t *disk,
+                               fat32_fs_info_t *fs_info,
+                               fat32_file_handle_t *file_handle)
+{
+    avatar_assert(disk != NULL);
+    avatar_assert(fs_info != NULL);
+    avatar_assert(file_handle != NULL);
+    
+    if (!fat32_file_is_valid_handle(file_handle)) {
+        return FAT32_ERROR_INVALID_PARAM;
+    }
+    
+    // 简化实现中没有缓存，直接返回成功
+    // 实际实现中需要将缓存的数据写入磁盘
+    
+    return FAT32_OK;
 }
 
 fat32_error_t fat32_file_stat(fat32_disk_t *disk,
@@ -792,130 +1035,6 @@ fat32_error_t fat32_file_stat(fat32_disk_t *disk,
 
     // 查找文件
     return fat32_dir_find_entry(disk, fs_info, dir_cluster, filename, dir_entry, NULL);
-}
-
-fat32_error_t fat32_file_write(fat32_disk_t *disk,
-                               fat32_fs_info_t *fs_info,
-                               fat32_file_handle_t *file_handle,
-                               const void *buffer,
-                               uint32_t size,
-                               uint32_t *bytes_written)
-{
-    avatar_assert(disk != NULL);
-    avatar_assert(fs_info != NULL);
-    avatar_assert(file_handle != NULL);
-    avatar_assert(buffer != NULL);
-    avatar_assert(bytes_written != NULL);
-
-    *bytes_written = 0;
-
-    if (!fat32_file_is_valid_handle(file_handle)) {
-        return FAT32_ERROR_INVALID_PARAM;
-    }
-
-    if (!fat32_file_is_writable(file_handle)) {
-        return FAT32_ERROR_ACCESS_DENIED;
-    }
-
-    if (size == 0) {
-        return FAT32_OK;
-    }
-
-    // 计算写入后的文件大小
-    uint32_t end_position = file_handle->file_position + size;
-
-    // 如果需要扩展文件，先分配足够的簇
-    if (end_position > file_handle->file_size) {
-        fat32_error_t result = fat32_file_extend_if_needed(disk, fs_info, file_handle, end_position);
-        if (result != FAT32_OK) {
-            return result;
-        }
-    }
-
-    const uint8_t *write_buffer = (const uint8_t *)buffer;
-    uint32_t total_written = 0;
-    uint32_t current_cluster = file_handle->current_cluster;
-    uint32_t cluster_offset = file_handle->cluster_offset;
-
-    // 如果文件为空或当前簇无效，需要分配第一个簇
-    if (current_cluster < 2) {
-        if (file_handle->first_cluster < 2) {
-            // 分配第一个簇
-            fat32_error_t result = fat32_fat_allocate_cluster(disk, fs_info, &current_cluster);
-            if (result != FAT32_OK) {
-                return result;
-            }
-            file_handle->first_cluster = current_cluster;
-            file_handle->current_cluster = current_cluster;
-        } else {
-            current_cluster = file_handle->first_cluster;
-            file_handle->current_cluster = current_cluster;
-        }
-        cluster_offset = 0;
-        file_handle->cluster_offset = 0;
-    }
-
-    while (total_written < size && current_cluster >= 2) {
-        uint32_t bytes_in_cluster = size - total_written;
-        uint32_t remaining_in_cluster = fs_info->bytes_per_cluster - cluster_offset;
-
-        if (bytes_in_cluster > remaining_in_cluster) {
-            bytes_in_cluster = remaining_in_cluster;
-        }
-
-        uint32_t cluster_bytes_written;
-        fat32_error_t result = fat32_file_write_cluster_data(disk, fs_info, current_cluster,
-                                                            cluster_offset, write_buffer + total_written,
-                                                            bytes_in_cluster, &cluster_bytes_written);
-        if (result != FAT32_OK) {
-            break;
-        }
-
-        total_written += cluster_bytes_written;
-        cluster_offset += cluster_bytes_written;
-
-        // 如果写满了当前簇，移动到下一个簇
-        if (cluster_offset >= fs_info->bytes_per_cluster) {
-            uint32_t next_cluster;
-            result = fat32_fat_get_next_cluster(disk, fs_info, current_cluster, &next_cluster);
-            if (result != FAT32_OK) {
-                break;
-            }
-
-            if (next_cluster == 0) {
-                // 需要分配新簇
-                result = fat32_fat_extend_cluster_chain(disk, fs_info, current_cluster, &next_cluster);
-                if (result != FAT32_OK) {
-                    break;
-                }
-            }
-
-            current_cluster = next_cluster;
-            cluster_offset = 0;
-        }
-
-        if (cluster_bytes_written < bytes_in_cluster) {
-            break;  // 写入不完整
-        }
-    }
-
-    // 更新文件句柄状态
-    file_handle->file_position += total_written;
-    file_handle->current_cluster = current_cluster;
-    file_handle->cluster_offset = cluster_offset;
-
-    // 更新文件大小
-    if (file_handle->file_position > file_handle->file_size) {
-        file_handle->file_size = file_handle->file_position;
-    }
-
-    // 标记文件为已修改
-    if (total_written > 0) {
-        file_handle->modified = 1;
-    }
-
-    *bytes_written = total_written;
-    return FAT32_OK;
 }
 
 fat32_error_t fat32_file_truncate(fat32_disk_t *disk,
@@ -1030,110 +1149,3 @@ fat32_error_t fat32_file_truncate(fat32_disk_t *disk,
     return FAT32_OK;
 }
 
-static fat32_error_t fat32_file_extend_if_needed(fat32_disk_t *disk,
-                                                 fat32_fs_info_t *fs_info,
-                                                 fat32_file_handle_t *file_handle,
-                                                 uint32_t required_size)
-{
-    avatar_assert(disk != NULL);
-    avatar_assert(fs_info != NULL);
-    avatar_assert(file_handle != NULL);
-
-    if (required_size <= file_handle->file_size) {
-        return FAT32_OK;  // 无需扩展
-    }
-
-    // 计算当前文件占用的簇数
-    uint32_t current_clusters = 0;
-    if (file_handle->file_size > 0) {
-        current_clusters = (file_handle->file_size + fs_info->bytes_per_cluster - 1) / fs_info->bytes_per_cluster;
-    }
-
-    // 计算需要的簇数
-    uint32_t required_clusters = (required_size + fs_info->bytes_per_cluster - 1) / fs_info->bytes_per_cluster;
-
-    if (required_clusters <= current_clusters) {
-        return FAT32_OK;  // 当前簇数足够
-    }
-
-    uint32_t clusters_to_add = required_clusters - current_clusters;
-
-    if (file_handle->first_cluster < 2) {
-        // 文件还没有分配簇，分配第一个簇链
-        return fat32_fat_allocate_cluster_chain(disk, fs_info, required_clusters, &file_handle->first_cluster);
-    } else {
-        // 找到簇链的最后一个簇
-        uint32_t last_cluster = file_handle->first_cluster;
-        uint32_t next_cluster;
-
-        while (1) {
-            fat32_error_t result = fat32_fat_get_next_cluster(disk, fs_info, last_cluster, &next_cluster);
-            if (result != FAT32_OK) {
-                return result;
-            }
-
-            if (next_cluster == 0) {
-                break;  // 找到最后一个簇
-            }
-
-            last_cluster = next_cluster;
-        }
-
-        // 在簇链末尾添加新簇
-        for (uint32_t i = 0; i < clusters_to_add; i++) {
-            uint32_t new_cluster;
-            fat32_error_t result = fat32_fat_extend_cluster_chain(disk, fs_info, last_cluster, &new_cluster);
-            if (result != FAT32_OK) {
-                return result;
-            }
-            last_cluster = new_cluster;
-        }
-    }
-
-    return FAT32_OK;
-}
-
-static fat32_error_t fat32_file_update_dir_entry(fat32_disk_t *disk,
-                                                 fat32_fs_info_t *fs_info,
-                                                 const char *filepath,
-                                                 uint32_t new_size,
-                                                 uint32_t first_cluster)
-{
-    avatar_assert(disk != NULL);
-    avatar_assert(fs_info != NULL);
-    avatar_assert(filepath != NULL);
-
-    // 解析文件路径
-    char dirname[FAT32_MAX_PATH];
-    char filename[FAT32_MAX_FILENAME];
-    fat32_error_t result = fat32_file_parse_path(filepath, dirname, filename);
-    if (result != FAT32_OK) {
-        return result;
-    }
-
-    // 查找目录
-    uint32_t dir_cluster;
-    result = fat32_file_find_directory(disk, fs_info, dirname, &dir_cluster);
-    if (result != FAT32_OK) {
-        return result;
-    }
-
-    // 查找文件的目录项
-    fat32_dir_entry_t dir_entry;
-    uint32_t entry_index;
-    result = fat32_dir_find_entry(disk, fs_info, dir_cluster, filename, &dir_entry, &entry_index);
-    if (result != FAT32_OK) {
-        return result;
-    }
-
-    // 更新目录项
-    dir_entry.file_size = new_size;
-    fat32_dir_set_first_cluster(&dir_entry, first_cluster);
-
-    // 更新修改时间（简化实现，使用固定值）
-    dir_entry.write_time = 0x0000;
-    dir_entry.write_date = 0x0021;
-
-    // 写回目录项
-    return fat32_dir_write_entry(disk, fs_info, dir_cluster, entry_index, &dir_entry);
-}

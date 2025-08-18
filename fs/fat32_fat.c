@@ -15,6 +15,7 @@
  * FAT表操作函数实现
  * ============================================================================ */
 
+ // 查看某个簇的下一个簇号是多少
 fat32_error_t fat32_fat_read_entry(fat32_disk_t *disk, 
                                    const fat32_fs_info_t *fs_info,
                                    uint32_t cluster_num, 
@@ -45,6 +46,7 @@ fat32_error_t fat32_fat_read_entry(fat32_disk_t *disk,
     return FAT32_OK;
 }
 
+// 指定这个簇的「下一个簇号」
 fat32_error_t fat32_fat_write_entry(fat32_disk_t *disk, 
                                     const fat32_fs_info_t *fs_info,
                                     uint32_t cluster_num, 
@@ -367,6 +369,13 @@ fat32_error_t fat32_fat_get_cluster_chain_length(fat32_disk_t *disk,
     return FAT32_OK;
 }
 
+
+/*
+簇号: 2 → 5 → 8 → 10 → EOC
+索引: 0   1   2   3
+input : first_cluster = 2, cluster_index = 2
+output: *target_cluster = 8
+*/
 fat32_error_t fat32_fat_get_cluster_at_index(fat32_disk_t *disk,
                                              const fat32_fs_info_t *fs_info,
                                              uint32_t first_cluster,
