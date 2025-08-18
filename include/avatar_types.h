@@ -22,6 +22,8 @@ typedef _Bool bool;
 #define false 0
 #endif
 
+typedef  uint64_t uintptr_t;
+
 // size_t: 无符号的、与平台指针大小相同的整数类型
 typedef unsigned long long size_t;
 // ssize_t: 是有符号版本
