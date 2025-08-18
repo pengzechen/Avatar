@@ -21,6 +21,8 @@ extern void *memcpy(void *dest, const void *src, size_t n);
 extern int32_t memcmp(const void *s1, const void *s2, size_t n);
 extern void *memmove(void *dest, const void *src, size_t n);
 extern void *memchr(const void *s, int32_t c, size_t n);
+extern char *strncpy(char *dest, const char *src, size_t n) ;
+extern char *strrchr(const char *s, int c);
 
 int64_t atol(const char *ptr);
 char *get_file_name(char *name);

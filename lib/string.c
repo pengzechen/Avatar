@@ -179,3 +179,36 @@ char *get_file_name(char *name)
     }
     return s + 1;
 }
+
+char *strncpy(char *dest, const char *src, size_t n) {
+    size_t i = 0;
+
+    // 先拷贝 src
+    for (; i < n && src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+
+    // 如果 src 结束了，补 '\0'
+    for (; i < n; i++) {
+        dest[i] = '\0';
+    }
+
+    return dest;
+}
+char *strrchr(const char *s, int c) {
+    const char *last = NULL;
+
+    while (*s) {
+        if (*s == (char)c) {
+            last = s;
+        }
+        s++;
+    }
+
+    // 还要检查 '\0'
+    if (c == '\0') {
+        return (char *)s;
+    }
+
+    return (char *)last;
+}
