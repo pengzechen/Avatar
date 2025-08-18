@@ -1,4 +1,16 @@
 
+# VS Code files that should be ignored
+.vscode/browse.vc.db*
+.vscode/ipch/
+.vscode/*.db
+.vscode/*.db-*
+
+# Keep VS Code configuration files (commented out - uncomment if you want to ignore them too)
+# .vscode/settings.json
+# .vscode/launch.json
+# .vscode/tasks.json
+# .vscode/c_cpp_properties.json
+# .vscode/keybindings.json
 
 build/**/*.txt
 build/**/*.elf

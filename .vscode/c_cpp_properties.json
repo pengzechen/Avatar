@@ -1,0 +1,137 @@
+{
+    "version": 4,
+    "configurations": [
+        {
+            "name": "Avatar OS - Kernel Mode (HV=0)",
+            "includePath": [
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/include/mem",
+                "${workspaceFolder}/include/task",
+                "${workspaceFolder}/include/vmm",
+                "${workspaceFolder}/include/sys",
+                "${workspaceFolder}/include/lib",
+                "${workspaceFolder}/include/fs",
+                "${workspaceFolder}/guest"
+            ],
+            "defines": [
+                "SMP_NUM=2",
+                "HV=0",
+                "__LOG_LEVEL=1",
+                "__DEBUG_MODULE=0",
+                "DEBUG",
+                "__KERNEL__",
+                "__AARCH64__",
+                "__ARM64__",
+                "__GNUC__",
+                "__STDC_VERSION__=201112L"
+            ],
+            "compilerPath": "/home/ajax/green-software/compiler/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++11",
+            "intelliSenseMode": "linux-gcc-arm64",
+            "compilerArgs": [
+                "-fno-pie",
+                "-mgeneral-regs-only",
+                "-fno-builtin",
+                "-nostdinc",
+                "-fno-stack-protector",
+                "-g"
+            ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/include",
+                    "${workspaceFolder}/include/mem",
+                    "${workspaceFolder}/include/task",
+                    "${workspaceFolder}/include/vmm",
+                    "${workspaceFolder}/include/sys",
+                    "${workspaceFolder}/include/lib",
+                    "${workspaceFolder}/include/fs",
+                    "${workspaceFolder}/guest",
+                    "${workspaceFolder}/boot",
+                    "${workspaceFolder}/exception",
+                    "${workspaceFolder}/io",
+                    "${workspaceFolder}/mem",
+                    "${workspaceFolder}/timer",
+                    "${workspaceFolder}/task",
+                    "${workspaceFolder}/process",
+                    "${workspaceFolder}/spinlock",
+                    "${workspaceFolder}/vmm",
+                    "${workspaceFolder}/lib",
+                    "${workspaceFolder}/fs",
+                    "${workspaceFolder}/app",
+                    "${workspaceFolder}/syscall",
+                    "${workspaceFolder}/virtio_frontend"
+                ],
+                "limitSymbolsToIncludedHeaders": true,
+                "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db"
+            },
+            "forcedInclude": []
+        },
+        {
+            "name": "Avatar OS - VMM Mode (HV=1)",
+            "includePath": [
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/include/mem",
+                "${workspaceFolder}/include/task",
+                "${workspaceFolder}/include/vmm",
+                "${workspaceFolder}/include/sys",
+                "${workspaceFolder}/include/lib",
+                "${workspaceFolder}/include/fs",
+                "${workspaceFolder}/guest"
+            ],
+            "defines": [
+                "SMP_NUM=2",
+                "HV=1",
+                "__LOG_LEVEL=1",
+                "__DEBUG_MODULE=0",
+                "DEBUG",
+                "__KERNEL__",
+                "__AARCH64__",
+                "__ARM64__",
+                "__GNUC__",
+                "__STDC_VERSION__=201112L"
+            ],
+            "compilerPath": "/usr/bin/aarch64-linux-musl-gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++11",
+            "intelliSenseMode": "linux-gcc-arm64",
+            "compilerArgs": [
+                "-fno-pie",
+                "-mgeneral-regs-only",
+                "-fno-builtin",
+                "-nostdinc",
+                "-fno-stack-protector",
+                "-g"
+            ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/include",
+                    "${workspaceFolder}/include/mem",
+                    "${workspaceFolder}/include/task",
+                    "${workspaceFolder}/include/vmm",
+                    "${workspaceFolder}/include/sys",
+                    "${workspaceFolder}/include/lib",
+                    "${workspaceFolder}/include/fs",
+                    "${workspaceFolder}/guest",
+                    "${workspaceFolder}/boot",
+                    "${workspaceFolder}/exception",
+                    "${workspaceFolder}/io",
+                    "${workspaceFolder}/mem",
+                    "${workspaceFolder}/timer",
+                    "${workspaceFolder}/task",
+                    "${workspaceFolder}/process",
+                    "${workspaceFolder}/spinlock",
+                    "${workspaceFolder}/vmm",
+                    "${workspaceFolder}/lib",
+                    "${workspaceFolder}/fs",
+                    "${workspaceFolder}/app",
+                    "${workspaceFolder}/syscall",
+                    "${workspaceFolder}/virtio_frontend"
+                ],
+                "limitSymbolsToIncludedHeaders": true,
+                "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db"
+            },
+            "forcedInclude": []
+        }
+    ]
+}

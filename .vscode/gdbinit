@@ -1,0 +1,233 @@
+# Avatar OS GDB 配置文件
+# 这个文件包含了调试 Avatar 操作系统的常用 GDB 命令和设置
+
+# 基本设置
+set confirm off
+set verbose off
+set print pretty on
+set print array on
+set print array-indexes on
+set print elements 200
+set print null-stop on
+
+# ARM64 特定设置
+set architecture aarch64
+set endian little
+
+# 禁用分页，避免调试时的交互中断
+set pagination off
+
+# 设置历史记录
+set history save on
+set history size 1000
+set history filename ~/.gdb_history
+
+# 定义一些有用的宏
+define reload_symbols
+    # 重新加载所有符号文件
+    symbol-file build/kernel.elf
+    add-symbol-file build/kernel.elf 0x40080000
+    add-symbol-file app/add/build/app.elf
+    add-symbol-file app/sub/build/app.elf
+    add-symbol-file app/testapp/build/app.elf
+    add-symbol-file guest/testos/build/kernel.elf
+    echo "Symbols reloaded\n"
+end
+
+define connect_qemu
+    target remote localhost:1234
+    echo "Connected to QEMU\n"
+end
+
+define show_regs
+    info registers
+    echo "\n=== System Registers ===\n"
+    printf "Current EL: %d\n", ($pstate >> 2) & 3
+    printf "DAIF: 0x%x\n", ($pstate >> 6) & 0xf
+    printf "SP_EL0: 0x%lx\n", $sp_el0
+    printf "SP_EL1: 0x%lx\n", $sp_el1
+    printf "ELR_EL1: 0x%lx\n", $elr_el1
+    printf "SPSR_EL1: 0x%lx\n", $spsr_el1
+end
+
+define show_stack
+    echo "=== Stack Trace ===\n"
+    bt
+    echo "\n=== Stack Memory ===\n"
+    x/16gx $sp
+end
+
+define show_cpu_state
+    echo "=== CPU State ===\n"
+    show_regs
+    echo "\n"
+    show_stack
+end
+
+define show_vm_state
+    echo "=== VM State (EL2) ===\n"
+    printf "HCR_EL2: 0x%lx\n", $hcr_el2
+    printf "VTTBR_EL2: 0x%lx\n", $vttbr_el2
+    printf "VTCR_EL2: 0x%lx\n", $vtcr_el2
+    printf "SCTLR_EL2: 0x%lx\n", $sctlr_el2
+end
+
+define show_mmu_state
+    echo "=== MMU State ===\n"
+    printf "SCTLR_EL1: 0x%lx\n", $sctlr_el1
+    printf "TTBR0_EL1: 0x%lx\n", $ttbr0_el1
+    printf "TTBR1_EL1: 0x%lx\n", $ttbr1_el1
+    printf "TCR_EL1: 0x%lx\n", $tcr_el1
+    printf "MAIR_EL1: 0x%lx\n", $mair_el1
+end
+
+define show_exception_state
+    echo "=== Exception State ===\n"
+    printf "ESR_EL1: 0x%lx\n", $esr_el1
+    printf "FAR_EL1: 0x%lx\n", $far_el1
+    printf "VBAR_EL1: 0x%lx\n", $vbar_el1
+    if ($pstate >> 2) & 3 == 2
+        printf "ESR_EL2: 0x%lx\n", $esr_el2
+        printf "FAR_EL2: 0x%lx\n", $far_el2
+        printf "VBAR_EL2: 0x%lx\n", $vbar_el2
+    end
+end
+
+define show_timer_state
+    echo "=== Timer State ===\n"
+    printf "CNTFRQ_EL0: 0x%lx\n", $cntfrq_el0
+    printf "CNTP_CTL_EL0: 0x%lx\n", $cntp_ctl_el0
+    printf "CNTP_CVAL_EL0: 0x%lx\n", $cntp_cval_el0
+    printf "CNTP_TVAL_EL0: 0x%lx\n", $cntp_tval_el0
+    printf "CNTPCT_EL0: 0x%lx\n", $cntpct_el0
+end
+
+define avatar_info
+    echo "=== Avatar OS Debug Info ===\n"
+    show_cpu_state
+    echo "\n"
+    show_mmu_state
+    echo "\n"
+    show_exception_state
+    echo "\n"
+    show_timer_state
+end
+
+define vmm_info
+    echo "=== Avatar VMM Debug Info ===\n"
+    show_cpu_state
+    echo "\n"
+    show_vm_state
+    echo "\n"
+    show_mmu_state
+    echo "\n"
+    show_exception_state
+end
+
+# 设置断点的便捷命令
+define bp_kernel_main
+    break kernel_main
+    echo "Breakpoint set at kernel_main\n"
+end
+
+define bp_vmm_main
+    break vmm_main
+    echo "Breakpoint set at vmm_main\n"
+end
+
+define bp_exception
+    break exception_handler
+    echo "Breakpoint set at exception_handler\n"
+end
+
+define bp_timer
+    break timer_handler
+    echo "Breakpoint set at timer_handler\n"
+end
+
+define bp_task_switch
+    break schedule
+    echo "Breakpoint set at schedule\n"
+end
+
+# 内存检查命令
+define check_stack
+    if $argc == 0
+        set $stack_size = 0x100
+    else
+        set $stack_size = $arg0
+    end
+    echo "=== Stack Memory Check ===\n"
+    printf "SP: 0x%lx\n", $sp
+    x/32gx $sp
+    echo "\n=== Stack Pattern Check ===\n"
+    x/16wx $sp-$stack_size
+end
+
+define check_heap
+    echo "=== Heap Status ===\n"
+    # 这里可以添加堆状态检查的代码
+    # 需要根据你的内存分配器实现来定制
+end
+
+# 任务调试命令
+define show_tasks
+    echo "=== Task List ===\n"
+    # 这里可以添加显示任务列表的代码
+    # 需要根据你的任务管理器实现来定制
+end
+
+define show_current_task
+    echo "=== Current Task ===\n"
+    # 这里可以添加显示当前任务的代码
+end
+
+# 虚拟化调试命令
+define show_vcpus
+    echo "=== VCPU List ===\n"
+    # 这里可以添加显示 VCPU 列表的代码
+end
+
+define show_vms
+    echo "=== VM List ===\n"
+    # 这里可以添加显示 VM 列表的代码
+end
+
+# 帮助命令
+define avatar_help
+    echo "=== Avatar OS GDB Helper Commands ===\n"
+    echo "Connection:\n"
+    echo "  connect_qemu     - Connect to QEMU\n"
+    echo "  reload_symbols   - Reload all symbol files\n"
+    echo "\n"
+    echo "System State:\n"
+    echo "  avatar_info      - Show complete system state\n"
+    echo "  vmm_info         - Show VMM state (for HV=1)\n"
+    echo "  show_regs        - Show registers and system state\n"
+    echo "  show_stack       - Show stack trace and memory\n"
+    echo "  show_cpu_state   - Show CPU state\n"
+    echo "  show_vm_state    - Show VM state (EL2)\n"
+    echo "  show_mmu_state   - Show MMU state\n"
+    echo "  show_exception_state - Show exception state\n"
+    echo "  show_timer_state - Show timer state\n"
+    echo "\n"
+    echo "Breakpoints:\n"
+    echo "  bp_kernel_main   - Break at kernel_main\n"
+    echo "  bp_vmm_main      - Break at vmm_main\n"
+    echo "  bp_exception     - Break at exception_handler\n"
+    echo "  bp_timer         - Break at timer_handler\n"
+    echo "  bp_task_switch   - Break at schedule\n"
+    echo "\n"
+    echo "Memory:\n"
+    echo "  check_stack [size] - Check stack memory\n"
+    echo "  check_heap       - Check heap status\n"
+    echo "\n"
+    echo "Tasks & VMs:\n"
+    echo "  show_tasks       - Show task list\n"
+    echo "  show_current_task - Show current task\n"
+    echo "  show_vcpus       - Show VCPU list\n"
+    echo "  show_vms         - Show VM list\n"
+end
+
+# 启动时显示帮助
+echo "Avatar OS GDB Helper loaded. Type 'avatar_help' for available commands.\n"

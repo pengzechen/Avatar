@@ -1,6 +1,9 @@
 {
-    "C_Cpp.errorSquiggles": "disabled",
+    "C_Cpp.errorSquiggles": "enabled",
     "files.associations": {
+        "*.h": "c",
+        "*.S": "asm",
+        "*.s": "asm",
         "page.h": "c",
         "os_cfg.h": "c",
         "bitmap.h": "c",
@@ -15,7 +18,6 @@
         "uart_pl011.h": "c",
         "psci.h": "c",
         "smp.h": "c",
-        "cstdio": "c",
         "syscall_num.h": "c",
         "syscall.h": "c",
         "timer.h": "c",
@@ -23,18 +25,42 @@
         "vcpu.h": "c",
         "mutex.h": "c",
         "mem.h": "c",
-        "charconv": "c",
-        "xlocnum": "c",
         "mmu.h": "c",
         "pro.h": "c",
         "list.h": "c",
-        "type_traits": "c",
         "vtimer.h": "c",
         "exception.h": "c",
         "stage2page.h": "c",
-        "vpsci.h": "c"
+        "vpsci.h": "c",
+        "fat32.h": "c",
+        "virtio_block_frontend.h": "c"
     },
-    "C_Cpp.codeAnalysis.clangTidy.checks.disabled": [
-        "clang-diagnostic-error"
-    ]
+    "C_Cpp.default.configurationProvider": "ms-vscode.cpptools",
+    "C_Cpp.default.systemIncludePath": [],
+    "C_Cpp.default.browse.limitSymbolsToIncludedHeaders": true,
+    "C_Cpp.codeAnalysis.clangTidy.enabled": false,
+    "C_Cpp.formatting": "clangFormat",
+    "C_Cpp.clang_format_style": "file",
+    "C_Cpp.clang_format_fallbackStyle": "none",
+    "C_Cpp.files.exclude": {
+        "**/build/**": true,
+        "**/.git/**": true,
+        "**/node_modules/**": true
+    },
+    "C_Cpp.intelliSenseEngine": "default",
+    "C_Cpp.intelliSenseCachePath": "${workspaceFolder}/.vscode/ipch",
+    "C_Cpp.loggingLevel": "Warning",
+
+    // 格式化相关设置
+    "editor.formatOnSave": true,
+    "editor.formatOnType": false,
+    "editor.formatOnPaste": true,
+
+    // 确保 C/C++ 文件使用正确的格式化工具
+    "[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "[cpp]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    }
 }

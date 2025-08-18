@@ -1,4 +1,6 @@
 
+# 加载自定义 GDB 配置
+# source .vscode/gdbinit
 
 file build/kernel.elf
 target remote localhost:1234
