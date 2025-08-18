@@ -392,7 +392,7 @@ int virtio_blk_init(virtio_blk_device_t *blk_dev, uint64_t base_addr, uint32_t d
 {
     // 分配设备结构
     virtio_device_t * dev = kalloc(sizeof(virtio_device_t), 8);
-    if (!blk_dev->dev)
+    if (!dev)
     {
         logger_error("Failed to allocate device structure\n");
         return -1;

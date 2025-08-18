@@ -33,14 +33,14 @@ fat32_error_t fat32_init(void)
     g_fat32_context.disk = fat32_get_disk();
     fat32_error_t result = fat32_disk_init(g_fat32_context.disk);
     if (result != FAT32_OK) {
-        logger("FAT32: Failed to initialize disk\n");
+        logger_error("FAT32: Failed to initialize disk\n");
         return result;
     }
     
     // 初始化缓存管理器
     result = fat32_init_global_cache();
     if (result != FAT32_OK) {
-        logger("FAT32: Failed to initialize cache\n");
+        logger_error("FAT32: Failed to initialize cache\n");
         fat32_disk_cleanup(g_fat32_context.disk);
         return result;
     }
@@ -107,13 +107,13 @@ fat32_error_t fat32_mount(void)
     // 读取引导扇区和文件系统信息
     fat32_error_t result = fat32_boot_read_boot_sector(g_fat32_context.disk, &g_fat32_context.fs_info);
     if (result != FAT32_OK) {
-        logger("FAT32: Failed to read boot sector\n");
+        logger_error("FAT32: Failed to read boot sector\n");
         return result;
     }
     
     g_fat32_context.mounted = 1;
     
-    logger("FAT32: File system mounted successfully\n");
+    logger_info("FAT32: File system mounted successfully\n");
     fat32_boot_print_layout(&g_fat32_context.fs_info);
     
     return FAT32_OK;

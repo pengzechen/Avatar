@@ -19,6 +19,13 @@
 #include "uart_pl011.h"
 #include "mem/earlypage.h"
 #include "virtio_block_frontend.h"
+#include "fs/fat32.h"
+#include "fs/fat32_dir.h"
+#include "uart_pl011.h"
+
+
+// Shell函数声明
+void avatar_simple_shell(void);
 
 void print_avatar_logo(void)
 {
@@ -93,7 +100,15 @@ void main_entry_el2()
         vtimer_global_init();
         vpl011_global_init();
 
-        virtio_block_test();
+        // 初始化 VirtIO Block 前端驱动
+        avatar_virtio_block_init();
+
+        // 初始化 FAT32 磁盘模块
+        fat32_init() ;
+        fat32_mount();
+
+        // 启动简单的bash shell
+        avatar_simple_shell();
 
         struct _vm_t *vm = alloc_vm();
         if (vm == NULL)
@@ -188,3 +203,4 @@ void second_kernel_main_el2()
     main_entry_el2();
     // can't reach here !
 }
+

@@ -214,18 +214,15 @@ int virtio_queue_add_buf(virtio_device_t *dev, uint32_t queue_id,
 int virtio_queue_kick(virtio_device_t *dev, uint32_t queue_id);
 int virtio_queue_get_buf(virtio_device_t *dev, uint32_t queue_id, uint32_t *len);
 
-
-
-
 // 设备扫描
 uint64_t scan_for_virtio_block_device(uint32_t device_id);
 
 // 调试函数
 void virtio_blk_print_info(virtio_blk_device_t *blk_dev);
 int virtio_block_test(void);
-
-// 设备检测函数
 void virtio_detect_devices(void);
+
+
 
 // Avatar 集成接口函数
 int avatar_virtio_block_init(void);
@@ -233,7 +230,6 @@ virtio_blk_device_t *avatar_get_virtio_block_device(void);
 int avatar_virtio_block_read(uint64_t sector, void *buffer, uint32_t sector_count);
 int avatar_virtio_block_write(uint64_t sector, const void *buffer, uint32_t sector_count);
 int avatar_virtio_block_get_info(uint64_t *capacity, uint32_t *block_size);
-int avatar_virtio_block_test(void);
 void avatar_virtio_block_print_status(void);
 
 // VMM 后端接口函数

@@ -222,4 +222,38 @@ static inline uint32_t fat32_disk_offset_to_sector(uint32_t offset) {
  */
 fat32_disk_t *fat32_get_disk(void);
 
+/**
+ * @brief 检查是否使用VirtIO块设备
+ *
+ * @return uint8_t 1表示使用VirtIO，0表示使用内存模拟
+ */
+uint8_t fat32_disk_is_using_virtio(void);
+
+/**
+ * @brief 获取底层设备信息
+ *
+ * @param disk 磁盘状态结构指针
+ * @param device_capacity 返回设备容量（扇区数）
+ * @param device_block_size 返回设备块大小（字节）
+ * @return fat32_error_t 错误码
+ */
+fat32_error_t fat32_disk_get_device_info(fat32_disk_t *disk,
+                                         uint64_t *device_capacity,
+                                         uint32_t *device_block_size);
+
+/**
+ * @brief 打印磁盘信息
+ *
+ * @param disk 磁盘状态结构指针
+ */
+void fat32_disk_print_info(fat32_disk_t *disk);
+
+/**
+ * @brief 测试磁盘读写功能
+ *
+ * @param disk 磁盘状态结构指针
+ * @return fat32_error_t 错误码
+ */
+fat32_error_t fat32_disk_test_rw(fat32_disk_t *disk);
+
 #endif // FAT32_DISK_H
