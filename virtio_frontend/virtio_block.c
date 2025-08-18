@@ -13,6 +13,11 @@ static bool g_virtio_block_initialized = false;
  */
 int avatar_virtio_block_init(void)
 {
+    if (g_virtio_block_initialized) {
+        logger_warn("VirtIO Block already initialized\n");
+        return 0;
+    }
+    
     logger_info("Initializing Avatar VirtIO Block frontend...\n");
     
     // 初始化 VirtIO 前端子系统
