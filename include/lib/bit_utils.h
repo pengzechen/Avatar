@@ -24,15 +24,14 @@
  * - HIGHEST_BIT_POSITION(4) = 2
  * - HIGHEST_BIT_POSITION(8) = 3
  */
-#define HIGHEST_BIT_POSITION(x)        \
-    ({                                 \
-        uint32_t _i = 0;               \
-        unsigned long long _val = (x); \
-        while (_val >>= 1)             \
-        {                              \
-            _i++;                      \
-        }                              \
-        _i;                            \
+#define HIGHEST_BIT_POSITION(x)                                                                    \
+    ({                                                                                             \
+        uint32_t           _i   = 0;                                                               \
+        unsigned long long _val = (x);                                                             \
+        while (_val >>= 1) {                                                                       \
+            _i++;                                                                                  \
+        }                                                                                          \
+        _i;                                                                                        \
     })
 
 /**
@@ -100,7 +99,7 @@
  * @param end 结束位位置（包含）
  * @return 插入值后的结果
  */
-#define BIT_INSERT(original, value, start, end) \
+#define BIT_INSERT(original, value, start, end)                                                    \
     (((original) & ~BIT_MASK(start, end)) | (((value) << (start)) & BIT_MASK(start, end)))
 
 /* ==================== 位计数宏定义 ==================== */
@@ -217,4 +216,4 @@
  */
 #define BSWAP64(x) __builtin_bswap64(x)
 
-#endif // __BIT_UTILS_H__
+#endif  // __BIT_UTILS_H__

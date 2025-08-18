@@ -22,17 +22,20 @@
  * 磁盘配置常量
  * ============================================================================ */
 
-#define FAT32_DISK_SIZE             (64 * 1024 * 1024)  // 64MB虚拟磁盘
-#define FAT32_TOTAL_SECTORS         (FAT32_DISK_SIZE / FAT32_SECTOR_SIZE)
-#define FAT32_SECTORS_PER_CLUSTER   8                   // 每簇8个扇区（4KB）
-#define FAT32_RESERVED_SECTORS      32                  // 保留扇区数
-#define FAT32_NUM_FATS              2                   // FAT表数量
-#define FAT32_ROOT_CLUSTER          2                   // 根目录起始簇号
+#define FAT32_DISK_SIZE           (64 * 1024 * 1024)  // 64MB虚拟磁盘
+#define FAT32_TOTAL_SECTORS       (FAT32_DISK_SIZE / FAT32_SECTOR_SIZE)
+#define FAT32_SECTORS_PER_CLUSTER 8   // 每簇8个扇区（4KB）
+#define FAT32_RESERVED_SECTORS    32  // 保留扇区数
+#define FAT32_NUM_FATS            2   // FAT表数量
+#define FAT32_ROOT_CLUSTER        2   // 根目录起始簇号
 
 /* 计算得出的磁盘布局参数 */
-#define FAT32_CLUSTERS_COUNT        ((FAT32_TOTAL_SECTORS - FAT32_RESERVED_SECTORS) / (FAT32_SECTORS_PER_CLUSTER + (FAT32_NUM_FATS * 4 / FAT32_SECTOR_SIZE)))
-#define FAT32_FAT_SIZE_SECTORS      ((FAT32_CLUSTERS_COUNT * 4 + FAT32_SECTOR_SIZE - 1) / FAT32_SECTOR_SIZE)
-#define FAT32_DATA_START_SECTOR     (FAT32_RESERVED_SECTORS + FAT32_NUM_FATS * FAT32_FAT_SIZE_SECTORS)
+#define FAT32_CLUSTERS_COUNT                                                                       \
+    ((FAT32_TOTAL_SECTORS - FAT32_RESERVED_SECTORS) /                                              \
+     (FAT32_SECTORS_PER_CLUSTER + (FAT32_NUM_FATS * 4 / FAT32_SECTOR_SIZE)))
+#define FAT32_FAT_SIZE_SECTORS                                                                     \
+    ((FAT32_CLUSTERS_COUNT * 4 + FAT32_SECTOR_SIZE - 1) / FAT32_SECTOR_SIZE)
+#define FAT32_DATA_START_SECTOR (FAT32_RESERVED_SECTORS + FAT32_NUM_FATS * FAT32_FAT_SIZE_SECTORS)
 
 /* ============================================================================
  * 磁盘状态结构
@@ -43,17 +46,18 @@
  * 
  * 维护虚拟磁盘的状态信息和统计数据
  */
-typedef struct {
-    uint8_t     *disk_data;             // 磁盘数据指针
-    uint32_t    disk_size;              // 磁盘大小（字节）
-    uint32_t    total_sectors;          // 总扇区数
-    uint8_t     initialized;            // 初始化标志
-    uint8_t     formatted;              // 格式化标志
-    
+typedef struct
+{
+    uint8_t *disk_data;      // 磁盘数据指针
+    uint32_t disk_size;      // 磁盘大小（字节）
+    uint32_t total_sectors;  // 总扇区数
+    uint8_t  initialized;    // 初始化标志
+    uint8_t  formatted;      // 格式化标志
+
     /* 统计信息 */
-    uint32_t    read_count;             // 读操作计数
-    uint32_t    write_count;            // 写操作计数
-    uint32_t    error_count;            // 错误计数
+    uint32_t read_count;   // 读操作计数
+    uint32_t write_count;  // 写操作计数
+    uint32_t error_count;  // 错误计数
 } fat32_disk_t;
 
 /* ============================================================================
@@ -70,7 +74,8 @@ typedef struct {
  * 
  * 简化说明：使用内存模拟磁盘，实际项目中可替换为真实磁盘驱动
  */
-fat32_error_t fat32_disk_init(fat32_disk_t *disk);
+fat32_error_t
+fat32_disk_init(fat32_disk_t *disk);
 
 /**
  * @brief 清理磁盘资源
@@ -80,7 +85,8 @@ fat32_error_t fat32_disk_init(fat32_disk_t *disk);
  * @param disk 磁盘状态结构指针
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_disk_cleanup(fat32_disk_t *disk);
+fat32_error_t
+fat32_disk_cleanup(fat32_disk_t *disk);
 
 /**
  * @brief 读取磁盘扇区
@@ -95,10 +101,11 @@ fat32_error_t fat32_disk_cleanup(fat32_disk_t *disk);
  * 
  * 注意：缓冲区大小必须至少为 sector_count * FAT32_SECTOR_SIZE 字节
  */
-fat32_error_t fat32_disk_read_sectors(fat32_disk_t *disk, 
-                                      uint32_t sector_num, 
-                                      uint32_t sector_count, 
-                                      void *buffer);
+fat32_error_t
+fat32_disk_read_sectors(fat32_disk_t *disk,
+                        uint32_t      sector_num,
+                        uint32_t      sector_count,
+                        void         *buffer);
 
 /**
  * @brief 写入磁盘扇区
@@ -113,10 +120,11 @@ fat32_error_t fat32_disk_read_sectors(fat32_disk_t *disk,
  * 
  * 注意：缓冲区大小必须至少为 sector_count * FAT32_SECTOR_SIZE 字节
  */
-fat32_error_t fat32_disk_write_sectors(fat32_disk_t *disk, 
-                                       uint32_t sector_num, 
-                                       uint32_t sector_count, 
-                                       const void *buffer);
+fat32_error_t
+fat32_disk_write_sectors(fat32_disk_t *disk,
+                         uint32_t      sector_num,
+                         uint32_t      sector_count,
+                         const void   *buffer);
 
 /**
  * @brief 格式化磁盘为FAT32
@@ -133,7 +141,8 @@ fat32_error_t fat32_disk_write_sectors(fat32_disk_t *disk,
  * 
  * 简化说明：创建最基本的FAT32结构，不包含复杂的优化
  */
-fat32_error_t fat32_disk_format(fat32_disk_t *disk, const char *volume_label);
+fat32_error_t
+fat32_disk_format(fat32_disk_t *disk, const char *volume_label);
 
 /**
  * @brief 获取磁盘信息
@@ -145,9 +154,8 @@ fat32_error_t fat32_disk_format(fat32_disk_t *disk, const char *volume_label);
  * @param free_sectors 返回空闲扇区数（简化实现中可能不准确）
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_disk_get_info(fat32_disk_t *disk, 
-                                  uint32_t *total_sectors, 
-                                  uint32_t *free_sectors);
+fat32_error_t
+fat32_disk_get_info(fat32_disk_t *disk, uint32_t *total_sectors, uint32_t *free_sectors);
 
 /**
  * @brief 同步磁盘数据
@@ -158,7 +166,8 @@ fat32_error_t fat32_disk_get_info(fat32_disk_t *disk,
  * @param disk 磁盘状态结构指针
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_disk_sync(fat32_disk_t *disk);
+fat32_error_t
+fat32_disk_sync(fat32_disk_t *disk);
 
 /**
  * @brief 检查扇区是否有效
@@ -169,7 +178,8 @@ fat32_error_t fat32_disk_sync(fat32_disk_t *disk);
  * @param sector_num 扇区号
  * @return uint8_t 1表示有效，0表示无效
  */
-uint8_t fat32_disk_is_valid_sector(fat32_disk_t *disk, uint32_t sector_num);
+uint8_t
+fat32_disk_is_valid_sector(fat32_disk_t *disk, uint32_t sector_num);
 
 /**
  * @brief 获取磁盘统计信息
@@ -182,10 +192,11 @@ uint8_t fat32_disk_is_valid_sector(fat32_disk_t *disk, uint32_t sector_num);
  * @param error_count 返回错误次数
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_disk_get_stats(fat32_disk_t *disk, 
-                                   uint32_t *read_count, 
-                                   uint32_t *write_count, 
-                                   uint32_t *error_count);
+fat32_error_t
+fat32_disk_get_stats(fat32_disk_t *disk,
+                     uint32_t     *read_count,
+                     uint32_t     *write_count,
+                     uint32_t     *error_count);
 
 /* ============================================================================
  * 内联辅助函数
@@ -197,7 +208,9 @@ fat32_error_t fat32_disk_get_stats(fat32_disk_t *disk,
  * @param sector_num 扇区号
  * @return uint32_t 字节偏移
  */
-static inline uint32_t fat32_disk_sector_to_offset(uint32_t sector_num) {
+static inline uint32_t
+fat32_disk_sector_to_offset(uint32_t sector_num)
+{
     return sector_num * FAT32_SECTOR_SIZE;
 }
 
@@ -207,7 +220,9 @@ static inline uint32_t fat32_disk_sector_to_offset(uint32_t sector_num) {
  * @param offset 字节偏移
  * @return uint32_t 扇区号
  */
-static inline uint32_t fat32_disk_offset_to_sector(uint32_t offset) {
+static inline uint32_t
+fat32_disk_offset_to_sector(uint32_t offset)
+{
     return offset / FAT32_SECTOR_SIZE;
 }
 
@@ -220,14 +235,16 @@ static inline uint32_t fat32_disk_offset_to_sector(uint32_t offset) {
  *
  * @return fat32_disk_t* 全局磁盘实例指针
  */
-fat32_disk_t *fat32_get_disk(void);
+fat32_disk_t *
+fat32_get_disk(void);
 
 /**
  * @brief 检查是否使用VirtIO块设备
  *
  * @return uint8_t 1表示使用VirtIO，0表示使用内存模拟
  */
-uint8_t fat32_disk_is_using_virtio(void);
+uint8_t
+fat32_disk_is_using_virtio(void);
 
 /**
  * @brief 获取底层设备信息
@@ -237,16 +254,18 @@ uint8_t fat32_disk_is_using_virtio(void);
  * @param device_block_size 返回设备块大小（字节）
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_disk_get_device_info(fat32_disk_t *disk,
-                                         uint64_t *device_capacity,
-                                         uint32_t *device_block_size);
+fat32_error_t
+fat32_disk_get_device_info(fat32_disk_t *disk,
+                           uint64_t     *device_capacity,
+                           uint32_t     *device_block_size);
 
 /**
  * @brief 打印磁盘信息
  *
  * @param disk 磁盘状态结构指针
  */
-void fat32_disk_print_info(fat32_disk_t *disk);
+void
+fat32_disk_print_info(fat32_disk_t *disk);
 
 /**
  * @brief 测试磁盘读写功能
@@ -254,6 +273,7 @@ void fat32_disk_print_info(fat32_disk_t *disk);
  * @param disk 磁盘状态结构指针
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_disk_test_rw(fat32_disk_t *disk);
+fat32_error_t
+fat32_disk_test_rw(fat32_disk_t *disk);
 
-#endif // FAT32_DISK_H
+#endif  // FAT32_DISK_H

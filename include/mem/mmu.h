@@ -16,19 +16,18 @@
 #define MA_MEMORY_NoCache_Flags 0x44
 
 // MAIR_ELx 可以放置8种Memory Attributes,但是我们只需要这三种就够了
-#define MA_DEVICE_nGnRnE 0
-#define MA_MEMORY 1
+#define MA_DEVICE_nGnRnE  0
+#define MA_MEMORY         1
 #define MA_MEMORY_NoCache 2
 
-#define PTE_AIDX_DEVICE_nGnRn (MA_DEVICE_nGnRnE << 2)
-#define PTE_AIDX_MEMORY (MA_MEMORY << 2)
+#define PTE_AIDX_DEVICE_nGnRn   (MA_DEVICE_nGnRnE << 2)
+#define PTE_AIDX_MEMORY         (MA_MEMORY << 2)
 #define PTE_AIDX_MEMORY_NOCACHE (MA_MEMORY_NoCache << 2)
 
 // 这个值 我们一会放到MAIR_EL1 寄存器中
-#define MAIR_VALUE                                           \
-        (MA_DEVICE_nGnRnE_Flags << (8 * MA_DEVICE_nGnRnE)) | \
-            (MA_MEMORY_Flags << (8 * MA_MEMORY)) |           \
-            (MA_MEMORY_NoCache_Flags << (8 * MA_MEMORY_NoCache))
+#define MAIR_VALUE                                                                                 \
+    (MA_DEVICE_nGnRnE_Flags << (8 * MA_DEVICE_nGnRnE)) | (MA_MEMORY_Flags << (8 * MA_MEMORY)) |    \
+        (MA_MEMORY_NoCache_Flags << (8 * MA_MEMORY_NoCache))
 
 //  ====================== 页表项的配置 ============================
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -80,7 +79,7 @@
 // Next-level attributes in stage 1 VMSAv8-64 Table descriptors:
 
 // 特权读写 AF置位
-#define PTE_SH (0b11 << 8) // 对于SMP系统来说,全部设置为Inner-share就可以了
+#define PTE_SH (0b11 << 8)  // 对于SMP系统来说,全部设置为Inner-share就可以了
 #define PTE_RW (0 << 7)
 
 #define MM_TYPE_BLOCK 0b01

@@ -21,35 +21,38 @@ static const struct uart_ops_t advance_ops = {
 };
 
 // 初期使用的串口
-void io_early_init()
+void
+io_early_init()
 {
     uart_early_init();
     uart_op = &early_ops;
 }
 
-void io_init()
+void
+io_init()
 {
     uart_init();
     uart_op = &advance_ops;
 }
 
-char getc()
+char
+getc()
 {
     return uart_early_getc();
 }
 
-void putc(char c)
+void
+putc(char c)
 {
     uart_op->uart_putc(c);
 }
 
-void uart_putstr(const char *str)
+void
+uart_putstr(const char *str)
 {
     if (uart_op == NULL)
         uart_op = &early_ops;
-    while (*str)
-    {
-        uart_op->uart_putc(*str++); // putchar()
+    while (*str) {
+        uart_op->uart_putc(*str++);  // putchar()
     }
 }
-

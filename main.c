@@ -16,20 +16,22 @@
 #include "pro.h"
 #include "ramfs.h"
 
-void test_mem()
+void
+test_mem()
 {
     uint32_t mask = TEST_MEM_MASK;
-    void *addr = (void *)TEST_MEM_ADDR;
+    void    *addr = (void *) TEST_MEM_ADDR;
     logger("addr: 0x%llx\n", addr);
-    logger("before value: 0x%llx\n", *(const volatile uint32_t *)((addr)));
-    *(volatile uint32_t *)addr = mask;
-    logger("after  value: 0x%llx\n", *(const volatile uint32_t *)((addr)));
+    logger("before value: 0x%llx\n", *(const volatile uint32_t *) ((addr)));
+    *(volatile uint32_t *) addr = mask;
+    logger("after  value: 0x%llx\n", *(const volatile uint32_t *) ((addr)));
 
     while (1)
         ;
 }
 
-void test_types()
+void
+test_types()
 {
     logger("sizeof (uint32_t): %d\n", sizeof(uint32_t));
     logger("sizeof (uint64_t): %d\n", sizeof(uint64_t));
@@ -46,14 +48,14 @@ void test_types()
         ;
 }
 
-int32_t inited_cpu_num = 0;
+int32_t    inited_cpu_num = 0;
 spinlock_t lock;
 
-void main_entry()
+void
+main_entry()
 {
     logger("main entry: get_current_cpu_id: %d\n", get_current_cpu_id());
-    if (get_current_cpu_id() == 0)
-    {
+    if (get_current_cpu_id() == 0) {
         alloctor_init();
         mutex_test_init();  // 初始化 mutex 测试模块
         // kmem_test();
@@ -62,16 +64,16 @@ void main_entry()
         // ramfs_test();
 
         process_t *pro1 = alloc_process("add");
-        process_init(pro1, __add_bin_start, 1); // 将来替换 add
+        process_init(pro1, __add_bin_start, 1);  // 将来替换 add
         run_process(pro1);
 
-        process_t * pro2 = alloc_process("sub");
+        process_t *pro2 = alloc_process("sub");
         process_init(pro2, __sub_bin_start, 2);
         run_process(pro2);
 
         print_current_task_list();
     }
-    el1_idle_init(); // idle 任务每个核都有自己的el1栈， 代码公用
+    el1_idle_init();  // idle 任务每个核都有自己的el1栈， 代码公用
     spin_lock(&lock);
     inited_cpu_num++;
     spin_unlock(&lock);
@@ -88,8 +90,8 @@ void main_entry()
     // el0_task_entry();
 
     uint64_t __sp = get_idle_sp_top() - sizeof(trap_frame_t);
-    void *_sp = (void *)__sp;
-    schedule_init_local(get_idle(), NULL); // 任务管理器任务当前在跑idle任务
+    void    *_sp  = (void *) __sp;
+    schedule_init_local(get_idle(), NULL);  // 任务管理器任务当前在跑idle任务
 
     enable_interrupts();
 
@@ -107,7 +109,8 @@ void main_entry()
     // }
 }
 
-void kernel_main(void)
+void
+kernel_main(void)
 {
     logger_info("starting primary core 0 ...\n");
     io_early_init();
@@ -124,7 +127,8 @@ void kernel_main(void)
     // can't reach here !
 }
 
-void second_kernel_main()
+void
+second_kernel_main()
 {
     logger_info("starting core");
     logger(" %d ", get_current_cpu_id());

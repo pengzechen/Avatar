@@ -37,7 +37,8 @@
  * - 计算文件系统布局参数
  * - 初始化文件系统信息结构
  */
-fat32_error_t fat32_boot_read_boot_sector(fat32_disk_t *disk, fat32_fs_info_t *fs_info);
+fat32_error_t
+fat32_boot_read_boot_sector(fat32_disk_t *disk, fat32_fs_info_t *fs_info);
 
 /**
  * @brief 验证引导扇区有效性
@@ -54,7 +55,8 @@ fat32_error_t fat32_boot_read_boot_sector(fat32_disk_t *disk, fat32_fs_info_t *f
  * - FAT表数量（通常为2）
  * - 文件系统类型标识
  */
-fat32_error_t fat32_boot_validate_boot_sector(const fat32_boot_sector_t *boot_sector);
+fat32_error_t
+fat32_boot_validate_boot_sector(const fat32_boot_sector_t *boot_sector);
 
 /**
  * @brief 计算文件系统布局参数
@@ -71,8 +73,8 @@ fat32_error_t fat32_boot_validate_boot_sector(const fat32_boot_sector_t *boot_se
  * - 总簇数
  * - 每簇字节数
  */
-fat32_error_t fat32_boot_calculate_layout(const fat32_boot_sector_t *boot_sector, 
-                                          fat32_fs_info_t *fs_info);
+fat32_error_t
+fat32_boot_calculate_layout(const fat32_boot_sector_t *boot_sector, fat32_fs_info_t *fs_info);
 
 /**
  * @brief 读取FSInfo结构
@@ -89,7 +91,8 @@ fat32_error_t fat32_boot_calculate_layout(const fat32_boot_sector_t *boot_sector
  * - 提取空闲簇信息
  * - 更新文件系统状态
  */
-fat32_error_t fat32_boot_read_fsinfo(fat32_disk_t *disk, fat32_fs_info_t *fs_info);
+fat32_error_t
+fat32_boot_read_fsinfo(fat32_disk_t *disk, fat32_fs_info_t *fs_info);
 
 /**
  * @brief 写入FSInfo结构
@@ -105,7 +108,8 @@ fat32_error_t fat32_boot_read_fsinfo(fat32_disk_t *disk, fat32_fs_info_t *fs_inf
  * - 设置下一个空闲簇提示
  * - 写入磁盘
  */
-fat32_error_t fat32_boot_write_fsinfo(fat32_disk_t *disk, const fat32_fs_info_t *fs_info);
+fat32_error_t
+fat32_boot_write_fsinfo(fat32_disk_t *disk, const fat32_fs_info_t *fs_info);
 
 /**
  * @brief 验证FSInfo结构
@@ -120,7 +124,8 @@ fat32_error_t fat32_boot_write_fsinfo(fat32_disk_t *disk, const fat32_fs_info_t 
  * - 结构签名（0x61417272）
  * - 尾部签名（0xAA550000）
  */
-fat32_error_t fat32_boot_validate_fsinfo(const fat32_fsinfo_t *fsinfo);
+fat32_error_t
+fat32_boot_validate_fsinfo(const fat32_fsinfo_t *fsinfo);
 
 /**
  * @brief 获取文件系统类型字符串
@@ -134,7 +139,8 @@ fat32_error_t fat32_boot_validate_fsinfo(const fat32_fsinfo_t *fsinfo);
  * - "FAT32" - 有效的FAT32文件系统
  * - "UNKNOWN" - 未知或无效的文件系统
  */
-const char *fat32_boot_get_fs_type_string(const fat32_boot_sector_t *boot_sector);
+const char *
+fat32_boot_get_fs_type_string(const fat32_boot_sector_t *boot_sector);
 
 /**
  * @brief 打印引导扇区信息
@@ -148,7 +154,8 @@ const char *fat32_boot_get_fs_type_string(const fat32_boot_sector_t *boot_sector
  * - 磁盘布局信息
  * - 卷标和文件系统类型
  */
-void fat32_boot_print_info(const fat32_boot_sector_t *boot_sector);
+void
+fat32_boot_print_info(const fat32_boot_sector_t *boot_sector);
 
 /**
  * @brief 打印文件系统布局信息
@@ -162,7 +169,8 @@ void fat32_boot_print_info(const fat32_boot_sector_t *boot_sector);
  * - 簇的大小和数量
  * - 空闲空间信息
  */
-void fat32_boot_print_layout(const fat32_fs_info_t *fs_info);
+void
+fat32_boot_print_layout(const fat32_fs_info_t *fs_info);
 
 /* ============================================================================
  * 内联辅助函数
@@ -174,9 +182,11 @@ void fat32_boot_print_layout(const fat32_fs_info_t *fs_info);
  * @param bytes_per_sector 每扇区字节数
  * @return uint8_t 1表示有效，0表示无效
  */
-static inline uint8_t fat32_boot_is_valid_sector_size(uint16_t bytes_per_sector) {
-    return (bytes_per_sector == 512 || bytes_per_sector == 1024 || 
-            bytes_per_sector == 2048 || bytes_per_sector == 4096);
+static inline uint8_t
+fat32_boot_is_valid_sector_size(uint16_t bytes_per_sector)
+{
+    return (bytes_per_sector == 512 || bytes_per_sector == 1024 || bytes_per_sector == 2048 ||
+            bytes_per_sector == 4096);
 }
 
 /**
@@ -185,10 +195,11 @@ static inline uint8_t fat32_boot_is_valid_sector_size(uint16_t bytes_per_sector)
  * @param sectors_per_cluster 每簇扇区数
  * @return uint8_t 1表示有效，0表示无效
  */
-static inline uint8_t fat32_boot_is_valid_cluster_size(uint8_t sectors_per_cluster) {
+static inline uint8_t
+fat32_boot_is_valid_cluster_size(uint8_t sectors_per_cluster)
+{
     // 必须是2的幂，且在合理范围内
-    return (sectors_per_cluster > 0 && 
-            (sectors_per_cluster & (sectors_per_cluster - 1)) == 0 &&
+    return (sectors_per_cluster > 0 && (sectors_per_cluster & (sectors_per_cluster - 1)) == 0 &&
             sectors_per_cluster <= 128);
 }
 
@@ -199,8 +210,9 @@ static inline uint8_t fat32_boot_is_valid_cluster_size(uint8_t sectors_per_clust
  * @param cluster_num 簇号
  * @return uint32_t 扇区号
  */
-static inline uint32_t fat32_boot_cluster_to_sector(const fat32_fs_info_t *fs_info, 
-                                                    uint32_t cluster_num) {
+static inline uint32_t
+fat32_boot_cluster_to_sector(const fat32_fs_info_t *fs_info, uint32_t cluster_num)
+{
     if (cluster_num < 2) {
         return 0;  // 无效簇号
     }
@@ -214,12 +226,13 @@ static inline uint32_t fat32_boot_cluster_to_sector(const fat32_fs_info_t *fs_in
  * @param sector_num 扇区号
  * @return uint32_t 簇号
  */
-static inline uint32_t fat32_boot_sector_to_cluster(const fat32_fs_info_t *fs_info, 
-                                                    uint32_t sector_num) {
+static inline uint32_t
+fat32_boot_sector_to_cluster(const fat32_fs_info_t *fs_info, uint32_t sector_num)
+{
     if (sector_num < fs_info->data_start_sector) {
         return 0;  // 不在数据区
     }
     return ((sector_num - fs_info->data_start_sector) / fs_info->sectors_per_cluster) + 2;
 }
 
-#endif // FAT32_BOOT_H
+#endif  // FAT32_BOOT_H

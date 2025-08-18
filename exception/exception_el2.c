@@ -12,45 +12,74 @@
 #include "thread.h"
 
 // Static function declarations
-static void handle_wfi_wfe_trap(union esr_el2 *esr, trap_frame_t *ctx);
-static void handle_hvc_call(union esr_el2 *esr, trap_frame_t *ctx);
-static void handle_smc_call(union esr_el2 *esr, trap_frame_t *ctx);
-static void handle_sysreg_access(union esr_el2 *esr, trap_frame_t *ctx);
-static void handle_illegal_execution_state(union esr_el2 *esr, trap_frame_t *ctx);
-static void handle_data_abort(union esr_el2 *esr, trap_frame_t *ctx);
-static void handle_unknown_exception(uint32_t ec, union esr_el2 *esr, trap_frame_t *ctx);
-static const char* get_exception_kind_name(uint64_t kind);
-static const char* get_exception_source_name(uint64_t source);
+static void
+handle_wfi_wfe_trap(union esr_el2 *esr, trap_frame_t *ctx);
+static void
+handle_hvc_call(union esr_el2 *esr, trap_frame_t *ctx);
+static void
+handle_smc_call(union esr_el2 *esr, trap_frame_t *ctx);
+static void
+handle_sysreg_access(union esr_el2 *esr, trap_frame_t *ctx);
+static void
+handle_illegal_execution_state(union esr_el2 *esr, trap_frame_t *ctx);
+static void
+handle_data_abort(union esr_el2 *esr, trap_frame_t *ctx);
+static void
+handle_unknown_exception(uint32_t ec, union esr_el2 *esr, trap_frame_t *ctx);
+static const char *
+get_exception_kind_name(uint64_t kind);
+static const char *
+get_exception_source_name(uint64_t source);
 
-void advance_pc(union esr_el2 *esr, trap_frame_t *context)
+void
+advance_pc(union esr_el2 *esr, trap_frame_t *context)
 {
     context->elr += esr->len ? 4 : 2;
 }
 
 // Legacy function for backward compatibility
-void advance_pc_legacy(stage2_fault_info_t *info, trap_frame_t *context)
+void
+advance_pc_legacy(stage2_fault_info_t *info, trap_frame_t *context)
 {
     advance_pc(&info->esr, context);
 }
 
-void decode_spsr(uint64_t spsr) {
+void
+decode_spsr(uint64_t spsr)
+{
     // M[3:0] - Exception level and SP selection (bits 3:0)
-    uint64_t m_field = spsr & 0xF;
+    uint64_t    m_field = spsr & 0xF;
     const char *el_str;
 
     switch (m_field) {
-        case 0x0: el_str = "EL0t"; break;      // EL0 using SP_EL0
-        case 0x4: el_str = "EL1t"; break;      // EL1 using SP_EL0
-        case 0x5: el_str = "EL1h"; break;      // EL1 using SP_EL1
-        case 0x8: el_str = "EL2t"; break;      // EL2 using SP_EL0
-        case 0x9: el_str = "EL2h"; break;      // EL2 using SP_EL2
-        case 0xC: el_str = "EL3t"; break;      // EL3 using SP_EL0
-        case 0xD: el_str = "EL3h"; break;      // EL3 using SP_EL3
-        default:  el_str = "Reserved"; break;
+        case 0x0:
+            el_str = "EL0t";
+            break;  // EL0 using SP_EL0
+        case 0x4:
+            el_str = "EL1t";
+            break;  // EL1 using SP_EL0
+        case 0x5:
+            el_str = "EL1h";
+            break;  // EL1 using SP_EL1
+        case 0x8:
+            el_str = "EL2t";
+            break;  // EL2 using SP_EL0
+        case 0x9:
+            el_str = "EL2h";
+            break;  // EL2 using SP_EL2
+        case 0xC:
+            el_str = "EL3t";
+            break;  // EL3 using SP_EL0
+        case 0xD:
+            el_str = "EL3h";
+            break;  // EL3 using SP_EL3
+        default:
+            el_str = "Reserved";
+            break;
     }
 
     logger("SPSR_EL2 decode (0x%llx):\n", spsr);
-    logger("  M[3:0]: 0x%x -> %s\n", (uint32_t)m_field, el_str);
+    logger("  M[3:0]: 0x%x -> %s\n", (uint32_t) m_field, el_str);
     logger("  M[4] (Execution state): %s\n", ((spsr >> 4) & 1) ? "AArch32" : "AArch64");
     logger("  F (FIQ masked): %s\n", ((spsr >> 6) & 1) ? "Yes" : "No");
     logger("  I (IRQ masked): %s\n", ((spsr >> 7) & 1) ? "Yes" : "No");
@@ -59,7 +88,7 @@ void decode_spsr(uint64_t spsr) {
 
     // 额外的状态位
     if ((spsr >> 10) & 0x3) {
-        logger("  BTYPE: 0x%x\n", (uint32_t)((spsr >> 10) & 0x3));
+        logger("  BTYPE: 0x%x\n", (uint32_t) ((spsr >> 10) & 0x3));
     }
     if ((spsr >> 20) & 1) {
         logger("  SS (Software Step): Set\n");
@@ -79,51 +108,52 @@ void decode_spsr(uint64_t spsr) {
 
     // 条件标志位
     logger("  NZCV: N=%d Z=%d C=%d V=%d\n",
-           (int)((spsr >> 31) & 1),  // N
-           (int)((spsr >> 30) & 1),  // Z
-           (int)((spsr >> 29) & 1),  // C
-           (int)((spsr >> 28) & 1)); // V
+           (int) ((spsr >> 31) & 1),   // N
+           (int) ((spsr >> 30) & 1),   // Z
+           (int) ((spsr >> 29) & 1),   // C
+           (int) ((spsr >> 28) & 1));  // V
 }
 
 /**
  * Handle synchronous exceptions trapped to EL2
  * @param stack_pointer: Pointer to saved context on stack
  */
-void handle_sync_exception_el2(uint64_t *stack_pointer)
+void
+handle_sync_exception_el2(uint64_t *stack_pointer)
 {
-    trap_frame_t *ctx_el2 = (trap_frame_t *)stack_pointer;
-    uint32_t el2_esr = read_esr_el2();
-    uint32_t ec = (el2_esr >> 26) & 0x3F;  // Extract Exception Class
+    trap_frame_t *ctx_el2 = (trap_frame_t *) stack_pointer;
+    uint32_t      el2_esr = read_esr_el2();
+    uint32_t      ec      = (el2_esr >> 26) & 0x3F;  // Extract Exception Class
 
     union esr_el2 esr = {.bits = el2_esr};
     save_cpu_ctx(ctx_el2);
     switch (ec) {
-    case ESR_EC_WFI_WFE:
-        handle_wfi_wfe_trap(&esr, ctx_el2);
-        break;
+        case ESR_EC_WFI_WFE:
+            handle_wfi_wfe_trap(&esr, ctx_el2);
+            break;
 
-    case ESR_EC_HVC:
-        handle_hvc_call(&esr, ctx_el2);
-        break;
+        case ESR_EC_HVC:
+            handle_hvc_call(&esr, ctx_el2);
+            break;
 
-    case ESR_EC_SMC:
-        handle_smc_call(&esr, ctx_el2);
-        break;
-    case ESR_EC_SYSREG:
-        handle_sysreg_access(&esr, ctx_el2);
-        break;
+        case ESR_EC_SMC:
+            handle_smc_call(&esr, ctx_el2);
+            break;
+        case ESR_EC_SYSREG:
+            handle_sysreg_access(&esr, ctx_el2);
+            break;
 
-    case ESR_EC_ILLEGAL_STATE:
-        handle_illegal_execution_state(&esr, ctx_el2);
-        break;
+        case ESR_EC_ILLEGAL_STATE:
+            handle_illegal_execution_state(&esr, ctx_el2);
+            break;
 
-    case ESR_EC_DATA_ABORT:
-        handle_data_abort(&esr, ctx_el2);
-        break;
+        case ESR_EC_DATA_ABORT:
+            handle_data_abort(&esr, ctx_el2);
+            break;
 
-    default:
-        handle_unknown_exception(ec, &esr, ctx_el2);
-        break;
+        default:
+            handle_unknown_exception(ec, &esr, ctx_el2);
+            break;
     }
 }
 
@@ -131,7 +161,8 @@ void handle_sync_exception_el2(uint64_t *stack_pointer)
 /**
  * Handle WFI/WFE instruction traps
  */
-static void handle_wfi_wfe_trap(union esr_el2 *esr, trap_frame_t *ctx)
+static void
+handle_wfi_wfe_trap(union esr_el2 *esr, trap_frame_t *ctx)
 {
     logger_info("WFI/WFE instruction trapped\n");
 
@@ -148,7 +179,8 @@ static void handle_wfi_wfe_trap(union esr_el2 *esr, trap_frame_t *ctx)
 /**
  * Handle HVC (Hypervisor Call) instructions
  */
-static void handle_hvc_call(union esr_el2 *esr, trap_frame_t *ctx)
+static void
+handle_hvc_call(union esr_el2 *esr, trap_frame_t *ctx)
 {
     uint64_t function_id = ctx->r[0];
     logger_info("HVC call: function_id=0x%lx\n", function_id);
@@ -177,7 +209,8 @@ static void handle_hvc_call(union esr_el2 *esr, trap_frame_t *ctx)
 /**
  * Handle SMC (Secure Monitor Call) instructions
  */
-static void handle_smc_call(union esr_el2 *esr, trap_frame_t *ctx)
+static void
+handle_smc_call(union esr_el2 *esr, trap_frame_t *ctx)
 {
     uint64_t function_id = ctx->r[0];
     logger_info("SMC call: function_id=0x%lx\n", function_id);
@@ -194,7 +227,7 @@ static void handle_smc_call(union esr_el2 *esr, trap_frame_t *ctx)
             logger_info("PSCI CPU_ON call\n");
             ctx->r[0] = vpsci_cpu_on(ctx);
             break;
-        
+
         case PSCI_0_2_FN64_CPU_ON:
             logger_info("PSCI CPU_ON call\n");
             ctx->r[0] = vpsci_cpu_on(ctx);
@@ -222,21 +255,28 @@ static void handle_smc_call(union esr_el2 *esr, trap_frame_t *ctx)
 /**
  * Handle system register access traps
  */
-static void handle_sysreg_access(union esr_el2 *esr, trap_frame_t *ctx)
+static void
+handle_sysreg_access(union esr_el2 *esr, trap_frame_t *ctx)
 {
     logger_info("System register access trapped\n");
 
     // Extract system register information
-    uint32_t op0 = esr->sysreg.op0;
-    uint32_t op1 = esr->sysreg.op1;
-    uint32_t crn = esr->sysreg.crn;
-    uint32_t crm = esr->sysreg.crm;
-    uint32_t op2 = esr->sysreg.op2;
-    uint32_t rt = esr->sysreg.rt;
-    bool is_write = esr->sysreg.direction;
+    uint32_t op0      = esr->sysreg.op0;
+    uint32_t op1      = esr->sysreg.op1;
+    uint32_t crn      = esr->sysreg.crn;
+    uint32_t crm      = esr->sysreg.crm;
+    uint32_t op2      = esr->sysreg.op2;
+    uint32_t rt       = esr->sysreg.rt;
+    bool     is_write = esr->sysreg.direction;
 
     logger_debug("SysReg access: op0=%d, op1=%d, CRn=%d, CRm=%d, op2=%d, Rt=%d, %s\n",
-                 op0, op1, crn, crm, op2, rt, is_write ? "write" : "read");
+                 op0,
+                 op1,
+                 crn,
+                 crm,
+                 op2,
+                 rt,
+                 is_write ? "write" : "read");
 
     // TODO: Implement virtual timer register handling
     // if (handle_vtimer_sysreg_access(op0, op1, crn, crm, op2, rt, is_write, ctx)) {
@@ -251,7 +291,8 @@ static void handle_sysreg_access(union esr_el2 *esr, trap_frame_t *ctx)
 /**
  * Handle illegal execution state exceptions
  */
-static void handle_illegal_execution_state(union esr_el2 *esr, trap_frame_t *ctx)
+static void
+handle_illegal_execution_state(union esr_el2 *esr, trap_frame_t *ctx)
 {
     logger_error("Illegal execution state exception\n");
     logger_error("FAR_EL2=0x%lx, ESR_EL2=0x%x\n", read_far_el2(), esr->bits);
@@ -274,24 +315,22 @@ static void handle_illegal_execution_state(union esr_el2 *esr, trap_frame_t *ctx
 /**
  * Handle data abort exceptions from lower EL
  */
-static void handle_data_abort(union esr_el2 *esr, trap_frame_t *ctx)
+static void
+handle_data_abort(union esr_el2 *esr, trap_frame_t *ctx)
 {
     // Create stage2 fault info structure for memory access faults
-    stage2_fault_info_t fault_info = {
-        .esr = *esr,
-        .reason = STAGE2_FAULT_DATA
-    };
+    stage2_fault_info_t fault_info = {.esr = *esr, .reason = STAGE2_FAULT_DATA};
 
     // Read fault address information
     uint64_t hpfar = read_hpfar_el2();
-    uint64_t far = read_far_el2();
+    uint64_t far   = read_far_el2();
 
     // Combine FAR and HPFAR to get the full guest physical address
     fault_info.gpa = (far & 0xFFF) | (hpfar << 8);
     fault_info.gva = far;
 
     // Extract access information from ESR
-    fault_info.is_write = esr->dabt.write;
+    fault_info.is_write    = esr->dabt.write;
     fault_info.access_size = 1U << (esr->dabt.size & 0x3);
 
     // logger_debug("Data abort: GVA=0x%lx, GPA=0x%lx, %s, size=%d bytes\n",
@@ -309,7 +348,8 @@ static void handle_data_abort(union esr_el2 *esr, trap_frame_t *ctx)
 /**
  * Handle unknown/unimplemented exception classes
  */
-static void handle_unknown_exception(uint32_t ec, union esr_el2 *esr, trap_frame_t *ctx)
+static void
+handle_unknown_exception(uint32_t ec, union esr_el2 *esr, trap_frame_t *ctx)
 {
     logger_error("Unknown exception class: EC=0x%x, ESR=0x%x\n", ec, esr->bits);
     logger_error("ELR_EL2=0x%lx, SPSR_EL2=0x%lx\n", ctx->elr, ctx->spsr);
@@ -329,12 +369,13 @@ static void handle_unknown_exception(uint32_t ec, union esr_el2 *esr, trap_frame
  * Handle IRQ exceptions trapped to EL2
  * @param stack_pointer: Pointer to saved context on stack
  */
-void handle_irq_exception_el2(uint64_t *stack_pointer)
+void
+handle_irq_exception_el2(uint64_t *stack_pointer)
 {
-    trap_frame_t *context = (trap_frame_t *)stack_pointer;
+    trap_frame_t *context = (trap_frame_t *) stack_pointer;
 
     // Read interrupt acknowledge register to get the interrupt ID
-    uint32_t iar = gic_read_iar();
+    uint32_t iar    = gic_read_iar();
     uint32_t irq_id = gic_iar_irqnr(iar);
 
     // logger_debug("IRQ exception: IRQ_ID=%d\n", irq_id);
@@ -356,7 +397,7 @@ void handle_irq_exception_el2(uint64_t *stack_pointer)
     // Dispatch to the registered interrupt handler
     irq_handler_t *handler_vec = get_g_handler_vec();
     if (handler_vec && handler_vec[irq_id]) {
-        handler_vec[irq_id]((uint64_t *)context);
+        handler_vec[irq_id]((uint64_t *) context);
     } else {
         logger_warn("No handler registered for IRQ %d\n", irq_id);
     }
@@ -368,11 +409,12 @@ void handle_irq_exception_el2(uint64_t *stack_pointer)
  * @param kind: Exception kind (sync/irq/fiq/serror)
  * @param source: Exception source (current_el_sp0/current_el_spx/lower_el_aarch64/lower_el_aarch32)
  */
-void invalid_exception_el2(uint64_t *stack_pointer, uint64_t kind, uint64_t source)
+void
+invalid_exception_el2(uint64_t *stack_pointer, uint64_t kind, uint64_t source)
 {
-    trap_frame_t *context = (trap_frame_t *)stack_pointer;
-    uint32_t esr_el2 = read_esr_el2();
-    uint32_t ec = (esr_el2 >> 26) & 0x3F;
+    trap_frame_t *context = (trap_frame_t *) stack_pointer;
+    uint32_t      esr_el2 = read_esr_el2();
+    uint32_t      ec      = (esr_el2 >> 26) & 0x3F;
 
     // Log the invalid exception details
     logger_error("=== INVALID EXCEPTION ===\n");
@@ -408,28 +450,40 @@ void invalid_exception_el2(uint64_t *stack_pointer, uint64_t kind, uint64_t sour
 /**
  * Get human-readable exception kind name
  */
-static const char* get_exception_kind_name(uint64_t kind)
+static const char *
+get_exception_kind_name(uint64_t kind)
 {
     switch (kind) {
-        case 0: return "Synchronous";
-        case 1: return "IRQ";
-        case 2: return "FIQ";
-        case 3: return "SError";
-        default: return "Unknown";
+        case 0:
+            return "Synchronous";
+        case 1:
+            return "IRQ";
+        case 2:
+            return "FIQ";
+        case 3:
+            return "SError";
+        default:
+            return "Unknown";
     }
 }
 
 /**
  * Get human-readable exception source name
  */
-static const char* get_exception_source_name(uint64_t source)
+static const char *
+get_exception_source_name(uint64_t source)
 {
     switch (source) {
-        case 0: return "Current EL with SP_EL0";
-        case 1: return "Current EL with SP_ELx";
-        case 2: return "Lower EL (AArch64)";
-        case 3: return "Lower EL (AArch32)";
-        default: return "Unknown";
+        case 0:
+            return "Current EL with SP_EL0";
+        case 1:
+            return "Current EL with SP_ELx";
+        case 2:
+            return "Lower EL (AArch64)";
+        case 3:
+            return "Lower EL (AArch32)";
+        default:
+            return "Unknown";
     }
 }
 
@@ -438,7 +492,8 @@ static const char* get_exception_source_name(uint64_t source)
  * This is typically for hypervisor-internal interrupts
  * @param stack_pointer: Pointer to saved context on stack
  */
-void current_spxel_irq(uint64_t *stack_pointer)
+void
+current_spxel_irq(uint64_t *stack_pointer)
 {
     // logger_debug("IRQ at current EL (EL2) with SP_ELx\n");
 

@@ -39,8 +39,9 @@ AllowShortCaseLabelsOnASingleLine: false
 
 # 对齐配置
 AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveDeclarations: Consecutive
+AlignConsecutiveMacros: Consecutive
 AlignEscapedNewlines: Right
 AlignOperands: true
 AlignTrailingComments: true

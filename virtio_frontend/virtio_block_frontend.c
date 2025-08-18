@@ -7,28 +7,30 @@
 #include "mem/kallocator.h"
 
 // Device memory management - allocate per device as needed
-#define MAX_VIRTIO_DEVICES 16
-#define VIRTIO_DEVICE_MEMORY_SIZE 0x80000 // 512KB per device
-#define VIRTIO_QUEUE_DESC_OFFSET 0x0      // Descriptor table at start (0x1000 aligned)
-#define VIRTIO_QUEUE_AVAIL_OFFSET 0x100   // Available ring at desc + 0x100
-#define VIRTIO_QUEUE_USED_OFFSET 0xf00    // Used ring at avail + 0x1000
+#define MAX_VIRTIO_DEVICES        16
+#define VIRTIO_DEVICE_MEMORY_SIZE 0x80000  // 512KB per device
+#define VIRTIO_QUEUE_DESC_OFFSET  0x0      // Descriptor table at start (0x1000 aligned)
+#define VIRTIO_QUEUE_AVAIL_OFFSET 0x100    // Available ring at desc + 0x100
+#define VIRTIO_QUEUE_USED_OFFSET  0xf00    // Used ring at avail + 0x1000
 
 static void *g_device_memory[MAX_VIRTIO_DEVICES] = {0};
 
 // Device memory management functions
-static uint64_t virtio_get_device_base_addr(uint32_t device_index)
+static uint64_t
+virtio_get_device_base_addr(uint32_t device_index)
 {
     // Check device index bounds
     if (device_index >= MAX_VIRTIO_DEVICES) {
         logger_error("Device index %u exceeds maximum devices (%u)\n",
-                   device_index, MAX_VIRTIO_DEVICES);
+                     device_index,
+                     MAX_VIRTIO_DEVICES);
         return 0;
     }
 
     // Allocate device memory if not already allocated
     if (g_device_memory[device_index] == NULL) {
         // Allocate memory for this specific device
-        g_device_memory[device_index] = kalloc(VIRTIO_DEVICE_MEMORY_SIZE, 0x1000); // 4KB aligned
+        g_device_memory[device_index] = kalloc(VIRTIO_DEVICE_MEMORY_SIZE, 0x1000);  // 4KB aligned
 
         if (g_device_memory[device_index] == NULL) {
             logger_error("Failed to allocate memory for VirtIO device %u\n", device_index);
@@ -36,18 +38,21 @@ static uint64_t virtio_get_device_base_addr(uint32_t device_index)
         }
 
         logger_info("VirtIO device %u memory allocated: 0x%lx (%u KB)\n",
-                  device_index, (uint64_t)g_device_memory[device_index],
-                  VIRTIO_DEVICE_MEMORY_SIZE / 1024);
+                    device_index,
+                    (uint64_t) g_device_memory[device_index],
+                    VIRTIO_DEVICE_MEMORY_SIZE / 1024);
     }
 
-    return (uint64_t)g_device_memory[device_index];
+    return (uint64_t) g_device_memory[device_index];
 }
 
-static void virtio_free_device_memory(uint32_t device_index)
+static void
+virtio_free_device_memory(uint32_t device_index)
 {
     if (device_index >= MAX_VIRTIO_DEVICES) {
         logger_error("Device index %u exceeds maximum devices (%u)\n",
-                   device_index, MAX_VIRTIO_DEVICES);
+                     device_index,
+                     MAX_VIRTIO_DEVICES);
         return;
     }
 
@@ -59,7 +64,8 @@ static void virtio_free_device_memory(uint32_t device_index)
     }
 }
 
-static uint64_t virtio_get_queue_desc_addr(uint32_t device_index, uint32_t queue_id)
+static uint64_t
+virtio_get_queue_desc_addr(uint32_t device_index, uint32_t queue_id)
 {
     uint64_t device_base = virtio_get_device_base_addr(device_index);
     if (device_base == 0) {
@@ -69,13 +75,14 @@ static uint64_t virtio_get_queue_desc_addr(uint32_t device_index, uint32_t queue
     // Each queue gets 0x4000 (16KB) within the device memory
     // Descriptor table is at the start of queue memory (0x1000 aligned)
     uint64_t queue_base = device_base + (queue_id * 0x4000);
-    uint64_t desc_addr = (queue_base + 0xFFF) & ~0xFFF; // Ensure 0x1000 alignment
+    uint64_t desc_addr  = (queue_base + 0xFFF) & ~0xFFF;  // Ensure 0x1000 alignment
 
     logger_debug("Device %u Queue %u desc addr: 0x%lx\n", device_index, queue_id, desc_addr);
     return desc_addr;
 }
 
-static uint64_t virtio_get_queue_avail_addr(uint32_t device_index, uint32_t queue_id)
+static uint64_t
+virtio_get_queue_avail_addr(uint32_t device_index, uint32_t queue_id)
 {
     uint64_t desc_addr = virtio_get_queue_desc_addr(device_index, queue_id);
     if (desc_addr == 0) {
@@ -89,7 +96,8 @@ static uint64_t virtio_get_queue_avail_addr(uint32_t device_index, uint32_t queu
     return avail_addr;
 }
 
-static uint64_t virtio_get_queue_used_addr(uint32_t device_index, uint32_t queue_id)
+static uint64_t
+virtio_get_queue_used_addr(uint32_t device_index, uint32_t queue_id)
 {
     uint64_t avail_addr = virtio_get_queue_avail_addr(device_index, queue_id);
     if (avail_addr == 0) {
@@ -104,122 +112,125 @@ static uint64_t virtio_get_queue_used_addr(uint32_t device_index, uint32_t queue
 }
 
 // 初始化 VirtIO 前端子系统
-int virtio_blk_frontend_init(void)
+int
+virtio_blk_frontend_init(void)
 {
     logger_info("VirtIO Block frontend initialized\n");
     return 0;
 }
 
 // VirtIO MMIO 设备初始化
-int virtio_mmio_init(virtio_device_t *dev, uint64_t base_addr, uint32_t device_index)
+int
+virtio_mmio_init(virtio_device_t *dev, uint64_t base_addr, uint32_t device_index)
 {
-    dev->base_addr = base_addr;
+    dev->base_addr    = base_addr;
     dev->device_index = device_index;
-    dev->num_queues = 0;
-    
+    dev->num_queues   = 0;
+
     // 检查 Magic Value
     uint32_t magic = virtio_read32(dev, VIRTIO_MMIO_MAGIC_VALUE);
     if (magic != VIRTIO_MMIO_MAGIC) {
         logger_error("Invalid VirtIO magic value: 0x%x\n", magic);
         return -1;
     }
-    
+
     // 获取版本
     dev->version = virtio_read32(dev, VIRTIO_MMIO_VERSION);
     logger_info("VirtIO version: %d\n", dev->version);
-    
+
     if (dev->version < 1 || dev->version > 2) {
         logger_error("Unsupported VirtIO version: %d\n", dev->version);
         return -1;
     }
-    
+
     // 获取设备和厂商 ID
     dev->device_id = virtio_read32(dev, VIRTIO_MMIO_DEVICE_ID);
     dev->vendor_id = virtio_read32(dev, VIRTIO_MMIO_VENDOR_ID);
-    
+
     logger_info("VirtIO device ID: %d, vendor ID: 0x%x\n", dev->device_id, dev->vendor_id);
-    
+
     // 重置设备
     virtio_write32(dev, VIRTIO_MMIO_STATUS, 0);
-    
+
     // 确认设备
     virtio_set_status(dev, VIRTIO_STATUS_ACKNOWLEDGE);
-    
+
     // 设置驱动状态
     virtio_set_status(dev, VIRTIO_STATUS_DRIVER);
-    
+
     return 0;
 }
 
 // 队列设置
-int virtio_queue_setup(virtio_device_t *dev, uint32_t queue_id, uint32_t queue_size)
+int
+virtio_queue_setup(virtio_device_t *dev, uint32_t queue_id, uint32_t queue_size)
 {
     if (queue_id >= 16) {
         logger_error("Queue ID %d too large\n", queue_id);
         return -1;
     }
-    
+
     virtio_queue_t *queue = &dev->queues[queue_id];
-    queue->queue_id = queue_id;
-    queue->queue_size = queue_size;
-    queue->last_used_idx = 0;
-    queue->free_head = 0;
-    queue->num_free = queue_size;
-    
+    queue->queue_id       = queue_id;
+    queue->queue_size     = queue_size;
+    queue->last_used_idx  = 0;
+    queue->free_head      = 0;
+    queue->num_free       = queue_size;
+
     // 选择队列
     virtio_write32(dev, VIRTIO_MMIO_QUEUE_SEL, queue_id);
-    
+
     // 检查队列是否存在
     uint32_t max_size = virtio_read32(dev, VIRTIO_MMIO_QUEUE_NUM_MAX);
     if (max_size == 0) {
         logger_error("Queue %d does not exist\n", queue_id);
         return -1;
     }
-    
+
     if (queue_size > max_size) {
-        queue_size = max_size;
+        queue_size        = max_size;
         queue->queue_size = queue_size;
     }
-    
+
     // 设置队列大小
     virtio_write32(dev, VIRTIO_MMIO_QUEUE_NUM, queue_size);
-    
+
     // 获取队列内存地址
-    queue->desc_addr = virtio_get_queue_desc_addr(dev->device_index, queue_id);
+    queue->desc_addr  = virtio_get_queue_desc_addr(dev->device_index, queue_id);
     queue->avail_addr = virtio_get_queue_avail_addr(dev->device_index, queue_id);
-    queue->used_addr = virtio_get_queue_used_addr(dev->device_index, queue_id);
-    
+    queue->used_addr  = virtio_get_queue_used_addr(dev->device_index, queue_id);
+
     if (queue->desc_addr == 0 || queue->avail_addr == 0 || queue->used_addr == 0) {
         logger_error("Failed to get queue memory addresses\n");
         return -1;
     }
-    
+
     // 设置指针
-    queue->desc = (virtq_desc_t *)queue->desc_addr;
-    queue->avail = (virtq_avail_t *)queue->avail_addr;
-    queue->used = (virtq_used_t *)queue->used_addr;
-    
+    queue->desc  = (virtq_desc_t *) queue->desc_addr;
+    queue->avail = (virtq_avail_t *) queue->avail_addr;
+    queue->used  = (virtq_used_t *) queue->used_addr;
+
     logger_info("Queue %d memory layout:\n", queue_id);
     logger_info("  Desc:  0x%lx\n", queue->desc_addr);
     logger_info("  Avail: 0x%lx\n", queue->avail_addr);
     logger_info("  Used:  0x%lx\n", queue->used_addr);
-    
+
     // 初始化描述符表
     for (uint32_t i = 0; i < queue_size; i++) {
-        queue->desc[i].addr = 0;
-        queue->desc[i].len = 0;
+        queue->desc[i].addr  = 0;
+        queue->desc[i].len   = 0;
         queue->desc[i].flags = 0;
-        queue->desc[i].next = (i + 1) % queue_size;
+        queue->desc[i].next  = (i + 1) % queue_size;
     }
-    
+
     // 初始化可用环
-    queue->avail->flags = VIRTQ_AVAIL_F_NO_INTERRUPT; // 不使用中断
-    queue->avail->idx = 0;
-    
+    queue->avail->flags = VIRTQ_AVAIL_F_NO_INTERRUPT;  // 不使用中断
+    queue->avail->idx   = 0;
+
     // 初始化已用环
     queue->used->flags = 0;
-    queue->used->idx = 0;
-    
+    queue->used->idx   = 0;
+
     // 配置队列地址
     if (dev->version >= 2) {
         // 现代模式
@@ -236,29 +247,39 @@ int virtio_queue_setup(virtio_device_t *dev, uint32_t queue_id, uint32_t queue_s
         virtio_write32(dev, VIRTIO_MMIO_QUEUE_ALIGN, 4096);
         virtio_write32(dev, VIRTIO_MMIO_QUEUE_PFN, queue->desc_addr >> 12);
     }
-    
+
     dev->num_queues = queue_id + 1;
-    
+
     logger_warn("Queue %d setup complete: size=%d, desc=0x%lx, avail=0x%lx, used=0x%lx\n",
-              queue_id, queue_size, queue->desc_addr, queue->avail_addr, queue->used_addr);
+                queue_id,
+                queue_size,
+                queue->desc_addr,
+                queue->avail_addr,
+                queue->used_addr);
     return 0;
 }
 
 // 添加缓冲区到队列
-int virtio_queue_add_buf(virtio_device_t *dev, uint32_t queue_id,
-                        uint64_t *buffers, uint32_t *lengths,
-                        uint32_t out_num, uint32_t in_num)
+int
+virtio_queue_add_buf(virtio_device_t *dev,
+                     uint32_t         queue_id,
+                     uint64_t        *buffers,
+                     uint32_t        *lengths,
+                     uint32_t         out_num,
+                     uint32_t         in_num)
 {
     if (queue_id >= dev->num_queues) {
         logger_error("Invalid queue ID: %d\n", queue_id);
         return -1;
     }
 
-    virtio_queue_t *queue = &dev->queues[queue_id];
-    uint32_t total_desc = out_num + in_num;
+    virtio_queue_t *queue      = &dev->queues[queue_id];
+    uint32_t        total_desc = out_num + in_num;
 
     if (total_desc == 0 || total_desc > queue->num_free) {
-        logger_error("Not enough free descriptors: need %d, have %d\n", total_desc, queue->num_free);
+        logger_error("Not enough free descriptors: need %d, have %d\n",
+                     total_desc,
+                     queue->num_free);
         return -1;
     }
 
@@ -267,8 +288,8 @@ int virtio_queue_add_buf(virtio_device_t *dev, uint32_t queue_id,
 
     // 设置输出描述符
     for (uint32_t i = 0; i < out_num; i++) {
-        queue->desc[prev].addr = buffers[i];
-        queue->desc[prev].len = lengths[i];
+        queue->desc[prev].addr  = buffers[i];
+        queue->desc[prev].len   = lengths[i];
         queue->desc[prev].flags = (i + 1 < total_desc) ? VIRTQ_DESC_F_NEXT : 0;
         if (i + 1 < total_desc) {
             prev = queue->desc[prev].next;
@@ -277,8 +298,8 @@ int virtio_queue_add_buf(virtio_device_t *dev, uint32_t queue_id,
 
     // 设置输入描述符
     for (uint32_t i = 0; i < in_num; i++) {
-        queue->desc[prev].addr = buffers[out_num + i];
-        queue->desc[prev].len = lengths[out_num + i];
+        queue->desc[prev].addr  = buffers[out_num + i];
+        queue->desc[prev].len   = lengths[out_num + i];
         queue->desc[prev].flags = VIRTQ_DESC_F_WRITE;
         if (i + 1 < in_num) {
             queue->desc[prev].flags |= VIRTQ_DESC_F_NEXT;
@@ -291,7 +312,7 @@ int virtio_queue_add_buf(virtio_device_t *dev, uint32_t queue_id,
     queue->num_free -= total_desc;
 
     // 添加到可用环
-    uint16_t avail_idx = queue->avail->idx;
+    uint16_t avail_idx                                = queue->avail->idx;
     queue->avail->ring[avail_idx % queue->queue_size] = head;
 
     // 内存屏障后更新索引
@@ -302,7 +323,8 @@ int virtio_queue_add_buf(virtio_device_t *dev, uint32_t queue_id,
 }
 
 // 通知设备处理队列
-int virtio_queue_kick(virtio_device_t *dev, uint32_t queue_id)
+int
+virtio_queue_kick(virtio_device_t *dev, uint32_t queue_id)
 {
     if (queue_id >= dev->num_queues) {
         logger_error("Invalid queue ID: %d\n", queue_id);
@@ -315,7 +337,8 @@ int virtio_queue_kick(virtio_device_t *dev, uint32_t queue_id)
 }
 
 // 从队列获取已完成的缓冲区
-int virtio_queue_get_buf(virtio_device_t *dev, uint32_t queue_id, uint32_t *len)
+int
+virtio_queue_get_buf(virtio_device_t *dev, uint32_t queue_id, uint32_t *len)
 {
     if (queue_id >= dev->num_queues) {
         logger_error("Invalid queue ID: %d\n", queue_id);
@@ -327,29 +350,29 @@ int virtio_queue_get_buf(virtio_device_t *dev, uint32_t queue_id, uint32_t *len)
     // 检查是否有已用缓冲区
     dsb(ld);  // 读屏障
     if (queue->last_used_idx == queue->used->idx) {
-        return -1; // 没有已用缓冲区
+        return -1;  // 没有已用缓冲区
     }
 
     // 获取已用缓冲区
     virtq_used_elem_t *used_elem = &queue->used->ring[queue->last_used_idx % queue->queue_size];
-    uint32_t desc_id = used_elem->id;
+    uint32_t           desc_id   = used_elem->id;
     if (len) {
         *len = used_elem->len;
     }
 
     // 释放描述符
-    uint16_t desc_idx = desc_id;
+    uint16_t desc_idx   = desc_id;
     uint32_t desc_count = 0;
 
     while (true) {
-        uint16_t next = queue->desc[desc_idx].next;
-        bool has_next = queue->desc[desc_idx].flags & VIRTQ_DESC_F_NEXT;
+        uint16_t next     = queue->desc[desc_idx].next;
+        bool     has_next = queue->desc[desc_idx].flags & VIRTQ_DESC_F_NEXT;
 
         // 清除描述符
-        queue->desc[desc_idx].addr = 0;
-        queue->desc[desc_idx].len = 0;
+        queue->desc[desc_idx].addr  = 0;
+        queue->desc[desc_idx].len   = 0;
         queue->desc[desc_idx].flags = 0;
-        queue->desc[desc_idx].next = queue->free_head;
+        queue->desc[desc_idx].next  = queue->free_head;
 
         queue->free_head = desc_idx;
         desc_count++;
@@ -367,7 +390,8 @@ int virtio_queue_get_buf(virtio_device_t *dev, uint32_t queue_id, uint32_t *len)
 }
 
 // 获取 VirtIO Block 设备配置
-void virtio_blk_get_config(virtio_blk_device_t *blk_dev)
+void
+virtio_blk_get_config(virtio_blk_device_t *blk_dev)
 {
     virtio_device_t *dev = blk_dev->dev;
 
@@ -376,24 +400,25 @@ void virtio_blk_get_config(virtio_blk_device_t *blk_dev)
 
     blk_dev->config.capacity = virtio_read64(dev, VIRTIO_MMIO_CONFIG);
     blk_dev->config.size_max = virtio_read32(dev, VIRTIO_MMIO_CONFIG + 8);
-    blk_dev->config.seg_max = virtio_read32(dev, VIRTIO_MMIO_CONFIG + 12);
+    blk_dev->config.seg_max  = virtio_read32(dev, VIRTIO_MMIO_CONFIG + 12);
     blk_dev->config.blk_size = virtio_read32(dev, VIRTIO_MMIO_CONFIG + 20);
 
     // 设置默认值
     blk_dev->block_size = blk_dev->config.blk_size ? blk_dev->config.blk_size : 512;
-    blk_dev->capacity = blk_dev->config.capacity;
+    blk_dev->capacity   = blk_dev->config.capacity;
 
     logger_info("Block device config: capacity=%llu, block_size=%u\n",
-                blk_dev->capacity, blk_dev->block_size);
+                blk_dev->capacity,
+                blk_dev->block_size);
 }
 
 // 初始化 VirtIO Block 设备
-int virtio_blk_init(virtio_blk_device_t *blk_dev, uint64_t base_addr, uint32_t device_index)
+int
+virtio_blk_init(virtio_blk_device_t *blk_dev, uint64_t base_addr, uint32_t device_index)
 {
     // 分配设备结构
-    virtio_device_t * dev = kalloc(sizeof(virtio_device_t), 8);
-    if (!dev)
-    {
+    virtio_device_t *dev = kalloc(sizeof(virtio_device_t), 8);
+    if (!dev) {
         logger_error("Failed to allocate device structure\n");
         return -1;
     }
@@ -448,8 +473,8 @@ int virtio_blk_init(virtio_blk_device_t *blk_dev, uint64_t base_addr, uint32_t d
 }
 
 // 从设备读取扇区
-int virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
-                          void *buffer, uint32_t count)
+int
+virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector, void *buffer, uint32_t count)
 {
     if (!blk_dev || !blk_dev->dev || !buffer) {
         logger_error("Invalid parameters\n");
@@ -457,11 +482,11 @@ int virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     }
 
     uint32_t sector_size = blk_dev->block_size;
-    uint32_t total_size = count * sector_size;
+    uint32_t total_size  = count * sector_size;
 
     // 分配请求结构
-    virtio_blk_req_t *req = (virtio_blk_req_t *)kalloc(sizeof(virtio_blk_req_t), 8);
-    uint8_t *status = (uint8_t *)kalloc(1, 8);
+    virtio_blk_req_t *req    = (virtio_blk_req_t *) kalloc(sizeof(virtio_blk_req_t), 8);
+    uint8_t          *status = (uint8_t *) kalloc(1, 8);
 
     if (!req || !status) {
         logger_error("Failed to allocate request structures\n");
@@ -469,21 +494,21 @@ int virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     }
 
     // 设置请求
-    req->type = VIRTIO_BLK_T_IN; // 读操作
+    req->type     = VIRTIO_BLK_T_IN;  // 读操作
     req->reserved = 0;
-    req->sector = sector;
+    req->sector   = sector;
 
     // 设置缓冲区数组
     uint64_t buffers[3];
     uint32_t lengths[3];
 
-    buffers[0] = (uint64_t)req;
+    buffers[0] = (uint64_t) req;
     lengths[0] = sizeof(virtio_blk_req_t);
 
-    buffers[1] = (uint64_t)buffer;
+    buffers[1] = (uint64_t) buffer;
     lengths[1] = total_size;
 
-    buffers[2] = (uint64_t)status;
+    buffers[2] = (uint64_t) status;
     lengths[2] = 1;
 
     logger_debug("Reading sector %llu, count %u, total_size %u\n", sector, count, total_size);
@@ -506,9 +531,9 @@ int virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     }
 
     // 轮询完成（无中断模式）
-    uint32_t timeout = 1000000; // 大超时值
+    uint32_t timeout = 1000000;  // 大超时值
     uint32_t len;
-    int result = -1;
+    int      result = -1;
 
     while (timeout-- > 0) {
         result = virtio_queue_get_buf(blk_dev->dev, 0, &len);
@@ -516,7 +541,8 @@ int virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
             break;
         }
         // 小延迟
-        for (volatile int i = 0; i < 100; i++);
+        for (volatile int i = 0; i < 100; i++)
+            ;
     }
 
     if (result < 0) {
@@ -542,8 +568,11 @@ int virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
 }
 
 // 向设备写入扇区
-int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
-                           const void *buffer, uint32_t count)
+int
+virtio_blk_write_sector(virtio_blk_device_t *blk_dev,
+                        uint64_t             sector,
+                        const void          *buffer,
+                        uint32_t             count)
 {
     if (!blk_dev || !blk_dev->dev || !buffer) {
         logger_error("Invalid parameters\n");
@@ -551,11 +580,11 @@ int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     }
 
     uint32_t sector_size = blk_dev->block_size;
-    uint32_t total_size = count * sector_size;
+    uint32_t total_size  = count * sector_size;
 
     // 分配请求结构
-    virtio_blk_req_t *req = (virtio_blk_req_t *)kalloc(sizeof(virtio_blk_req_t), 8);
-    uint8_t *status = (uint8_t *)kalloc(1, 8);
+    virtio_blk_req_t *req    = (virtio_blk_req_t *) kalloc(sizeof(virtio_blk_req_t), 8);
+    uint8_t          *status = (uint8_t *) kalloc(1, 8);
 
     if (!req || !status) {
         logger_error("Failed to allocate request structures\n");
@@ -563,21 +592,21 @@ int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     }
 
     // 设置请求
-    req->type = VIRTIO_BLK_T_OUT; // 写操作
+    req->type     = VIRTIO_BLK_T_OUT;  // 写操作
     req->reserved = 0;
-    req->sector = sector;
+    req->sector   = sector;
 
     // 设置缓冲区数组
     uint64_t buffers[3];
     uint32_t lengths[3];
 
-    buffers[0] = (uint64_t)req;
+    buffers[0] = (uint64_t) req;
     lengths[0] = sizeof(virtio_blk_req_t);
 
-    buffers[1] = (uint64_t)buffer;
+    buffers[1] = (uint64_t) buffer;
     lengths[1] = total_size;
 
-    buffers[2] = (uint64_t)status;
+    buffers[2] = (uint64_t) status;
     lengths[2] = 1;
 
     logger_debug("Writing sector %llu, count %u, total_size %u\n", sector, count, total_size);
@@ -600,9 +629,9 @@ int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     }
 
     // 轮询完成（无中断模式）
-    uint32_t timeout = 1000000; // 大超时值
+    uint32_t timeout = 1000000;  // 大超时值
     uint32_t len;
-    int result = -1;
+    int      result = -1;
 
     while (timeout-- > 0) {
         result = virtio_queue_get_buf(blk_dev->dev, 0, &len);
@@ -610,7 +639,8 @@ int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
             break;
         }
         // 小延迟
-        for (volatile int i = 0; i < 10; i++);
+        for (volatile int i = 0; i < 10; i++)
+            ;
     }
 
     if (result < 0) {
@@ -636,9 +666,9 @@ int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
 }
 
 
-
 // 扫描 VirtIO Block 设备
-uint64_t scan_for_virtio_block_device(uint32_t found_device_id)
+uint64_t
+scan_for_virtio_block_device(uint32_t found_device_id)
 {
     logger_info("Scanning for VirtIO devices that match ID %d...\n", found_device_id);
 
@@ -646,25 +676,28 @@ uint64_t scan_for_virtio_block_device(uint32_t found_device_id)
         uint64_t addr = VIRTIO_SCAN_BASE_ADDR + (i * VIRTIO_SCAN_STEP);
 
         // Check magic value first
-        uint32_t magic = mmio_read32((volatile void*)(addr + VIRTIO_MMIO_MAGIC_VALUE));
+        uint32_t magic = mmio_read32((volatile void *) (addr + VIRTIO_MMIO_MAGIC_VALUE));
         if (magic != VIRTIO_MMIO_MAGIC) {
             logger_debug("Address 0x%lx: Invalid magic 0x%x\n", addr, magic);
             continue;
         }
 
         // Check version
-        uint32_t version = mmio_read32((volatile void*)(addr + VIRTIO_MMIO_VERSION));
+        uint32_t version = mmio_read32((volatile void *) (addr + VIRTIO_MMIO_VERSION));
         if (version < 1 || version > 2) {
             logger_debug("Address 0x%lx: Invalid version %u\n", addr, version);
             continue;
         }
 
         // Check device ID
-        uint32_t device_id = mmio_read32((volatile void*)(addr + VIRTIO_MMIO_DEVICE_ID));
-        uint32_t vendor_id = mmio_read32((volatile void*)(addr + VIRTIO_MMIO_VENDOR_ID));
+        uint32_t device_id = mmio_read32((volatile void *) (addr + VIRTIO_MMIO_DEVICE_ID));
+        uint32_t vendor_id = mmio_read32((volatile void *) (addr + VIRTIO_MMIO_VENDOR_ID));
 
         logger_debug("VirtIO device at 0x%lx: ID=%u, Vendor=0x%x, Version=%u\n",
-                   addr, device_id, vendor_id, version);
+                     addr,
+                     device_id,
+                     vendor_id,
+                     version);
 
         if (device_id == found_device_id) {
             logger_info("Found VirtIO %d device at address 0x%lx!\n", found_device_id, addr);
@@ -677,7 +710,8 @@ uint64_t scan_for_virtio_block_device(uint32_t found_device_id)
 }
 
 // 打印设备信息
-void virtio_blk_print_info(virtio_blk_device_t *blk_dev)
+void
+virtio_blk_print_info(virtio_blk_device_t *blk_dev)
 {
     if (!blk_dev || !blk_dev->dev) {
         logger_error("Invalid block device\n");
@@ -698,7 +732,8 @@ void virtio_blk_print_info(virtio_blk_device_t *blk_dev)
 }
 
 // 简单的 VirtIO 设备检测函数
-void virtio_detect_devices(void)
+void
+virtio_detect_devices(void)
 {
     logger_info("=== VirtIO Device Detection ===\n");
 
@@ -706,15 +741,15 @@ void virtio_detect_devices(void)
         uint64_t addr = VIRTIO_SCAN_BASE_ADDR + (i * VIRTIO_SCAN_STEP);
 
         // 检查 Magic Value
-        uint32_t magic = mmio_read32((volatile void*)(addr + VIRTIO_MMIO_MAGIC_VALUE));
+        uint32_t magic = mmio_read32((volatile void *) (addr + VIRTIO_MMIO_MAGIC_VALUE));
         if (magic != VIRTIO_MMIO_MAGIC) {
             continue;  // 跳过无效设备
         }
 
         // 读取设备信息
-        uint32_t version = mmio_read32((volatile void*)(addr + VIRTIO_MMIO_VERSION));
-        uint32_t device_id = mmio_read32((volatile void*)(addr + VIRTIO_MMIO_DEVICE_ID));
-        uint32_t vendor_id = mmio_read32((volatile void*)(addr + VIRTIO_MMIO_VENDOR_ID));
+        uint32_t version   = mmio_read32((volatile void *) (addr + VIRTIO_MMIO_VERSION));
+        uint32_t device_id = mmio_read32((volatile void *) (addr + VIRTIO_MMIO_DEVICE_ID));
+        uint32_t vendor_id = mmio_read32((volatile void *) (addr + VIRTIO_MMIO_VENDOR_ID));
 
         logger_info("VirtIO device found at 0x%lx:\n", addr);
         logger_info("  Magic: 0x%x\n", magic);

@@ -30,12 +30,13 @@
 /**
  * @brief FAT32文件系统全局状态
  */
-typedef struct {
-    fat32_disk_t        *disk;          // 磁盘句柄
-    fat32_fs_info_t     fs_info;        // 文件系统信息
-    fat32_cache_manager_t *cache_mgr;   // 缓存管理器
-    uint8_t             initialized;    // 初始化标志
-    uint8_t             mounted;        // 挂载状态
+typedef struct
+{
+    fat32_disk_t          *disk;         // 磁盘句柄
+    fat32_fs_info_t        fs_info;      // 文件系统信息
+    fat32_cache_manager_t *cache_mgr;    // 缓存管理器
+    uint8_t                initialized;  // 初始化标志
+    uint8_t                mounted;      // 挂载状态
 } fat32_context_t;
 
 /* ============================================================================
@@ -55,7 +56,8 @@ typedef struct {
  * - 初始化文件句柄管理器
  * - 设置全局状态
  */
-fat32_error_t fat32_init(void);
+fat32_error_t
+fat32_init(void);
 
 /**
  * @brief 格式化并挂载FAT32文件系统
@@ -71,7 +73,8 @@ fat32_error_t fat32_init(void);
  * - 初始化文件系统信息
  * - 设置挂载状态
  */
-fat32_error_t fat32_format_and_mount(const char *volume_label);
+fat32_error_t
+fat32_format_and_mount(const char *volume_label);
 
 /**
  * @brief 挂载现有的FAT32文件系统
@@ -86,7 +89,8 @@ fat32_error_t fat32_format_and_mount(const char *volume_label);
  * - 读取FSInfo信息
  * - 设置挂载状态
  */
-fat32_error_t fat32_mount(void);
+fat32_error_t
+fat32_mount(void);
 
 /**
  * @brief 卸载FAT32文件系统
@@ -101,7 +105,8 @@ fat32_error_t fat32_mount(void);
  * - 更新FSInfo信息
  * - 清理资源
  */
-fat32_error_t fat32_unmount(void);
+fat32_error_t
+fat32_unmount(void);
 
 /**
  * @brief 清理FAT32文件系统
@@ -110,7 +115,8 @@ fat32_error_t fat32_unmount(void);
  * 
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_cleanup(void);
+fat32_error_t
+fat32_cleanup(void);
 
 /* ============================================================================
  * 兼容性接口函数（与ramfs接口兼容）
@@ -122,7 +128,8 @@ fat32_error_t fat32_cleanup(void);
  * @param name 文件名
  * @return int32_t 文件描述符，-1表示失败
  */
-int32_t fat32_open(const char *name);
+int32_t
+fat32_open(const char *name);
 
 /**
  * @brief 以只读模式打开文件（兼容接口）
@@ -130,7 +137,8 @@ int32_t fat32_open(const char *name);
  * @param name 文件名
  * @return int32_t 文件描述符，-1表示失败（文件不存在时不会创建）
  */
-int32_t fat32_open_readonly(const char *name);
+int32_t
+fat32_open_readonly(const char *name);
 
 /**
  * @brief 关闭文件（兼容接口）
@@ -138,7 +146,8 @@ int32_t fat32_open_readonly(const char *name);
  * @param fd 文件描述符
  * @return int32_t 0表示成功，-1表示失败
  */
-int32_t fat32_close(int32_t fd);
+int32_t
+fat32_close(int32_t fd);
 
 /**
  * @brief 读取文件（兼容接口）
@@ -148,7 +157,8 @@ int32_t fat32_close(int32_t fd);
  * @param count 要读取的字节数
  * @return size_t 实际读取的字节数
  */
-size_t fat32_read(int32_t fd, void *buf, size_t count);
+size_t
+fat32_read(int32_t fd, void *buf, size_t count);
 
 /**
  * @brief 写入文件（兼容接口）
@@ -158,7 +168,8 @@ size_t fat32_read(int32_t fd, void *buf, size_t count);
  * @param count 要写入的字节数
  * @return size_t 实际写入的字节数
  */
-size_t fat32_write(int32_t fd, const void *buf, size_t count);
+size_t
+fat32_write(int32_t fd, const void *buf, size_t count);
 
 /**
  * @brief 定位文件指针（兼容接口）
@@ -168,7 +179,8 @@ size_t fat32_write(int32_t fd, const void *buf, size_t count);
  * @param whence 定位标志
  * @return off_t 新的文件位置，-1表示失败
  */
-off_t fat32_lseek(int32_t fd, off_t offset, int32_t whence);
+off_t
+fat32_lseek(int32_t fd, off_t offset, int32_t whence);
 
 /**
  * @brief 删除文件（兼容接口）
@@ -176,7 +188,8 @@ off_t fat32_lseek(int32_t fd, off_t offset, int32_t whence);
  * @param name 文件名
  * @return int32_t 0表示成功，-1表示失败
  */
-int32_t fat32_unlink(const char *name);
+int32_t
+fat32_unlink(const char *name);
 
 /* ============================================================================
  * 扩展功能函数
@@ -188,7 +201,8 @@ int32_t fat32_unlink(const char *name);
  * @param dirname 目录名
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_mkdir(const char *dirname);
+fat32_error_t
+fat32_mkdir(const char *dirname);
 
 /**
  * @brief 删除目录
@@ -196,7 +210,8 @@ fat32_error_t fat32_mkdir(const char *dirname);
  * @param dirname 目录名
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_rmdir(const char *dirname);
+fat32_error_t
+fat32_rmdir(const char *dirname);
 
 /**
  * @brief 列出目录内容
@@ -207,10 +222,11 @@ fat32_error_t fat32_rmdir(const char *dirname);
  * @param entry_count 返回实际目录项数量
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_listdir(const char *dirname,
-                            fat32_dir_entry_t *entries,
-                            uint32_t max_entries,
-                            uint32_t *entry_count);
+fat32_error_t
+fat32_listdir(const char        *dirname,
+              fat32_dir_entry_t *entries,
+              uint32_t           max_entries,
+              uint32_t          *entry_count);
 
 /**
  * @brief 获取文件信息
@@ -219,7 +235,8 @@ fat32_error_t fat32_listdir(const char *dirname,
  * @param file_info 返回的文件信息
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_stat(const char *filepath, fat32_dir_entry_t *file_info);
+fat32_error_t
+fat32_stat(const char *filepath, fat32_dir_entry_t *file_info);
 
 /**
  * @brief 重命名文件或目录
@@ -228,7 +245,8 @@ fat32_error_t fat32_stat(const char *filepath, fat32_dir_entry_t *file_info);
  * @param new_name 新名称
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_rename(const char *old_name, const char *new_name);
+fat32_error_t
+fat32_rename(const char *old_name, const char *new_name);
 
 /* ============================================================================
  * 调试和诊断函数
@@ -239,14 +257,16 @@ fat32_error_t fat32_rename(const char *old_name, const char *new_name);
  * 
  * 输出文件系统的详细信息，用于调试。
  */
-void fat32_print_fs_info(void);
+void
+fat32_print_fs_info(void);
 
 /**
  * @brief 打印缓存统计信息
  * 
  * 输出缓存的使用统计，用于性能分析。
  */
-void fat32_print_cache_stats(void);
+void
+fat32_print_cache_stats(void);
 
 /**
  * @brief 检查文件系统一致性
@@ -255,14 +275,16 @@ void fat32_print_cache_stats(void);
  * 
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_fsck(void);
+fat32_error_t
+fat32_fsck(void);
 
 /**
  * @brief 测试FAT32文件系统
  * 
  * 执行基本的功能测试。
  */
-void fat32_test(void);
+void
+fat32_test(void);
 
 /* ============================================================================
  * 内联辅助函数
@@ -273,21 +295,24 @@ void fat32_test(void);
  * 
  * @return uint8_t 1表示已初始化，0表示未初始化
  */
-uint8_t fat32_is_initialized(void);
+uint8_t
+fat32_is_initialized(void);
 
 /**
  * @brief 检查文件系统是否已挂载
  * 
  * @return uint8_t 1表示已挂载，0表示未挂载
  */
-uint8_t fat32_is_mounted(void);
+uint8_t
+fat32_is_mounted(void);
 
 /**
  * @brief 获取文件系统上下文
  * 
  * @return fat32_context_t* 文件系统上下文指针
  */
-fat32_context_t *fat32_get_context(void);
+fat32_context_t *
+fat32_get_context(void);
 
 /**
  * @brief 将FAT32错误码转换为标准错误码
@@ -295,7 +320,8 @@ fat32_context_t *fat32_get_context(void);
  * @param fat32_error FAT32错误码
  * @return int32_t 标准错误码（用于兼容接口）
  */
-int32_t fat32_error_to_errno(fat32_error_t fat32_error);
+int32_t
+fat32_error_to_errno(fat32_error_t fat32_error);
 
 /**
  * @brief 获取错误描述字符串
@@ -303,10 +329,10 @@ int32_t fat32_error_to_errno(fat32_error_t fat32_error);
  * @param error_code 错误码
  * @return const char* 错误描述字符串
  */
-const char *fat32_get_error_string(fat32_error_t error_code);
-
+const char *
+fat32_get_error_string(fat32_error_t error_code);
 
 
 extern fat32_context_t g_fat32_context;
 
-#endif // FAT32_H
+#endif  // FAT32_H

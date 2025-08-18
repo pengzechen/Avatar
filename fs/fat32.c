@@ -21,15 +21,16 @@ fat32_context_t g_fat32_context;
  * 文件系统管理函数实现
  * ============================================================================ */
 
-fat32_error_t fat32_init(void)
+fat32_error_t
+fat32_init(void)
 {
     if (g_fat32_context.initialized) {
         return FAT32_OK;
     }
-    
+
     // 清零上下文
     memset(&g_fat32_context, 0, sizeof(fat32_context_t));
-    
+
     // 初始化虚拟磁盘
     g_fat32_context.disk = fat32_get_disk();
     fat32_error_t result = fat32_disk_init(g_fat32_context.disk);
@@ -37,7 +38,7 @@ fat32_error_t fat32_init(void)
         logger_error("FAT32: Failed to initialize disk\n");
         return result;
     }
-    
+
     // 初始化缓存管理器
     result = fat32_init_global_cache();
     if (result != FAT32_OK) {
@@ -46,7 +47,7 @@ fat32_error_t fat32_init(void)
         return result;
     }
     g_fat32_context.cache_mgr = fat32_get_cache_manager();
-    
+
     // 初始化文件句柄管理器
     result = fat32_file_handle_init();
     if (result != FAT32_OK) {
@@ -55,15 +56,16 @@ fat32_error_t fat32_init(void)
         fat32_disk_cleanup(g_fat32_context.disk);
         return result;
     }
-    
+
     g_fat32_context.initialized = 1;
-    g_fat32_context.mounted = 0;
-    
+    g_fat32_context.mounted     = 0;
+
     logger("FAT32: File system initialized successfully\n");
     return FAT32_OK;
 }
 
-fat32_error_t fat32_format_and_mount(const char *volume_label)
+fat32_error_t
+fat32_format_and_mount(const char *volume_label)
 {
     if (!g_fat32_context.initialized) {
         fat32_error_t result = fat32_init();
@@ -71,102 +73,106 @@ fat32_error_t fat32_format_and_mount(const char *volume_label)
             return result;
         }
     }
-    
+
     if (g_fat32_context.mounted) {
         logger("FAT32: File system already mounted\n");
         return FAT32_ERROR_ALREADY_EXISTS;
     }
-    
+
     // 格式化磁盘
     fat32_error_t result = fat32_disk_format(g_fat32_context.disk, volume_label);
     if (result != FAT32_OK) {
         logger("FAT32: Failed to format disk\n");
         return result;
     }
-    
+
     // 挂载文件系统
     result = fat32_mount();
     if (result != FAT32_OK) {
         logger("FAT32: Failed to mount after format\n");
         return result;
     }
-    
+
     logger("FAT32: File system formatted and mounted successfully\n");
     return FAT32_OK;
 }
 
-fat32_error_t fat32_mount(void)
+fat32_error_t
+fat32_mount(void)
 {
     if (!g_fat32_context.initialized) {
         return FAT32_ERROR_NOT_MOUNTED;
     }
-    
+
     if (g_fat32_context.mounted) {
         return FAT32_OK;
     }
-    
+
     // 读取引导扇区和文件系统信息
-    fat32_error_t result = fat32_boot_read_boot_sector(g_fat32_context.disk, &g_fat32_context.fs_info);
+    fat32_error_t result =
+        fat32_boot_read_boot_sector(g_fat32_context.disk, &g_fat32_context.fs_info);
     if (result != FAT32_OK) {
         logger_error("FAT32: Failed to read boot sector\n");
         return result;
     }
-    
+
     g_fat32_context.mounted = 1;
-    
+
     logger_info("FAT32: File system mounted successfully\n");
     fat32_boot_print_layout(&g_fat32_context.fs_info);
-    
+
     return FAT32_OK;
 }
 
-fat32_error_t fat32_unmount(void)
+fat32_error_t
+fat32_unmount(void)
 {
     if (!g_fat32_context.initialized || !g_fat32_context.mounted) {
         return FAT32_OK;
     }
-    
+
     // 刷新缓存
-    fat32_error_t result = fat32_cache_flush(g_fat32_context.cache_mgr, 
-                                            g_fat32_context.disk, 
-                                            &g_fat32_context.fs_info);
+    fat32_error_t result = fat32_cache_flush(g_fat32_context.cache_mgr,
+                                             g_fat32_context.disk,
+                                             &g_fat32_context.fs_info);
     if (result != FAT32_OK) {
         logger("FAT32: Warning - Failed to flush cache during unmount\n");
     }
-    
+
     // 更新FSInfo
     result = fat32_boot_write_fsinfo(g_fat32_context.disk, &g_fat32_context.fs_info);
     if (result != FAT32_OK) {
         logger("FAT32: Warning - Failed to update FSInfo during unmount\n");
     }
-    
+
     // 同步磁盘
     fat32_disk_sync(g_fat32_context.disk);
-    
+
     g_fat32_context.mounted = 0;
-    
+
     logger("FAT32: File system unmounted successfully\n");
     return FAT32_OK;
 }
 
-fat32_error_t fat32_cleanup(void)
+fat32_error_t
+fat32_cleanup(void)
 {
     if (!g_fat32_context.initialized) {
         return FAT32_OK;
     }
-    
+
     // 卸载文件系统
     fat32_unmount();
-    
+
     // 清理缓存
     fat32_cleanup_global_cache(g_fat32_context.disk, &g_fat32_context.fs_info);
-    
+
     // 清理磁盘
     fat32_disk_cleanup(g_fat32_context.disk);
-    
+
     // 清零上下文
     memset(&g_fat32_context, 0, sizeof(fat32_context_t));
-    
+
     logger("FAT32: File system cleaned up\n");
     return FAT32_OK;
 }
@@ -175,18 +181,19 @@ fat32_error_t fat32_cleanup(void)
  * 兼容性接口函数实现
  * ============================================================================ */
 
-int32_t fat32_open(const char *name)
+int32_t
+fat32_open(const char *name)
 {
     if (!fat32_is_mounted()) {
         return -1;
     }
 
     fat32_file_handle_t *handle;
-    fat32_error_t result = fat32_file_open(g_fat32_context.disk,
-                                          &g_fat32_context.fs_info,
-                                          name,
-                                          FAT32_O_RDWR | FAT32_O_CREAT,
-                                          &handle);
+    fat32_error_t        result = fat32_file_open(g_fat32_context.disk,
+                                           &g_fat32_context.fs_info,
+                                           name,
+                                           FAT32_O_RDWR | FAT32_O_CREAT,
+                                           &handle);
 
     if (result != FAT32_OK) {
         return -1;
@@ -194,21 +201,22 @@ int32_t fat32_open(const char *name)
 
     // 简化实现：返回句柄指针作为文件描述符
     // 实际实现中应该使用文件描述符表
-    return (int32_t)(uintptr_t)handle;
+    return (int32_t) (uintptr_t) handle;
 }
 
-int32_t fat32_open_readonly(const char *name)
+int32_t
+fat32_open_readonly(const char *name)
 {
     if (!fat32_is_mounted()) {
         return -1;
     }
 
     fat32_file_handle_t *handle;
-    fat32_error_t result = fat32_file_open(g_fat32_context.disk,
-                                          &g_fat32_context.fs_info,
-                                          name,
-                                          FAT32_O_RDONLY,
-                                          &handle);
+    fat32_error_t        result = fat32_file_open(g_fat32_context.disk,
+                                           &g_fat32_context.fs_info,
+                                           name,
+                                           FAT32_O_RDONLY,
+                                           &handle);
 
     if (result != FAT32_OK) {
         return -1;
@@ -216,55 +224,56 @@ int32_t fat32_open_readonly(const char *name)
 
     // 简化实现：返回句柄指针作为文件描述符
     // 实际实现中应该使用文件描述符表
-    return (int32_t)(uintptr_t)handle;
+    return (int32_t) (uintptr_t) handle;
 }
 
-int32_t fat32_close(int32_t fd)
+int32_t
+fat32_close(int32_t fd)
 {
     if (!fat32_is_mounted() || fd <= 0) {
         return -1;
     }
-    
-    fat32_file_handle_t *handle = (fat32_file_handle_t *)(uintptr_t)fd;
-    fat32_error_t result = fat32_file_close(g_fat32_context.disk, 
-                                           &g_fat32_context.fs_info,
-                                           handle);
-    
+
+    fat32_file_handle_t *handle = (fat32_file_handle_t *) (uintptr_t) fd;
+    fat32_error_t result = fat32_file_close(g_fat32_context.disk, &g_fat32_context.fs_info, handle);
+
     return (result == FAT32_OK) ? 0 : -1;
 }
 
-size_t fat32_read(int32_t fd, void *buf, size_t count)
-{
-    if (!fat32_is_mounted() || fd <= 0 || buf == NULL) {
-        return 0;
-    }
-    
-    fat32_file_handle_t *handle = (fat32_file_handle_t *)(uintptr_t)fd;
-    uint32_t bytes_read;
-    fat32_error_t result = fat32_file_read(g_fat32_context.disk,
-                                          &g_fat32_context.fs_info,
-                                          handle,
-                                          buf,
-                                          (uint32_t)count,
-                                          &bytes_read);
-    
-    return (result == FAT32_OK) ? bytes_read : 0;
-}
-
-size_t fat32_write(int32_t fd, const void *buf, size_t count)
+size_t
+fat32_read(int32_t fd, void *buf, size_t count)
 {
     if (!fat32_is_mounted() || fd <= 0 || buf == NULL) {
         return 0;
     }
 
-    fat32_file_handle_t *handle = (fat32_file_handle_t *)(uintptr_t)fd;
-    uint32_t bytes_written;
-    fat32_error_t result = fat32_file_write(g_fat32_context.disk,
+    fat32_file_handle_t *handle = (fat32_file_handle_t *) (uintptr_t) fd;
+    uint32_t             bytes_read;
+    fat32_error_t        result = fat32_file_read(g_fat32_context.disk,
                                            &g_fat32_context.fs_info,
                                            handle,
                                            buf,
-                                           (uint32_t)count,
-                                           &bytes_written);
+                                           (uint32_t) count,
+                                           &bytes_read);
+
+    return (result == FAT32_OK) ? bytes_read : 0;
+}
+
+size_t
+fat32_write(int32_t fd, const void *buf, size_t count)
+{
+    if (!fat32_is_mounted() || fd <= 0 || buf == NULL) {
+        return 0;
+    }
+
+    fat32_file_handle_t *handle = (fat32_file_handle_t *) (uintptr_t) fd;
+    uint32_t             bytes_written;
+    fat32_error_t        result = fat32_file_write(g_fat32_context.disk,
+                                            &g_fat32_context.fs_info,
+                                            handle,
+                                            buf,
+                                            (uint32_t) count,
+                                            &bytes_written);
 
     if (result != FAT32_OK) {
         logger("FAT32: Write failed: %s\n", fat32_get_error_string(result));
@@ -274,29 +283,29 @@ size_t fat32_write(int32_t fd, const void *buf, size_t count)
     return bytes_written;
 }
 
-off_t fat32_lseek(int32_t fd, off_t offset, int32_t whence)
+off_t
+fat32_lseek(int32_t fd, off_t offset, int32_t whence)
 {
     if (!fat32_is_mounted() || fd <= 0) {
         return -1;
     }
-    
-    fat32_file_handle_t *handle = (fat32_file_handle_t *)(uintptr_t)fd;
-    uint32_t new_position;
-    fat32_error_t result = fat32_file_seek(handle, (int32_t)offset, whence, &new_position);
-    
-    return (result == FAT32_OK) ? (off_t)new_position : -1;
+
+    fat32_file_handle_t *handle = (fat32_file_handle_t *) (uintptr_t) fd;
+    uint32_t             new_position;
+    fat32_error_t        result = fat32_file_seek(handle, (int32_t) offset, whence, &new_position);
+
+    return (result == FAT32_OK) ? (off_t) new_position : -1;
 }
 
-int32_t fat32_unlink(const char *name)
+int32_t
+fat32_unlink(const char *name)
 {
     if (!fat32_is_mounted() || name == NULL) {
         return -1;
     }
-    
-    fat32_error_t result = fat32_file_delete(g_fat32_context.disk,
-                                            &g_fat32_context.fs_info,
-                                            name);
-    
+
+    fat32_error_t result = fat32_file_delete(g_fat32_context.disk, &g_fat32_context.fs_info, name);
+
     return (result == FAT32_OK) ? 0 : -1;
 }
 
@@ -304,22 +313,26 @@ int32_t fat32_unlink(const char *name)
  * 内联辅助函数实现
  * ============================================================================ */
 
-uint8_t fat32_is_initialized(void)
+uint8_t
+fat32_is_initialized(void)
 {
     return g_fat32_context.initialized;
 }
 
-uint8_t fat32_is_mounted(void)
+uint8_t
+fat32_is_mounted(void)
 {
     return g_fat32_context.initialized && g_fat32_context.mounted;
 }
 
-fat32_context_t *fat32_get_context(void)
+fat32_context_t *
+fat32_get_context(void)
 {
     return &g_fat32_context;
 }
 
-int32_t fat32_error_to_errno(fat32_error_t fat32_error)
+int32_t
+fat32_error_to_errno(fat32_error_t fat32_error)
 {
     switch (fat32_error) {
         case FAT32_OK:
@@ -327,22 +340,23 @@ int32_t fat32_error_to_errno(fat32_error_t fat32_error)
         case FAT32_ERROR_NOT_FOUND:
             return -2;  // ENOENT
         case FAT32_ERROR_ACCESS_DENIED:
-            return -13; // EACCES
+            return -13;  // EACCES
         case FAT32_ERROR_NO_SPACE:
-            return -28; // ENOSPC
+            return -28;  // ENOSPC
         case FAT32_ERROR_ALREADY_EXISTS:
-            return -17; // EEXIST
+            return -17;  // EEXIST
         case FAT32_ERROR_INVALID_PARAM:
         case FAT32_ERROR_INVALID_NAME:
-            return -22; // EINVAL
+            return -22;  // EINVAL
         case FAT32_ERROR_TOO_MANY_OPEN_FILES:
-            return -24; // EMFILE
+            return -24;  // EMFILE
         default:
             return -1;  // 通用错误
     }
 }
 
-const char *fat32_get_error_string(fat32_error_t error_code)
+const char *
+fat32_get_error_string(fat32_error_t error_code)
 {
     switch (error_code) {
         case FAT32_OK:
@@ -384,7 +398,8 @@ const char *fat32_get_error_string(fat32_error_t error_code)
  * 调试和诊断函数实现
  * ============================================================================ */
 
-void fat32_print_fs_info(void)
+void
+fat32_print_fs_info(void)
 {
     if (!fat32_is_mounted()) {
         logger("FAT32: File system not mounted\n");
@@ -397,7 +412,8 @@ void fat32_print_fs_info(void)
 
     // 打印磁盘统计信息
     uint32_t read_count, write_count, error_count;
-    if (fat32_disk_get_stats(g_fat32_context.disk, &read_count, &write_count, &error_count) == FAT32_OK) {
+    if (fat32_disk_get_stats(g_fat32_context.disk, &read_count, &write_count, &error_count) ==
+        FAT32_OK) {
         logger("Disk Statistics:\n");
         logger("  Read operations: %u\n", read_count);
         logger("  Write operations: %u\n", write_count);
@@ -407,7 +423,8 @@ void fat32_print_fs_info(void)
     logger("=====================================\n");
 }
 
-void fat32_print_cache_stats(void)
+void
+fat32_print_cache_stats(void)
 {
     if (!fat32_is_initialized()) {
         logger("FAT32: File system not initialized\n");
@@ -415,7 +432,10 @@ void fat32_print_cache_stats(void)
     }
 
     uint32_t total_blocks, used_blocks, dirty_blocks;
-    if (fat32_cache_get_stats(g_fat32_context.cache_mgr, &total_blocks, &used_blocks, &dirty_blocks) == FAT32_OK) {
+    if (fat32_cache_get_stats(g_fat32_context.cache_mgr,
+                              &total_blocks,
+                              &used_blocks,
+                              &dirty_blocks) == FAT32_OK) {
         logger("=== FAT32 Cache Statistics ===\n");
         logger("Total cache blocks: %u\n", total_blocks);
         logger("Used cache blocks: %u\n", used_blocks);
@@ -427,7 +447,8 @@ void fat32_print_cache_stats(void)
     }
 }
 
-fat32_error_t fat32_fsck(void)
+fat32_error_t
+fat32_fsck(void)
 {
     if (!fat32_is_mounted()) {
         return FAT32_ERROR_NOT_MOUNTED;
@@ -469,7 +490,8 @@ fat32_error_t fat32_fsck(void)
     return FAT32_OK;
 }
 
-void fat32_test(void)
+void
+fat32_test(void)
 {
     logger("=== FAT32 File System Test ===\n");
 
@@ -505,7 +527,7 @@ void fat32_test(void)
         logger("FAT32: File opened successfully, fd=%d\n", fd);
 
         // 测试读取（文件为空，应该读取0字节）
-        char buffer[100];
+        char   buffer[100];
         size_t bytes_read = fat32_read(fd, buffer, sizeof(buffer));
         logger("FAT32: Read %zu bytes from empty file\n", bytes_read);
 
@@ -537,15 +559,16 @@ void fat32_test(void)
  * 扩展功能函数实现
  * ============================================================================ */
 
-fat32_error_t fat32_mkdir(const char *dirname)
+fat32_error_t
+fat32_mkdir(const char *dirname)
 {
     if (!fat32_is_mounted() || dirname == NULL) {
         return FAT32_ERROR_NOT_MOUNTED;
     }
 
     // 解析路径
-    char dir_path[FAT32_MAX_PATH];
-    char dir_name[FAT32_MAX_FILENAME];
+    char          dir_path[FAT32_MAX_PATH];
+    char          dir_name[FAT32_MAX_FILENAME];
     fat32_error_t result = fat32_file_parse_path(dirname, dir_path, dir_name);
     if (result != FAT32_OK) {
         return result;
@@ -554,9 +577,9 @@ fat32_error_t fat32_mkdir(const char *dirname)
     // 查找父目录
     uint32_t parent_cluster;
     result = fat32_file_find_directory(g_fat32_context.disk,
-                                      &g_fat32_context.fs_info,
-                                      dir_path,
-                                      &parent_cluster);
+                                       &g_fat32_context.fs_info,
+                                       dir_path,
+                                       &parent_cluster);
     if (result != FAT32_OK) {
         return result;
     }
@@ -564,21 +587,22 @@ fat32_error_t fat32_mkdir(const char *dirname)
     // 在父目录中创建新目录
     uint32_t new_dir_cluster;
     return fat32_dir_create_directory(g_fat32_context.disk,
-                                     &g_fat32_context.fs_info,
-                                     parent_cluster,
-                                     dir_name,
-                                     &new_dir_cluster);
+                                      &g_fat32_context.fs_info,
+                                      parent_cluster,
+                                      dir_name,
+                                      &new_dir_cluster);
 }
 
-fat32_error_t fat32_rmdir(const char *dirname)
+fat32_error_t
+fat32_rmdir(const char *dirname)
 {
     if (!fat32_is_mounted() || dirname == NULL) {
         return FAT32_ERROR_NOT_MOUNTED;
     }
 
     // 解析路径
-    char dir_path[FAT32_MAX_PATH];
-    char dir_name[FAT32_MAX_FILENAME];
+    char          dir_path[FAT32_MAX_PATH];
+    char          dir_name[FAT32_MAX_FILENAME];
     fat32_error_t result = fat32_file_parse_path(dirname, dir_path, dir_name);
     if (result != FAT32_OK) {
         return result;
@@ -587,24 +611,25 @@ fat32_error_t fat32_rmdir(const char *dirname)
     // 查找父目录
     uint32_t parent_cluster;
     result = fat32_file_find_directory(g_fat32_context.disk,
-                                      &g_fat32_context.fs_info,
-                                      dir_path,
-                                      &parent_cluster);
+                                       &g_fat32_context.fs_info,
+                                       dir_path,
+                                       &parent_cluster);
     if (result != FAT32_OK) {
         return result;
     }
 
     // 在父目录中删除目录
     return fat32_dir_remove_directory(g_fat32_context.disk,
-                                     &g_fat32_context.fs_info,
-                                     parent_cluster,
-                                     dir_name);
+                                      &g_fat32_context.fs_info,
+                                      parent_cluster,
+                                      dir_name);
 }
 
-fat32_error_t fat32_listdir(const char *dirname,
-                            fat32_dir_entry_t *entries,
-                            uint32_t max_entries,
-                            uint32_t *entry_count)
+fat32_error_t
+fat32_listdir(const char        *dirname,
+              fat32_dir_entry_t *entries,
+              uint32_t           max_entries,
+              uint32_t          *entry_count)
 {
     if (!fat32_is_mounted() || dirname == NULL || entries == NULL || entry_count == NULL) {
         return FAT32_ERROR_INVALID_PARAM;
@@ -613,11 +638,11 @@ fat32_error_t fat32_listdir(const char *dirname,
     *entry_count = 0;
 
     // 查找目录的簇号
-    uint32_t dir_cluster;
+    uint32_t      dir_cluster;
     fat32_error_t result = fat32_file_find_directory(g_fat32_context.disk,
-                                                    &g_fat32_context.fs_info,
-                                                    dirname,
-                                                    &dir_cluster);
+                                                     &g_fat32_context.fs_info,
+                                                     dirname,
+                                                     &dir_cluster);
     if (result != FAT32_OK) {
         return result;
     }
@@ -627,10 +652,10 @@ fat32_error_t fat32_listdir(const char *dirname,
 
     while (!iterator.end_of_dir && *entry_count < max_entries) {
         fat32_dir_entry_t dir_entry;
-        fat32_error_t result = fat32_dir_iterator_next(g_fat32_context.disk,
-                                                      &g_fat32_context.fs_info,
-                                                      &iterator,
-                                                      &dir_entry);
+        fat32_error_t     result = fat32_dir_iterator_next(g_fat32_context.disk,
+                                                       &g_fat32_context.fs_info,
+                                                       &iterator,
+                                                       &dir_entry);
         if (result != FAT32_OK) {
             if (result == FAT32_ERROR_END_OF_FILE) {
                 break;
@@ -639,8 +664,7 @@ fat32_error_t fat32_listdir(const char *dirname,
         }
 
         // 跳过空闲、已删除和长文件名目录项
-        if (fat32_dir_is_free_entry(&dir_entry) ||
-            fat32_dir_is_deleted_entry(&dir_entry) ||
+        if (fat32_dir_is_free_entry(&dir_entry) || fat32_dir_is_deleted_entry(&dir_entry) ||
             fat32_dir_is_long_name_entry(&dir_entry)) {
             continue;
         }
@@ -652,26 +676,22 @@ fat32_error_t fat32_listdir(const char *dirname,
     return FAT32_OK;
 }
 
-fat32_error_t fat32_stat(const char *filepath, fat32_dir_entry_t *file_info)
+fat32_error_t
+fat32_stat(const char *filepath, fat32_dir_entry_t *file_info)
 {
     if (!fat32_is_mounted() || filepath == NULL || file_info == NULL) {
         return FAT32_ERROR_INVALID_PARAM;
     }
 
-    return fat32_file_stat(g_fat32_context.disk,
-                          &g_fat32_context.fs_info,
-                          filepath,
-                          file_info);
+    return fat32_file_stat(g_fat32_context.disk, &g_fat32_context.fs_info, filepath, file_info);
 }
 
-fat32_error_t fat32_rename(const char *old_name, const char *new_name)
+fat32_error_t
+fat32_rename(const char *old_name, const char *new_name)
 {
     if (!fat32_is_mounted() || old_name == NULL || new_name == NULL) {
         return FAT32_ERROR_INVALID_PARAM;
     }
 
-    return fat32_file_rename(g_fat32_context.disk,
-                            &g_fat32_context.fs_info,
-                            old_name,
-                            new_name);
+    return fat32_file_rename(g_fat32_context.disk, &g_fat32_context.fs_info, old_name, new_name);
 }

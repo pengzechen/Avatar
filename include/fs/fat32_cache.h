@@ -22,13 +22,13 @@
  * 缓存配置常量
  * ============================================================================ */
 
-#define FAT32_CACHE_SIZE            16      // 缓存块数量
-#define FAT32_CACHE_BLOCK_SIZE      4096    // 缓存块大小（一个簇）
+#define FAT32_CACHE_SIZE       16    // 缓存块数量
+#define FAT32_CACHE_BLOCK_SIZE 4096  // 缓存块大小（一个簇）
 
 /* 缓存块状态 */
-#define FAT32_CACHE_CLEAN           0       // 干净（与磁盘同步）
-#define FAT32_CACHE_DIRTY           1       // 脏（需要写回磁盘）
-#define FAT32_CACHE_FREE            2       // 空闲
+#define FAT32_CACHE_CLEAN 0  // 干净（与磁盘同步）
+#define FAT32_CACHE_DIRTY 1  // 脏（需要写回磁盘）
+#define FAT32_CACHE_FREE  2  // 空闲
 
 /* ============================================================================
  * 缓存数据结构
@@ -37,21 +37,23 @@
 /**
  * @brief 缓存块结构
  */
-typedef struct {
-    uint32_t    cluster_num;        // 缓存的簇号
-    uint8_t     *data;              // 缓存数据
-    uint8_t     status;             // 缓存状态
-    uint32_t    access_time;        // 最后访问时间（简化的LRU）
-    uint8_t     in_use;             // 是否在使用中
+typedef struct
+{
+    uint32_t cluster_num;  // 缓存的簇号
+    uint8_t *data;         // 缓存数据
+    uint8_t  status;       // 缓存状态
+    uint32_t access_time;  // 最后访问时间（简化的LRU）
+    uint8_t  in_use;       // 是否在使用中
 } fat32_cache_block_t;
 
 /**
  * @brief 缓存管理器结构
  */
-typedef struct {
-    fat32_cache_block_t blocks[FAT32_CACHE_SIZE];   // 缓存块数组
-    uint32_t            access_counter;             // 访问计数器
-    uint8_t             initialized;                // 初始化标志
+typedef struct
+{
+    fat32_cache_block_t blocks[FAT32_CACHE_SIZE];  // 缓存块数组
+    uint32_t            access_counter;            // 访问计数器
+    uint8_t             initialized;               // 初始化标志
 } fat32_cache_manager_t;
 
 /* ============================================================================
@@ -66,7 +68,8 @@ typedef struct {
  * @param cache_mgr 缓存管理器指针
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_cache_init(fat32_cache_manager_t *cache_mgr);
+fat32_error_t
+fat32_cache_init(fat32_cache_manager_t *cache_mgr);
 
 /**
  * @brief 清理缓存管理器
@@ -78,9 +81,10 @@ fat32_error_t fat32_cache_init(fat32_cache_manager_t *cache_mgr);
  * @param fs_info 文件系统信息
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_cache_cleanup(fat32_cache_manager_t *cache_mgr,
-                                  fat32_disk_t *disk,
-                                  const fat32_fs_info_t *fs_info);
+fat32_error_t
+fat32_cache_cleanup(fat32_cache_manager_t *cache_mgr,
+                    fat32_disk_t          *disk,
+                    const fat32_fs_info_t *fs_info);
 
 /**
  * @brief 读取簇数据（通过缓存）
@@ -94,11 +98,12 @@ fat32_error_t fat32_cache_cleanup(fat32_cache_manager_t *cache_mgr,
  * @param buffer 数据缓冲区
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_cache_read_cluster(fat32_cache_manager_t *cache_mgr,
-                                       fat32_disk_t *disk,
-                                       const fat32_fs_info_t *fs_info,
-                                       uint32_t cluster_num,
-                                       void *buffer);
+fat32_error_t
+fat32_cache_read_cluster(fat32_cache_manager_t *cache_mgr,
+                         fat32_disk_t          *disk,
+                         const fat32_fs_info_t *fs_info,
+                         uint32_t               cluster_num,
+                         void                  *buffer);
 
 /**
  * @brief 写入簇数据（通过缓存）
@@ -112,11 +117,12 @@ fat32_error_t fat32_cache_read_cluster(fat32_cache_manager_t *cache_mgr,
  * @param buffer 数据缓冲区
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_cache_write_cluster(fat32_cache_manager_t *cache_mgr,
-                                        fat32_disk_t *disk,
-                                        const fat32_fs_info_t *fs_info,
-                                        uint32_t cluster_num,
-                                        const void *buffer);
+fat32_error_t
+fat32_cache_write_cluster(fat32_cache_manager_t *cache_mgr,
+                          fat32_disk_t          *disk,
+                          const fat32_fs_info_t *fs_info,
+                          uint32_t               cluster_num,
+                          const void            *buffer);
 
 /**
  * @brief 刷新缓存
@@ -128,9 +134,10 @@ fat32_error_t fat32_cache_write_cluster(fat32_cache_manager_t *cache_mgr,
  * @param fs_info 文件系统信息
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_cache_flush(fat32_cache_manager_t *cache_mgr,
-                                fat32_disk_t *disk,
-                                const fat32_fs_info_t *fs_info);
+fat32_error_t
+fat32_cache_flush(fat32_cache_manager_t *cache_mgr,
+                  fat32_disk_t          *disk,
+                  const fat32_fs_info_t *fs_info);
 
 /**
  * @brief 刷新指定簇的缓存
@@ -143,10 +150,11 @@ fat32_error_t fat32_cache_flush(fat32_cache_manager_t *cache_mgr,
  * @param cluster_num 簇号
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_cache_flush_cluster(fat32_cache_manager_t *cache_mgr,
-                                        fat32_disk_t *disk,
-                                        const fat32_fs_info_t *fs_info,
-                                        uint32_t cluster_num);
+fat32_error_t
+fat32_cache_flush_cluster(fat32_cache_manager_t *cache_mgr,
+                          fat32_disk_t          *disk,
+                          const fat32_fs_info_t *fs_info,
+                          uint32_t               cluster_num);
 
 /**
  * @brief 使缓存块无效
@@ -157,8 +165,8 @@ fat32_error_t fat32_cache_flush_cluster(fat32_cache_manager_t *cache_mgr,
  * @param cluster_num 簇号
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_cache_invalidate_cluster(fat32_cache_manager_t *cache_mgr,
-                                             uint32_t cluster_num);
+fat32_error_t
+fat32_cache_invalidate_cluster(fat32_cache_manager_t *cache_mgr, uint32_t cluster_num);
 
 /**
  * @brief 获取缓存统计信息
@@ -171,10 +179,11 @@ fat32_error_t fat32_cache_invalidate_cluster(fat32_cache_manager_t *cache_mgr,
  * @param dirty_blocks 返回脏缓存块数
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_cache_get_stats(const fat32_cache_manager_t *cache_mgr,
-                                    uint32_t *total_blocks,
-                                    uint32_t *used_blocks,
-                                    uint32_t *dirty_blocks);
+fat32_error_t
+fat32_cache_get_stats(const fat32_cache_manager_t *cache_mgr,
+                      uint32_t                    *total_blocks,
+                      uint32_t                    *used_blocks,
+                      uint32_t                    *dirty_blocks);
 
 /* ============================================================================
  * 内联辅助函数
@@ -186,7 +195,9 @@ fat32_error_t fat32_cache_get_stats(const fat32_cache_manager_t *cache_mgr,
  * @param cache_mgr 缓存管理器指针
  * @return uint8_t 1表示已初始化，0表示未初始化
  */
-static inline uint8_t fat32_cache_is_initialized(const fat32_cache_manager_t *cache_mgr) {
+static inline uint8_t
+fat32_cache_is_initialized(const fat32_cache_manager_t *cache_mgr)
+{
     return (cache_mgr != NULL && cache_mgr->initialized);
 }
 
@@ -196,7 +207,9 @@ static inline uint8_t fat32_cache_is_initialized(const fat32_cache_manager_t *ca
  * @param block 缓存块指针
  * @return uint8_t 1表示脏块，0表示干净块
  */
-static inline uint8_t fat32_cache_is_dirty_block(const fat32_cache_block_t *block) {
+static inline uint8_t
+fat32_cache_is_dirty_block(const fat32_cache_block_t *block)
+{
     return (block->status == FAT32_CACHE_DIRTY);
 }
 
@@ -206,7 +219,9 @@ static inline uint8_t fat32_cache_is_dirty_block(const fat32_cache_block_t *bloc
  * @param block 缓存块指针
  * @return uint8_t 1表示空闲，0表示已使用
  */
-static inline uint8_t fat32_cache_is_free_block(const fat32_cache_block_t *block) {
+static inline uint8_t
+fat32_cache_is_free_block(const fat32_cache_block_t *block)
+{
     return (block->status == FAT32_CACHE_FREE);
 }
 
@@ -215,7 +230,9 @@ static inline uint8_t fat32_cache_is_free_block(const fat32_cache_block_t *block
  * 
  * @param block 缓存块指针
  */
-static inline void fat32_cache_mark_dirty(fat32_cache_block_t *block) {
+static inline void
+fat32_cache_mark_dirty(fat32_cache_block_t *block)
+{
     block->status = FAT32_CACHE_DIRTY;
 }
 
@@ -224,7 +241,9 @@ static inline void fat32_cache_mark_dirty(fat32_cache_block_t *block) {
  * 
  * @param block 缓存块指针
  */
-static inline void fat32_cache_mark_clean(fat32_cache_block_t *block) {
+static inline void
+fat32_cache_mark_clean(fat32_cache_block_t *block)
+{
     block->status = FAT32_CACHE_CLEAN;
 }
 
@@ -237,14 +256,16 @@ static inline void fat32_cache_mark_clean(fat32_cache_block_t *block) {
  * 
  * @return fat32_cache_manager_t* 缓存管理器指针
  */
-fat32_cache_manager_t *fat32_get_cache_manager(void);
+fat32_cache_manager_t *
+fat32_get_cache_manager(void);
 
 /**
  * @brief 初始化全局缓存管理器
  * 
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_init_global_cache(void);
+fat32_error_t
+fat32_init_global_cache(void);
 
 /**
  * @brief 清理全局缓存管理器
@@ -253,6 +274,7 @@ fat32_error_t fat32_init_global_cache(void);
  * @param fs_info 文件系统信息
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_cleanup_global_cache(fat32_disk_t *disk, const fat32_fs_info_t *fs_info);
+fat32_error_t
+fat32_cleanup_global_cache(fat32_disk_t *disk, const fat32_fs_info_t *fs_info);
 
-#endif // FAT32_CACHE_H
+#endif  // FAT32_CACHE_H

@@ -11,16 +11,17 @@
  * ============================================================================ */
 
 #define SHELL_BUFFER_SIZE 256
-#define MAX_ARGS 16
-#define MAX_PATH_LEN 256
+#define MAX_ARGS          16
+#define MAX_PATH_LEN      256
 
 static char shell_buffer[SHELL_BUFFER_SIZE];
 static char current_dir[MAX_PATH_LEN] = "/";  // 当前工作目录
 
 // 读取一行输入（使用阻塞方式）
-static int shell_read_line(char *buffer, int max_len)
+static int
+shell_read_line(char *buffer, int max_len)
 {
-    int pos = 0;
+    int  pos = 0;
     char c;
 
     while (pos < max_len - 1) {
@@ -53,9 +54,10 @@ static int shell_read_line(char *buffer, int max_len)
 }
 
 // 解析命令行参数
-static int shell_parse_args(char *line, char **args, int max_args)
+static int
+shell_parse_args(char *line, char **args, int max_args)
 {
-    int argc = 0;
+    int   argc  = 0;
     char *token = line;
 
     while (*token && argc < max_args - 1) {
@@ -85,7 +87,8 @@ static int shell_parse_args(char *line, char **args, int max_args)
 }
 
 // 路径处理辅助函数
-static void normalize_path(char *path)
+static void
+normalize_path(char *path)
 {
     // 简化路径处理：移除末尾的斜杠（除了根目录）
     int len = strlen(path);
@@ -94,7 +97,8 @@ static void normalize_path(char *path)
     }
 }
 
-static void resolve_path(const char *input_path, char *resolved_path)
+static void
+resolve_path(const char *input_path, char *resolved_path)
 {
     if (input_path[0] == '/') {
         // 绝对路径
@@ -110,7 +114,8 @@ static void resolve_path(const char *input_path, char *resolved_path)
     normalize_path(resolved_path);
 }
 
-static int is_valid_directory(const char *path)
+static int
+is_valid_directory(const char *path)
 {
     // 根目录特殊处理
     if (strcmp(path, "/") == 0) {
@@ -118,7 +123,7 @@ static int is_valid_directory(const char *path)
     }
 
     fat32_dir_entry_t entry;
-    fat32_error_t result = fat32_stat(path, &entry);
+    fat32_error_t     result = fat32_stat(path, &entry);
 
     if (result != FAT32_OK) {
         return 0;  // 路径不存在
@@ -128,7 +133,8 @@ static int is_valid_directory(const char *path)
 }
 
 // ls命令实现
-static void shell_cmd_ls(int argc, char **args)
+static void
+shell_cmd_ls(int argc, char **args)
 {
     char target_path[MAX_PATH_LEN];
 
@@ -141,7 +147,7 @@ static void shell_cmd_ls(int argc, char **args)
     logger("Listing directory: %s\n", target_path);
 
     fat32_dir_entry_t entries[20];
-    uint32_t count;
+    uint32_t          count;
 
     fat32_error_t result = fat32_listdir(target_path, entries, 20, &count);
     if (result != FAT32_OK) {
@@ -163,7 +169,8 @@ static void shell_cmd_ls(int argc, char **args)
 }
 
 // mkdir命令实现
-static void shell_cmd_mkdir(int argc, char **args)
+static void
+shell_cmd_mkdir(int argc, char **args)
 {
     if (argc < 2) {
         logger("Usage: mkdir <directory_name>\n");
@@ -182,7 +189,8 @@ static void shell_cmd_mkdir(int argc, char **args)
 }
 
 // cd命令实现
-static void shell_cmd_cd(int argc, char **args)
+static void
+shell_cmd_cd(int argc, char **args)
 {
     char target_path[MAX_PATH_LEN];
 
@@ -222,13 +230,15 @@ static void shell_cmd_cd(int argc, char **args)
 }
 
 // pwd命令实现
-static void shell_cmd_pwd(int argc, char **args)
+static void
+shell_cmd_pwd(int argc, char **args)
 {
     logger("%s\n", current_dir);
 }
 
 // rmdir命令实现
-static void shell_cmd_rmdir(int argc, char **args)
+static void
+shell_cmd_rmdir(int argc, char **args)
 {
     if (argc < 2) {
         logger("Usage: rmdir <directory_name>\n");
@@ -247,7 +257,8 @@ static void shell_cmd_rmdir(int argc, char **args)
 }
 
 // touch命令实现（创建空文件）
-static void shell_cmd_touch(int argc, char **args)
+static void
+shell_cmd_touch(int argc, char **args)
 {
     if (argc < 2) {
         logger("Usage: touch <filename>\n");
@@ -267,7 +278,8 @@ static void shell_cmd_touch(int argc, char **args)
 }
 
 // rm命令实现
-static void shell_cmd_rm(int argc, char **args)
+static void
+shell_cmd_rm(int argc, char **args)
 {
     if (argc < 2) {
         logger("Usage: rm <filename>\n");
@@ -286,7 +298,8 @@ static void shell_cmd_rm(int argc, char **args)
 }
 
 // cat命令实现（显示文件内容）
-static void shell_cmd_cat(int argc, char **args)
+static void
+shell_cmd_cat(int argc, char **args)
 {
     if (argc < 2) {
         logger("Usage: cat <filename>\n");
@@ -302,7 +315,7 @@ static void shell_cmd_cat(int argc, char **args)
         return;
     }
 
-    char buffer[256];
+    char    buffer[256];
     ssize_t bytes_read;
 
     logger("Content of '%s':\n", target_path);
@@ -318,7 +331,8 @@ static void shell_cmd_cat(int argc, char **args)
 }
 
 // echo命令实现（写入文件）
-static void shell_cmd_echo(int argc, char **args)
+static void
+shell_cmd_echo(int argc, char **args)
 {
     if (argc < 2) {
         logger("Usage: echo <text> [> <filename>]\n");
@@ -371,42 +385,46 @@ static void shell_cmd_echo(int argc, char **args)
 }
 
 // vi编辑器实现
-#define VI_MAX_LINES 100
+#define VI_MAX_LINES    100
 #define VI_MAX_LINE_LEN 256
-#define VI_BUFFER_SIZE (VI_MAX_LINES * VI_MAX_LINE_LEN)
+#define VI_BUFFER_SIZE  (VI_MAX_LINES * VI_MAX_LINE_LEN)
 
-typedef enum {
+typedef enum
+{
     VI_MODE_NORMAL,
     VI_MODE_INSERT,
     VI_MODE_COMMAND
 } vi_mode_t;
 
-typedef struct {
-    char lines[VI_MAX_LINES][VI_MAX_LINE_LEN];
-    int line_count;
-    int cursor_row;
-    int cursor_col;
+typedef struct
+{
+    char      lines[VI_MAX_LINES][VI_MAX_LINE_LEN];
+    int       line_count;
+    int       cursor_row;
+    int       cursor_col;
     vi_mode_t mode;
-    char filename[MAX_PATH_LEN];
-    int modified;
+    char      filename[MAX_PATH_LEN];
+    int       modified;
 } vi_editor_t;
 
 static vi_editor_t vi_editor;
 
 // 初始化编辑器
-static void vi_init(const char *filename)
+static void
+vi_init(const char *filename)
 {
     memset(&vi_editor, 0, sizeof(vi_editor));
     if (filename) {
         strcpy(vi_editor.filename, filename);
     }
-    vi_editor.mode = VI_MODE_NORMAL;
-    vi_editor.line_count = 1;
+    vi_editor.mode        = VI_MODE_NORMAL;
+    vi_editor.line_count  = 1;
     vi_editor.lines[0][0] = '\0';
 }
 
 // 显示编辑器状态
-static void vi_display()
+static void
+vi_display()
 {
     logger("\033[2J\033[H");  // 清屏并移动到左上角
 
@@ -453,7 +471,8 @@ static void vi_display()
 }
 
 // 加载文件
-static int vi_load_file(const char *filename)
+static int
+vi_load_file(const char *filename)
 {
     char resolved_path[MAX_PATH_LEN];
     resolve_path(filename, resolved_path);
@@ -461,17 +480,17 @@ static int vi_load_file(const char *filename)
     int32_t fd = fat32_open_readonly(resolved_path);
     if (fd <= 0) {
         // 文件不存在，创建新文件
-        vi_editor.line_count = 1;
+        vi_editor.line_count  = 1;
         vi_editor.lines[0][0] = '\0';
         return 0;
     }
 
-    char buffer[VI_BUFFER_SIZE];
+    char   buffer[VI_BUFFER_SIZE];
     size_t bytes_read = fat32_read(fd, buffer, sizeof(buffer) - 1);
     fat32_close(fd);
 
     if (bytes_read == 0) {
-        vi_editor.line_count = 1;
+        vi_editor.line_count  = 1;
         vi_editor.lines[0][0] = '\0';
         return 0;
     }
@@ -480,7 +499,7 @@ static int vi_load_file(const char *filename)
 
     // 解析文件内容到行数组
     vi_editor.line_count = 0;
-    int line_pos = 0;
+    int line_pos         = 0;
 
     for (size_t i = 0; i < bytes_read && vi_editor.line_count < VI_MAX_LINES; i++) {
         if (buffer[i] == '\n' || buffer[i] == '\r') {
@@ -506,7 +525,7 @@ static int vi_load_file(const char *filename)
     }
 
     if (vi_editor.line_count == 0) {
-        vi_editor.line_count = 1;
+        vi_editor.line_count  = 1;
         vi_editor.lines[0][0] = '\0';
     }
 
@@ -514,7 +533,8 @@ static int vi_load_file(const char *filename)
 }
 
 // 保存文件
-static int vi_save_file()
+static int
+vi_save_file()
 {
     if (vi_editor.filename[0] == '\0') {
         return 0;  // 没有文件名
@@ -542,10 +562,11 @@ static int vi_save_file()
 }
 
 // 插入字符
-static void vi_insert_char(char c)
+static void
+vi_insert_char(char c)
 {
     char *line = vi_editor.lines[vi_editor.cursor_row];
-    int len = strlen(line);
+    int   len  = strlen(line);
 
     if (len < VI_MAX_LINE_LEN - 1) {
         // 向右移动光标后的字符
@@ -559,11 +580,12 @@ static void vi_insert_char(char c)
 }
 
 // 删除字符（退格）
-static void vi_delete_char()
+static void
+vi_delete_char()
 {
     if (vi_editor.cursor_col > 0) {
         char *line = vi_editor.lines[vi_editor.cursor_row];
-        int len = strlen(line);
+        int   len  = strlen(line);
 
         // 向左移动光标后的字符
         for (int i = vi_editor.cursor_col - 1; i < len; i++) {
@@ -575,7 +597,8 @@ static void vi_delete_char()
         // 合并到上一行
         int prev_len = strlen(vi_editor.lines[vi_editor.cursor_row - 1]);
         if (prev_len + strlen(vi_editor.lines[vi_editor.cursor_row]) < VI_MAX_LINE_LEN - 1) {
-            strcat(vi_editor.lines[vi_editor.cursor_row - 1], vi_editor.lines[vi_editor.cursor_row]);
+            strcat(vi_editor.lines[vi_editor.cursor_row - 1],
+                   vi_editor.lines[vi_editor.cursor_row]);
 
             // 删除当前行
             for (int i = vi_editor.cursor_row; i < vi_editor.line_count - 1; i++) {
@@ -584,13 +607,14 @@ static void vi_delete_char()
             vi_editor.line_count--;
             vi_editor.cursor_row--;
             vi_editor.cursor_col = prev_len;
-            vi_editor.modified = 1;
+            vi_editor.modified   = 1;
         }
     }
 }
 
 // 插入新行
-static void vi_insert_newline()
+static void
+vi_insert_newline()
 {
     if (vi_editor.line_count < VI_MAX_LINES) {
         // 向下移动后续行
@@ -606,31 +630,37 @@ static void vi_insert_newline()
         vi_editor.line_count++;
         vi_editor.cursor_row++;
         vi_editor.cursor_col = 0;
-        vi_editor.modified = 1;
+        vi_editor.modified   = 1;
     }
 }
 
 // 移动光标
-static void vi_move_cursor(int row_delta, int col_delta)
+static void
+vi_move_cursor(int row_delta, int col_delta)
 {
     int new_row = vi_editor.cursor_row + row_delta;
     int new_col = vi_editor.cursor_col + col_delta;
 
     // 限制行范围
-    if (new_row < 0) new_row = 0;
-    if (new_row >= vi_editor.line_count) new_row = vi_editor.line_count - 1;
+    if (new_row < 0)
+        new_row = 0;
+    if (new_row >= vi_editor.line_count)
+        new_row = vi_editor.line_count - 1;
 
     // 限制列范围
     int line_len = strlen(vi_editor.lines[new_row]);
-    if (new_col < 0) new_col = 0;
-    if (new_col > line_len) new_col = line_len;
+    if (new_col < 0)
+        new_col = 0;
+    if (new_col > line_len)
+        new_col = line_len;
 
     vi_editor.cursor_row = new_row;
     vi_editor.cursor_col = new_col;
 }
 
 // 处理普通模式按键
-static int vi_handle_normal_mode(char c)
+static int
+vi_handle_normal_mode(char c)
 {
     switch (c) {
         case 'h':  // 左移
@@ -675,7 +705,8 @@ static int vi_handle_normal_mode(char c)
 }
 
 // 处理插入模式按键
-static int vi_handle_insert_mode(char c)
+static int
+vi_handle_insert_mode(char c)
 {
     switch (c) {
         case 27:  // ESC键，返回普通模式
@@ -702,12 +733,13 @@ static int vi_handle_insert_mode(char c)
 }
 
 // 处理命令模式
-static int vi_handle_command_mode()
+static int
+vi_handle_command_mode()
 {
     logger("\033[24;1H:");  // 移动到最后一行显示命令提示符
 
     char cmd_buffer[64];
-    int cmd_pos = 0;
+    int  cmd_pos = 0;
     char c;
 
     while (1) {
@@ -766,10 +798,11 @@ static int vi_handle_command_mode()
 }
 
 // vi主循环
-static void vi_main_loop()
+static void
+vi_main_loop()
 {
     char c;
-    int running = 1;
+    int  running = 1;
 
     while (running) {
         vi_display();
@@ -790,7 +823,8 @@ static void vi_main_loop()
 }
 
 // cp命令实现（文件复制）
-static void shell_cmd_cp(int argc, char **args)
+static void
+shell_cmd_cp(int argc, char **args)
 {
     if (argc < 3) {
         logger("Usage: cp <source> <destination>\n");
@@ -803,7 +837,7 @@ static void shell_cmd_cp(int argc, char **args)
 
     // 检查源文件是否存在
     fat32_dir_entry_t src_info;
-    fat32_error_t result = fat32_stat(src_path, &src_info);
+    fat32_error_t     result = fat32_stat(src_path, &src_info);
     if (result != FAT32_OK) {
         logger("cp: cannot stat '%s': %s\n", src_path, fat32_get_error_string(result));
         return;
@@ -847,7 +881,7 @@ static void shell_cmd_cp(int argc, char **args)
     }
 
     // 复制文件内容
-    char buffer[512];  // 使用512字节缓冲区
+    char   buffer[512];  // 使用512字节缓冲区
     size_t total_copied = 0;
     size_t bytes_read;
 
@@ -873,7 +907,8 @@ static void shell_cmd_cp(int argc, char **args)
 }
 
 // mv命令实现（文件移动/重命名）
-static void shell_cmd_mv(int argc, char **args)
+static void
+shell_cmd_mv(int argc, char **args)
 {
     if (argc < 3) {
         logger("Usage: mv <source> <destination>\n");
@@ -886,7 +921,7 @@ static void shell_cmd_mv(int argc, char **args)
 
     // 检查源文件是否存在
     fat32_dir_entry_t src_info;
-    fat32_error_t result = fat32_stat(src_path, &src_info);
+    fat32_error_t     result = fat32_stat(src_path, &src_info);
     if (result != FAT32_OK) {
         logger("mv: cannot stat '%s': %s\n", src_path, fat32_get_error_string(result));
         return;
@@ -943,10 +978,10 @@ static void shell_cmd_mv(int argc, char **args)
     }
 
     // 复制文件内容
-    char buffer[512];
+    char   buffer[512];
     size_t total_copied = 0;
     size_t bytes_read;
-    int copy_success = 1;
+    int    copy_success = 1;
 
     while ((bytes_read = fat32_read(src_fd, buffer, sizeof(buffer))) > 0) {
         size_t bytes_written = fat32_write(dst_fd, buffer, bytes_read);
@@ -977,17 +1012,23 @@ static void shell_cmd_mv(int argc, char **args)
 }
 
 // tree命令实现（树形显示目录结构）
-#define TREE_MAX_DEPTH 10
+#define TREE_MAX_DEPTH   10
 #define TREE_MAX_ENTRIES 50
 
 // 树形显示的符号
-#define TREE_BRANCH     "├── "
-#define TREE_LAST       "└── "
-#define TREE_VERTICAL   "│   "
-#define TREE_SPACE      "    "
+#define TREE_BRANCH   "├── "
+#define TREE_LAST     "└── "
+#define TREE_VERTICAL "│   "
+#define TREE_SPACE    "    "
 
 // 递归显示目录树
-static void tree_show_directory(const char *path, const char *prefix, int is_last, int depth, int *total_dirs, int *total_files)
+static void
+tree_show_directory(const char *path,
+                    const char *prefix,
+                    int         is_last,
+                    int         depth,
+                    int        *total_dirs,
+                    int        *total_files)
 {
     if (depth >= TREE_MAX_DEPTH) {
         logger("%s%s[depth limit reached]\n", prefix, is_last ? TREE_LAST : TREE_BRANCH);
@@ -996,11 +1037,14 @@ static void tree_show_directory(const char *path, const char *prefix, int is_las
 
     // 获取目录内容
     fat32_dir_entry_t entries[TREE_MAX_ENTRIES];
-    uint32_t count;
-    fat32_error_t result = fat32_listdir(path, entries, TREE_MAX_ENTRIES, &count);
+    uint32_t          count;
+    fat32_error_t     result = fat32_listdir(path, entries, TREE_MAX_ENTRIES, &count);
 
     if (result != FAT32_OK) {
-        logger("%s%s[error: %s]\n", prefix, is_last ? TREE_LAST : TREE_BRANCH, fat32_get_error_string(result));
+        logger("%s%s[error: %s]\n",
+               prefix,
+               is_last ? TREE_LAST : TREE_BRANCH,
+               fat32_get_error_string(result));
         return;
     }
 
@@ -1045,8 +1089,11 @@ static void tree_show_directory(const char *path, const char *prefix, int is_las
 
             // 构建新的前缀
             char new_prefix[256];
-            my_snprintf(new_prefix, sizeof(new_prefix), "%s%s", prefix,
-                       is_last_entry ? TREE_SPACE : TREE_VERTICAL);
+            my_snprintf(new_prefix,
+                        sizeof(new_prefix),
+                        "%s%s",
+                        prefix,
+                        is_last_entry ? TREE_SPACE : TREE_VERTICAL);
 
             // 递归显示子目录
             tree_show_directory(subdir_path, new_prefix, 1, depth + 1, total_dirs, total_files);
@@ -1063,7 +1110,8 @@ static void tree_show_directory(const char *path, const char *prefix, int is_las
 }
 
 // tree命令主函数
-static void shell_cmd_tree(int argc, char **args)
+static void
+shell_cmd_tree(int argc, char **args)
 {
     char target_path[MAX_PATH_LEN];
 
@@ -1080,7 +1128,7 @@ static void shell_cmd_tree(int argc, char **args)
         logger("%s\n", target_path);
 
         // 统计计数器
-        int total_dirs = 0;
+        int total_dirs  = 0;
         int total_files = 0;
 
         // 显示目录树
@@ -1093,7 +1141,7 @@ static void shell_cmd_tree(int argc, char **args)
 
     // 检查非根目录路径是否存在且为目录
     fat32_dir_entry_t path_info;
-    fat32_error_t result = fat32_stat(target_path, &path_info);
+    fat32_error_t     result = fat32_stat(target_path, &path_info);
     if (result != FAT32_OK) {
         logger("tree: cannot access '%s': %s\n", target_path, fat32_get_error_string(result));
         return;
@@ -1108,7 +1156,7 @@ static void shell_cmd_tree(int argc, char **args)
     logger("%s\n", target_path);
 
     // 统计计数器
-    int total_dirs = 0;
+    int total_dirs  = 0;
     int total_files = 0;
 
     // 显示目录树
@@ -1119,11 +1167,12 @@ static void shell_cmd_tree(int argc, char **args)
 }
 
 // du命令实现（磁盘使用情况）
-#define DU_MAX_DEPTH 20
+#define DU_MAX_DEPTH   20
 #define DU_MAX_ENTRIES 100
 
 // 递归计算目录大小
-static uint64_t du_calculate_directory_size(const char *path, int show_subdirs, int human_readable, int depth)
+static uint64_t
+du_calculate_directory_size(const char *path, int show_subdirs, int human_readable, int depth)
 {
     if (depth >= DU_MAX_DEPTH) {
         return 0;  // 防止无限递归
@@ -1133,8 +1182,8 @@ static uint64_t du_calculate_directory_size(const char *path, int show_subdirs, 
 
     // 获取目录内容
     fat32_dir_entry_t entries[DU_MAX_ENTRIES];
-    uint32_t count;
-    fat32_error_t result = fat32_listdir(path, entries, DU_MAX_ENTRIES, &count);
+    uint32_t          count;
+    fat32_error_t     result = fat32_listdir(path, entries, DU_MAX_ENTRIES, &count);
 
     if (result != FAT32_OK) {
         if (depth == 0) {  // 只在顶层显示错误
@@ -1163,14 +1212,17 @@ static uint64_t du_calculate_directory_size(const char *path, int show_subdirs, 
             }
 
             // 递归计算子目录大小
-            uint64_t subdir_size = du_calculate_directory_size(subdir_path, show_subdirs, human_readable, depth + 1);
+            uint64_t subdir_size =
+                du_calculate_directory_size(subdir_path, show_subdirs, human_readable, depth + 1);
             total_size += subdir_size;
 
             // 如果需要显示子目录，则显示
             if (show_subdirs) {
                 if (human_readable) {
                     char size_str[20];
-                    if (fat32_utils_format_file_size((uint32_t)subdir_size, size_str, sizeof(size_str)) == FAT32_OK) {
+                    if (fat32_utils_format_file_size((uint32_t) subdir_size,
+                                                     size_str,
+                                                     sizeof(size_str)) == FAT32_OK) {
                         logger("%s\t%s\n", size_str, subdir_path);
                     } else {
                         logger("%llu\t%s\n", subdir_size, subdir_path);
@@ -1190,13 +1242,14 @@ static uint64_t du_calculate_directory_size(const char *path, int show_subdirs, 
 }
 
 // du命令主函数
-static void shell_cmd_du(int argc, char **args)
+static void
+shell_cmd_du(int argc, char **args)
 {
     char target_path[MAX_PATH_LEN];
-    int show_subdirs = 0;  // -a 选项：显示所有子目录
-    int human_readable = 0;  // -h 选项：人性化显示
-    int summary_only = 0;  // -s 选项：只显示总计
-    int arg_index = 1;
+    int  show_subdirs   = 0;  // -a 选项：显示所有子目录
+    int  human_readable = 0;  // -h 选项：人性化显示
+    int  summary_only   = 0;  // -s 选项：只显示总计
+    int  arg_index      = 1;
 
     // 解析选项
     while (arg_index < argc && args[arg_index][0] == '-') {
@@ -1234,12 +1287,16 @@ static void shell_cmd_du(int argc, char **args)
     // 特殊处理根目录
     if (strcmp(target_path, "/") == 0) {
         // 根目录直接处理
-        uint64_t total_size = du_calculate_directory_size(target_path, show_subdirs && !summary_only, human_readable, 0);
+        uint64_t total_size = du_calculate_directory_size(target_path,
+                                                          show_subdirs && !summary_only,
+                                                          human_readable,
+                                                          0);
 
         // 显示总计
         if (human_readable) {
             char size_str[20];
-            if (fat32_utils_format_file_size((uint32_t)total_size, size_str, sizeof(size_str)) == FAT32_OK) {
+            if (fat32_utils_format_file_size((uint32_t) total_size, size_str, sizeof(size_str)) ==
+                FAT32_OK) {
                 logger("%s\t%s\n", size_str, target_path);
             } else {
                 logger("%llu\t%s\n", total_size, target_path);
@@ -1252,7 +1309,7 @@ static void shell_cmd_du(int argc, char **args)
 
     // 检查路径是否存在
     fat32_dir_entry_t path_info;
-    fat32_error_t result = fat32_stat(target_path, &path_info);
+    fat32_error_t     result = fat32_stat(target_path, &path_info);
     if (result != FAT32_OK) {
         logger("du: cannot access '%s': %s\n", target_path, fat32_get_error_string(result));
         return;
@@ -1260,12 +1317,16 @@ static void shell_cmd_du(int argc, char **args)
 
     if (path_info.attr & FAT32_ATTR_DIRECTORY) {
         // 目录
-        uint64_t total_size = du_calculate_directory_size(target_path, show_subdirs && !summary_only, human_readable, 0);
+        uint64_t total_size = du_calculate_directory_size(target_path,
+                                                          show_subdirs && !summary_only,
+                                                          human_readable,
+                                                          0);
 
         // 显示总计
         if (human_readable) {
             char size_str[20];
-            if (fat32_utils_format_file_size((uint32_t)total_size, size_str, sizeof(size_str)) == FAT32_OK) {
+            if (fat32_utils_format_file_size((uint32_t) total_size, size_str, sizeof(size_str)) ==
+                FAT32_OK) {
                 logger("%s\t%s\n", size_str, target_path);
             } else {
                 logger("%llu\t%s\n", total_size, target_path);
@@ -1277,7 +1338,8 @@ static void shell_cmd_du(int argc, char **args)
         // 单个文件
         if (human_readable) {
             char size_str[20];
-            if (fat32_utils_format_file_size(path_info.file_size, size_str, sizeof(size_str)) == FAT32_OK) {
+            if (fat32_utils_format_file_size(path_info.file_size, size_str, sizeof(size_str)) ==
+                FAT32_OK) {
                 logger("%s\t%s\n", size_str, target_path);
             } else {
                 logger("%u\t%s\n", path_info.file_size, target_path);
@@ -1289,7 +1351,8 @@ static void shell_cmd_du(int argc, char **args)
 }
 
 // vi命令实现
-static void shell_cmd_vi(int argc, char **args)
+static void
+shell_cmd_vi(int argc, char **args)
 {
     if (argc < 2) {
         logger("Usage: vi <filename>\n");
@@ -1336,7 +1399,8 @@ static void shell_cmd_vi(int argc, char **args)
 }
 
 // help命令实现
-static void shell_cmd_help(int argc, char **args)
+static void
+shell_cmd_help(int argc, char **args)
 {
     logger("Avatar OS Simple Shell Commands:\n");
     logger("  ls [path]           - List directory contents\n");
@@ -1361,7 +1425,8 @@ static void shell_cmd_help(int argc, char **args)
 }
 
 // fsinfo命令实现
-static void shell_cmd_fsinfo(int argc, char **args)
+static void
+shell_cmd_fsinfo(int argc, char **args)
 {
     if (!fat32_is_mounted()) {
         logger("Filesystem not mounted\n");
@@ -1372,48 +1437,50 @@ static void shell_cmd_fsinfo(int argc, char **args)
 }
 
 // clear命令实现
-static void shell_cmd_clear(int argc, char **args)
+static void
+shell_cmd_clear(int argc, char **args)
 {
     logger("\033[2J\033[H");  // ANSI清屏命令
 }
 
 // 命令表
-typedef struct {
+typedef struct
+{
     const char *name;
     void (*func)(int argc, char **args);
     const char *desc;
 } shell_command_t;
 
 static const shell_command_t shell_commands[] = {
-    {"ls",     shell_cmd_ls,     "List directory contents"},
-    {"cd",     shell_cmd_cd,     "Change directory"},
-    {"pwd",    shell_cmd_pwd,    "Print working directory"},
-    {"mkdir",  shell_cmd_mkdir,  "Create directory"},
-    {"rmdir",  shell_cmd_rmdir,  "Remove directory"},
-    {"touch",  shell_cmd_touch,  "Create empty file"},
-    {"rm",     shell_cmd_rm,     "Remove file"},
-    {"cp",     shell_cmd_cp,     "Copy file"},
-    {"mv",     shell_cmd_mv,     "Move/rename file"},
-    {"cat",    shell_cmd_cat,    "Display file content"},
-    {"echo",   shell_cmd_echo,   "Echo text or write to file"},
-    {"vi",     shell_cmd_vi,     "Edit file with simple vi editor"},
-    {"tree",   shell_cmd_tree,   "Display directory tree structure"},
-    {"du",     shell_cmd_du,     "Display disk usage"},
-    {"help",   shell_cmd_help,   "Show help"},
+    {"ls", shell_cmd_ls, "List directory contents"},
+    {"cd", shell_cmd_cd, "Change directory"},
+    {"pwd", shell_cmd_pwd, "Print working directory"},
+    {"mkdir", shell_cmd_mkdir, "Create directory"},
+    {"rmdir", shell_cmd_rmdir, "Remove directory"},
+    {"touch", shell_cmd_touch, "Create empty file"},
+    {"rm", shell_cmd_rm, "Remove file"},
+    {"cp", shell_cmd_cp, "Copy file"},
+    {"mv", shell_cmd_mv, "Move/rename file"},
+    {"cat", shell_cmd_cat, "Display file content"},
+    {"echo", shell_cmd_echo, "Echo text or write to file"},
+    {"vi", shell_cmd_vi, "Edit file with simple vi editor"},
+    {"tree", shell_cmd_tree, "Display directory tree structure"},
+    {"du", shell_cmd_du, "Display disk usage"},
+    {"help", shell_cmd_help, "Show help"},
     {"fsinfo", shell_cmd_fsinfo, "Show filesystem info"},
-    {"clear",  shell_cmd_clear,  "Clear screen"},
-    {NULL, NULL, NULL}
-};
+    {"clear", shell_cmd_clear, "Clear screen"},
+    {NULL, NULL, NULL}};
 
 // 执行命令
-static void shell_execute_command(char *line)
+static void
+shell_execute_command(char *line)
 {
     if (strlen(line) == 0) {
         return;
     }
 
     char *args[MAX_ARGS];
-    int argc = shell_parse_args(line, args, MAX_ARGS);
+    int   argc = shell_parse_args(line, args, MAX_ARGS);
 
     if (argc == 0) {
         return;
@@ -1439,7 +1506,8 @@ static void shell_execute_command(char *line)
 }
 
 // 主shell循环
-void avatar_simple_shell(void)
+void
+avatar_simple_shell(void)
 {
     logger("\n");
     logger("========================================\n");

@@ -37,10 +37,11 @@
  * - 读取对应的扇区数据
  * - 提取FAT表项值
  */
-fat32_error_t fat32_fat_read_entry(fat32_disk_t *disk, 
-                                   const fat32_fs_info_t *fs_info,
-                                   uint32_t cluster_num, 
-                                   uint32_t *fat_entry);
+fat32_error_t
+fat32_fat_read_entry(fat32_disk_t          *disk,
+                     const fat32_fs_info_t *fs_info,
+                     uint32_t               cluster_num,
+                     uint32_t              *fat_entry);
 
 /**
  * @brief 写入FAT表项
@@ -59,10 +60,11 @@ fat32_error_t fat32_fat_read_entry(fat32_disk_t *disk,
  * - 修改FAT表项值
  * - 写回所有FAT表副本
  */
-fat32_error_t fat32_fat_write_entry(fat32_disk_t *disk, 
-                                    const fat32_fs_info_t *fs_info,
-                                    uint32_t cluster_num, 
-                                    uint32_t fat_entry);
+fat32_error_t
+fat32_fat_write_entry(fat32_disk_t          *disk,
+                      const fat32_fs_info_t *fs_info,
+                      uint32_t               cluster_num,
+                      uint32_t               fat_entry);
 
 /* ============================================================================
  * 簇分配和释放函数
@@ -83,9 +85,8 @@ fat32_error_t fat32_fat_write_entry(fat32_disk_t *disk,
  * - 将找到的簇标记为簇链结束
  * - 更新FSInfo中的空闲簇信息
  */
-fat32_error_t fat32_fat_allocate_cluster(fat32_disk_t *disk, 
-                                         fat32_fs_info_t *fs_info,
-                                         uint32_t *cluster_num);
+fat32_error_t
+fat32_fat_allocate_cluster(fat32_disk_t *disk, fat32_fs_info_t *fs_info, uint32_t *cluster_num);
 
 /**
  * @brief 释放一个簇
@@ -102,9 +103,8 @@ fat32_error_t fat32_fat_allocate_cluster(fat32_disk_t *disk,
  * - 更新FSInfo中的空闲簇信息
  * - 如果释放的簇号小于next_free_cluster，则更新next_free_cluster
  */
-fat32_error_t fat32_fat_free_cluster(fat32_disk_t *disk, 
-                                     fat32_fs_info_t *fs_info,
-                                     uint32_t cluster_num);
+fat32_error_t
+fat32_fat_free_cluster(fat32_disk_t *disk, fat32_fs_info_t *fs_info, uint32_t cluster_num);
 
 /**
  * @brief 分配簇链
@@ -122,10 +122,11 @@ fat32_error_t fat32_fat_free_cluster(fat32_disk_t *disk,
  * - 将簇连接成链表
  * - 最后一个簇标记为簇链结束
  */
-fat32_error_t fat32_fat_allocate_cluster_chain(fat32_disk_t *disk, 
-                                               fat32_fs_info_t *fs_info,
-                                               uint32_t cluster_count,
-                                               uint32_t *first_cluster);
+fat32_error_t
+fat32_fat_allocate_cluster_chain(fat32_disk_t    *disk,
+                                 fat32_fs_info_t *fs_info,
+                                 uint32_t         cluster_count,
+                                 uint32_t        *first_cluster);
 
 /**
  * @brief 释放簇链
@@ -141,9 +142,8 @@ fat32_error_t fat32_fat_allocate_cluster_chain(fat32_disk_t *disk,
  * - 遍历簇链，释放每个簇
  * - 更新FSInfo中的空闲簇信息
  */
-fat32_error_t fat32_fat_free_cluster_chain(fat32_disk_t *disk, 
-                                           fat32_fs_info_t *fs_info,
-                                           uint32_t first_cluster);
+fat32_error_t
+fat32_fat_free_cluster_chain(fat32_disk_t *disk, fat32_fs_info_t *fs_info, uint32_t first_cluster);
 
 /* ============================================================================
  * 簇链操作函数
@@ -164,10 +164,11 @@ fat32_error_t fat32_fat_free_cluster_chain(fat32_disk_t *disk,
  * - 如果是簇链结束，next_cluster为0
  * - 如果是坏簇，返回错误
  */
-fat32_error_t fat32_fat_get_next_cluster(fat32_disk_t *disk, 
-                                         const fat32_fs_info_t *fs_info,
-                                         uint32_t current_cluster,
-                                         uint32_t *next_cluster);
+fat32_error_t
+fat32_fat_get_next_cluster(fat32_disk_t          *disk,
+                           const fat32_fs_info_t *fs_info,
+                           uint32_t               current_cluster,
+                           uint32_t              *next_cluster);
 
 /**
  * @brief 扩展簇链
@@ -185,10 +186,11 @@ fat32_error_t fat32_fat_get_next_cluster(fat32_disk_t *disk,
  * - 将last_cluster的FAT表项指向新簇
  * - 将新簇标记为簇链结束
  */
-fat32_error_t fat32_fat_extend_cluster_chain(fat32_disk_t *disk, 
-                                             fat32_fs_info_t *fs_info,
-                                             uint32_t last_cluster,
-                                             uint32_t *new_cluster);
+fat32_error_t
+fat32_fat_extend_cluster_chain(fat32_disk_t    *disk,
+                               fat32_fs_info_t *fs_info,
+                               uint32_t         last_cluster,
+                               uint32_t        *new_cluster);
 
 /**
  * @brief 计算簇链长度
@@ -201,10 +203,11 @@ fat32_error_t fat32_fat_extend_cluster_chain(fat32_disk_t *disk,
  * @param chain_length 返回簇链长度
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_fat_get_cluster_chain_length(fat32_disk_t *disk, 
-                                                 const fat32_fs_info_t *fs_info,
-                                                 uint32_t first_cluster,
-                                                 uint32_t *chain_length);
+fat32_error_t
+fat32_fat_get_cluster_chain_length(fat32_disk_t          *disk,
+                                   const fat32_fs_info_t *fs_info,
+                                   uint32_t               first_cluster,
+                                   uint32_t              *chain_length);
 
 /**
  * @brief 获取簇链中的第N个簇
@@ -218,11 +221,12 @@ fat32_error_t fat32_fat_get_cluster_chain_length(fat32_disk_t *disk,
  * @param target_cluster 返回目标簇号
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_fat_get_cluster_at_index(fat32_disk_t *disk, 
-                                             const fat32_fs_info_t *fs_info,
-                                             uint32_t first_cluster,
-                                             uint32_t cluster_index,
-                                             uint32_t *target_cluster);
+fat32_error_t
+fat32_fat_get_cluster_at_index(fat32_disk_t          *disk,
+                               const fat32_fs_info_t *fs_info,
+                               uint32_t               first_cluster,
+                               uint32_t               cluster_index,
+                               uint32_t              *target_cluster);
 
 /* ============================================================================
  * FAT表状态查询函数
@@ -234,7 +238,9 @@ fat32_error_t fat32_fat_get_cluster_at_index(fat32_disk_t *disk,
  * @param fat_entry FAT表项值
  * @return uint8_t 1表示空闲，0表示已分配
  */
-static inline uint8_t fat32_fat_is_free_cluster(uint32_t fat_entry) {
+static inline uint8_t
+fat32_fat_is_free_cluster(uint32_t fat_entry)
+{
     return (fat_entry == FAT32_FREE_CLUSTER);
 }
 
@@ -244,7 +250,9 @@ static inline uint8_t fat32_fat_is_free_cluster(uint32_t fat_entry) {
  * @param fat_entry FAT表项值
  * @return uint8_t 1表示簇链结束，0表示不是
  */
-static inline uint8_t fat32_fat_is_end_of_chain(uint32_t fat_entry) {
+static inline uint8_t
+fat32_fat_is_end_of_chain(uint32_t fat_entry)
+{
     return (fat_entry >= FAT32_EOC_MIN && fat_entry <= FAT32_EOC_MAX);
 }
 
@@ -254,7 +262,9 @@ static inline uint8_t fat32_fat_is_end_of_chain(uint32_t fat_entry) {
  * @param fat_entry FAT表项值
  * @return uint8_t 1表示坏簇，0表示正常
  */
-static inline uint8_t fat32_fat_is_bad_cluster(uint32_t fat_entry) {
+static inline uint8_t
+fat32_fat_is_bad_cluster(uint32_t fat_entry)
+{
     return (fat_entry == FAT32_BAD_CLUSTER);
 }
 
@@ -265,8 +275,9 @@ static inline uint8_t fat32_fat_is_bad_cluster(uint32_t fat_entry) {
  * @param cluster_num 簇号
  * @return uint8_t 1表示有效，0表示无效
  */
-static inline uint8_t fat32_fat_is_valid_cluster(const fat32_fs_info_t *fs_info, 
-                                                 uint32_t cluster_num) {
+static inline uint8_t
+fat32_fat_is_valid_cluster(const fat32_fs_info_t *fs_info, uint32_t cluster_num)
+{
     return (cluster_num >= 2 && cluster_num < fs_info->total_clusters + 2);
 }
 
@@ -276,7 +287,9 @@ static inline uint8_t fat32_fat_is_valid_cluster(const fat32_fs_info_t *fs_info,
  * @param cluster_num 簇号
  * @return uint32_t 扇区内偏移（字节）
  */
-static inline uint32_t fat32_fat_get_entry_offset(uint32_t cluster_num) {
+static inline uint32_t
+fat32_fat_get_entry_offset(uint32_t cluster_num)
+{
     return (cluster_num * 4) % FAT32_SECTOR_SIZE;
 }
 
@@ -287,9 +300,10 @@ static inline uint32_t fat32_fat_get_entry_offset(uint32_t cluster_num) {
  * @param cluster_num 簇号
  * @return uint32_t 扇区号
  */
-static inline uint32_t fat32_fat_get_entry_sector(const fat32_fs_info_t *fs_info, 
-                                                  uint32_t cluster_num) {
+static inline uint32_t
+fat32_fat_get_entry_sector(const fat32_fs_info_t *fs_info, uint32_t cluster_num)
+{
     return fs_info->fat_start_sector + (cluster_num * 4) / FAT32_SECTOR_SIZE;
 }
 
-#endif // FAT32_FAT_H
+#endif  // FAT32_FAT_H

@@ -19,20 +19,20 @@ cpu_sysregs_t cpu_sysregs[MAX_TASKS];
 // }
 
 
-int32_t get_vcpuid(tcb_t *task)
+int32_t
+get_vcpuid(tcb_t *task)
 {
-    if (!task)
-    {
+    if (!task) {
         task = curr_task_el2();
     }
     return (task->cpu_info->sys_reg->mpidr_el1 & 0xff);
 }
 
-list_t *get_vcpus(tcb_t *task)
+list_t *
+get_vcpus(tcb_t *task)
 {
     struct _vm_t *vm = NULL;
-    if (!task)
-    {
+    if (!task) {
         task = curr_task_el2();
     }
     vm = task->curr_vm;

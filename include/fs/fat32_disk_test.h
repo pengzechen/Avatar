@@ -9,11 +9,13 @@
 /**
  * @brief 运行完整的FAT32磁盘模块测试套件
  */
-void fat32_disk_run_tests(void);
+void
+fat32_disk_run_tests(void);
 
 /**
  * @brief 运行快速的FAT32磁盘模块测试
  */
-void fat32_disk_quick_test(void);
+void
+fat32_disk_quick_test(void);
 
-#endif // FAT32_DISK_TEST_H
+#endif  // FAT32_DISK_TEST_H

@@ -6,25 +6,24 @@
 #include "avatar_types.h"
 
 // ESR_EL2 Exception Class definitions
-#define ESR_EC_WFI_WFE          0x01    // WFI or WFE instruction execution
-#define ESR_EC_HVC              0x16    // HVC instruction execution
-#define ESR_EC_SMC              0x17    // SMC instruction execution
-#define ESR_EC_SYSREG           0x18    // System register access
-#define ESR_EC_ILLEGAL_STATE    0x20    // Illegal Execution State
-#define ESR_EC_DATA_ABORT       0x24    // Data Abort from lower EL
+#define ESR_EC_WFI_WFE       0x01  // WFI or WFE instruction execution
+#define ESR_EC_HVC           0x16  // HVC instruction execution
+#define ESR_EC_SMC           0x17  // SMC instruction execution
+#define ESR_EC_SYSREG        0x18  // System register access
+#define ESR_EC_ILLEGAL_STATE 0x20  // Illegal Execution State
+#define ESR_EC_DATA_ABORT    0x24  // Data Abort from lower EL
 
 typedef struct
 {
-    uint64_t r[NUM_REGS]; // General-purpose registers x0..x30
-    uint64_t usp;         // 如果是内核就是 el0 的栈，       如果是 hyper 就是 el1 的栈
-    uint64_t elr;         // Exception Link Register       可以是 el1， 也可以是el2
-    uint64_t spsr;        // Saved Process Status Register 可以是 el1， 也可以是el2
+    uint64_t r[NUM_REGS];  // General-purpose registers x0..x30
+    uint64_t usp;   // 如果是内核就是 el0 的栈，       如果是 hyper 就是 el1 的栈
+    uint64_t elr;   // Exception Link Register       可以是 el1， 也可以是el2
+    uint64_t spsr;  // Saved Process Status Register 可以是 el1， 也可以是el2
 } trap_frame_t;
 
 typedef trap_frame_t cpu_ctx_t;
 
-union esr_el2
-{
+union esr_el2 {
     uint32_t bits;
 
     struct
@@ -46,7 +45,7 @@ union esr_el2
 
     struct esr_wfi_wfe
     {
-        uint32_t ti : 1;      /* Trapped instruction */
+        uint32_t ti : 1; /* Trapped instruction */
         uint32_t sbzp : 19;
         uint32_t cc : 4;      /* Condition Code */
         uint32_t ccvalid : 1; /* CC Valid */
@@ -85,9 +84,9 @@ union esr_el2
 
     struct esr_cp
     {
-        uint32_t coproc : 4;  /* Number of coproc accessed */
+        uint32_t coproc : 4; /* Number of coproc accessed */
         uint32_t sbz0p : 1;
-        uint32_t tas : 1;     /* Trapped Advanced SIMD */
+        uint32_t tas : 1; /* Trapped Advanced SIMD */
         uint32_t res0 : 14;
         uint32_t cc : 4;      /* Condition Code */
         uint32_t ccvalid : 1; /* CC Valid */
@@ -132,7 +131,7 @@ union esr_el2
 typedef struct _exception_info_t
 {
     union esr_el2 esr;
-    uint32_t exception_class;
+    uint32_t      exception_class;
     trap_frame_t *context;
 } exception_info_t;
 
@@ -146,15 +145,16 @@ enum stage2_fault_reason_t
 // Specific structure for stage2 memory faults (data/instruction aborts)
 typedef struct _stage2_fault_info_t
 {
-    union esr_el2 esr;
+    union esr_el2              esr;
     enum stage2_fault_reason_t reason;
-    vaddr_t gva;        // Guest Virtual Address
-    paddr_t gpa;        // Guest Physical Address
-    bool is_write;      // Write access (for data aborts)
-    uint32_t access_size; // Access size in bytes
+    vaddr_t                    gva;          // Guest Virtual Address
+    paddr_t                    gpa;          // Guest Physical Address
+    bool                       is_write;     // Write access (for data aborts)
+    uint32_t                   access_size;  // Access size in bytes
 } stage2_fault_info_t;
 
-static inline uint32_t read_esr_el1(void)
+static inline uint32_t
+read_esr_el1(void)
 {
     uint32_t esr;
 
@@ -164,7 +164,8 @@ static inline uint32_t read_esr_el1(void)
     return esr;
 }
 
-static inline uint32_t read_esr_el2(void)
+static inline uint32_t
+read_esr_el2(void)
 {
     uint32_t esr;
 
@@ -174,7 +175,8 @@ static inline uint32_t read_esr_el2(void)
     return esr;
 }
 
-static inline uint32_t read_esr_el3(void)
+static inline uint32_t
+read_esr_el3(void)
 {
     uint32_t esr;
 
@@ -184,40 +186,41 @@ static inline uint32_t read_esr_el3(void)
     return esr;
 }
 
-static inline uint64_t read_hpfar_el2(void)
+static inline uint64_t
+read_hpfar_el2(void)
 {
     uint64_t value;
-    __asm__ __volatile__(
-        "mrs %0, hpfar_el2 \n"
-        : "=r"(value));
+    __asm__ __volatile__("mrs %0, hpfar_el2 \n" : "=r"(value));
     return value;
 }
 
-static inline uint64_t read_far_el2(void)
+static inline uint64_t
+read_far_el2(void)
 {
     uint64_t value;
-    __asm__ __volatile__(
-        "mrs %0, far_el2 \n"
-        : "=r"(value));
+    __asm__ __volatile__("mrs %0, far_el2 \n" : "=r"(value));
     return value;
 }
 
-static inline uint64_t read_hyfar_el2(void)
+static inline uint64_t
+read_hyfar_el2(void)
 {
     uint64_t value;
-    __asm__ __volatile__(
-        "mrs %0, hpfar_el2 \n"
-        : "=r"(value));
+    __asm__ __volatile__("mrs %0, hpfar_el2 \n" : "=r"(value));
     return value;
 }
 
 typedef void (*irq_handler_t)(uint64_t *);
 
 // Exception handling functions
-void advance_pc(union esr_el2 *esr, trap_frame_t *context);
-void advance_pc_legacy(stage2_fault_info_t *info, trap_frame_t *context);
+void
+advance_pc(union esr_el2 *esr, trap_frame_t *context);
+void
+advance_pc_legacy(stage2_fault_info_t *info, trap_frame_t *context);
 
-void irq_install(int32_t vector, void (*h)(uint64_t *));
-irq_handler_t *get_g_handler_vec();
+void
+irq_install(int32_t vector, void (*h)(uint64_t *));
+irq_handler_t *
+get_g_handler_vec();
 
-#endif // __ECCEPTION_FRAME_H__
+#endif  // __ECCEPTION_FRAME_H__

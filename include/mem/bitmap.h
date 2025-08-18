@@ -9,21 +9,30 @@
 typedef struct
 {
     uint8_t *bits;
-    size_t size; // 以 bit 为单位的大小
+    size_t   size;  // 以 bit 为单位的大小
 } bitmap_t;
 
-void bitmap_init(bitmap_t *bitmap, uint8_t *buffer, size_t size);
-void bitmap_set(bitmap_t *bitmap, size_t index);
-void bitmap_set_range(bitmap_t *bitmap, size_t start, size_t count);
-void bitmap_clear(bitmap_t *bitmap, size_t index);
-void bitmap_clear_range(bitmap_t *bitmap, size_t start, size_t count);
-uint8_t bitmap_test(const bitmap_t *bitmap, size_t index);
-uint64_t bitmap_find_first_free(const bitmap_t *bitmap);
-uint64_t bitmap_find_contiguous_free(const bitmap_t *bitmap, size_t count);
-uint64_t bitmap_find_contiguous_free_fs(const bitmap_t *bitmap, size_t count);
+void
+bitmap_init(bitmap_t *bitmap, uint8_t *buffer, size_t size);
+void
+bitmap_set(bitmap_t *bitmap, size_t index);
+void
+bitmap_set_range(bitmap_t *bitmap, size_t start, size_t count);
+void
+bitmap_clear(bitmap_t *bitmap, size_t index);
+void
+bitmap_clear_range(bitmap_t *bitmap, size_t start, size_t count);
+uint8_t
+bitmap_test(const bitmap_t *bitmap, size_t index);
+uint64_t
+bitmap_find_first_free(const bitmap_t *bitmap);
+uint64_t
+bitmap_find_contiguous_free(const bitmap_t *bitmap, size_t count);
+uint64_t
+bitmap_find_contiguous_free_fs(const bitmap_t *bitmap, size_t count);
 
 extern uint8_t bitmap_buffer[OS_CFG_BITMAP_SIZE / 8] __attribute__((section(".bss.bitmap_buffer")));
 
 /* 断言宏由 lib/avatar_assert.h 提供，请在使用处包含该头文件 */
 
-#endif // BITMAP_H
+#endif  // BITMAP_H

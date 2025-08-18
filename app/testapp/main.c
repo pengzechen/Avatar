@@ -38,27 +38,17 @@
 //     }
 // }
 
-char *argv[] = {
-    "argv1",
-    "argv2",
-    "argv3",
-    NULL};
+char *argv[] = {"argv1", "argv2", "argv3", NULL};
 
-char *envp[] = {
-    "test envp1",
-    "test envp2",
-    "test envp3",
-    NULL};
+char *envp[] = {"test envp1", "test envp2", "test envp3", NULL};
 
-int _start()
+int
+_start()
 {
     int pid = fork();
-    if (pid == 0)
-    { // 子进程执行
+    if (pid == 0) {  // 子进程执行
         execve("add", argv, envp);
-    }
-    else
-    {
+    } else {
         execve("sub", argv, envp);
     }
     return 0;

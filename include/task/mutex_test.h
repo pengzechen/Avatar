@@ -14,7 +14,8 @@
  * @brief 初始化 mutex 测试模块
  * 应该在系统初始化时调用
  */
-void mutex_test_init(void);
+void
+mutex_test_init(void);
 
 /**
  * @brief Mutex 测试系统调用 - 加法测试
@@ -24,7 +25,8 @@ void mutex_test_init(void);
  * 
  * @return 当前计数器值
  */
-uint64_t mutex_test_add(void);
+uint64_t
+mutex_test_add(void);
 
 /**
  * @brief Mutex 测试系统调用 - 减法测试
@@ -35,7 +37,8 @@ uint64_t mutex_test_add(void);
  * 
  * @return 当前计数器值
  */
-uint64_t mutex_test_minus(void);
+uint64_t
+mutex_test_minus(void);
 
 /**
  * @brief Mutex 测试系统调用 - 打印当前状态
@@ -43,7 +46,8 @@ uint64_t mutex_test_minus(void);
  * 打印当前计数器值和调用任务的信息
  * 用于调试和验证 mutex 测试的结果
  */
-void mutex_test_print(void);
+void
+mutex_test_print(void);
 
 /**
  * @brief 重置 mutex 测试计数器
@@ -52,13 +56,15 @@ void mutex_test_print(void);
  * 
  * @param initial_value 要设置的初始值，默认为 6
  */
-void mutex_test_reset(uint64_t initial_value);
+void
+mutex_test_reset(uint64_t initial_value);
 
 /**
  * @brief 获取当前 mutex 测试计数器值
  * 
  * @return 当前计数器值
  */
-uint64_t mutex_test_get_counter(void);
+uint64_t
+mutex_test_get_counter(void);
 
-#endif // __MUTEX_TEST_H__
+#endif  // __MUTEX_TEST_H__

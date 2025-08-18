@@ -12,14 +12,15 @@
 #include "thread.h"
 
 // 专门用于测试的 mutex 和计数器
-static mutex_t test_mutex;
+static mutex_t           test_mutex;
 static volatile uint64_t mutex_test_counter = 6;
 
 /**
  * @brief 初始化 mutex 测试模块
  * 应该在系统初始化时调用
  */
-void mutex_test_init(void)
+void
+mutex_test_init(void)
 {
     mutex_init(&test_mutex);
     mutex_test_counter = 6;
@@ -34,10 +35,11 @@ void mutex_test_init(void)
  * 
  * @return 当前计数器值
  */
-uint64_t mutex_test_add(void)
+uint64_t
+mutex_test_add(void)
 {
     mutex_lock(&test_mutex);
-    
+
     // 执行大量的加减操作，如果 mutex 工作正常，
     // 这些操作应该是原子的，不会被其他线程干扰
     for (int32_t i = 0; i < 10000; i++) {
@@ -50,7 +52,7 @@ uint64_t mutex_test_add(void)
         mutex_test_counter++;
         mutex_test_counter--;
     }
-    
+
     mutex_unlock(&test_mutex);
     return mutex_test_counter;
 }
@@ -64,10 +66,11 @@ uint64_t mutex_test_add(void)
  * 
  * @return 当前计数器值
  */
-uint64_t mutex_test_minus(void)
+uint64_t
+mutex_test_minus(void)
 {
     mutex_lock(&test_mutex);
-    
+
     // 执行与 mutex_test_add 相同的操作
     for (int32_t i = 0; i < 10000; i++) {
         mutex_test_counter++;
@@ -79,7 +82,7 @@ uint64_t mutex_test_minus(void)
         mutex_test_counter++;
         mutex_test_counter--;
     }
-    
+
     mutex_unlock(&test_mutex);
     return mutex_test_counter;
 }
@@ -90,11 +93,13 @@ uint64_t mutex_test_minus(void)
  * 打印当前计数器值和调用任务的信息
  * 用于调试和验证 mutex 测试的结果
  */
-void mutex_test_print(void)
+void
+mutex_test_print(void)
 {
     mutex_lock(&test_mutex);
     logger("mutex_test_counter = %llu, current task: %d\n",
-           mutex_test_counter, curr_task_el1()->task_id);
+           mutex_test_counter,
+           curr_task_el1()->task_id);
     mutex_unlock(&test_mutex);
 }
 
@@ -105,7 +110,8 @@ void mutex_test_print(void)
  * 
  * @param initial_value 要设置的初始值，默认为 6
  */
-void mutex_test_reset(uint64_t initial_value)
+void
+mutex_test_reset(uint64_t initial_value)
 {
     mutex_lock(&test_mutex);
     mutex_test_counter = initial_value;
@@ -118,7 +124,8 @@ void mutex_test_reset(uint64_t initial_value)
  * 
  * @return 当前计数器值
  */
-uint64_t mutex_test_get_counter(void)
+uint64_t
+mutex_test_get_counter(void)
 {
     uint64_t value;
     mutex_lock(&test_mutex);

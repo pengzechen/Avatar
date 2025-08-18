@@ -12,10 +12,11 @@
 //   r[2]: entry_point_address - CPU 启动后的入口地址
 //   r[3]: context_id - 传递给目标 CPU 的上下文参数
 // 返回值：PSCI 标准返回码
-int32_t vpsci_cpu_on(trap_frame_t *ctx_el2)
+int32_t
+vpsci_cpu_on(trap_frame_t *ctx_el2)
 {
-    uint64_t cpu_id = ctx_el2->r[1];
-    uint64_t entry = ctx_el2->r[2];
+    uint64_t cpu_id  = ctx_el2->r[1];
+    uint64_t entry   = ctx_el2->r[2];
     uint64_t context = ctx_el2->r[3];
 
     // 参数验证
@@ -30,35 +31,33 @@ int32_t vpsci_cpu_on(trap_frame_t *ctx_el2)
         return PSCI_RET_INVALID_ADDRESS;
     }
 
-    tcb_t *curr = curr_task_el2();
-    struct _vm_t *vm = curr->curr_vm;
+    tcb_t        *curr = curr_task_el2();
+    struct _vm_t *vm   = curr->curr_vm;
 
     if (!vm) {
         logger_error("           current task has no VM context\n");
         return PSCI_RET_INTERNAL_FAILURE;
     }
 
-    list_node_t *iter = list_first(&vm->vcpus);
-    tcb_t *target_task = NULL;
-    int32_t found = 0;
+    list_node_t *iter        = list_first(&vm->vcpus);
+    tcb_t       *target_task = NULL;
+    int32_t      found       = 0;
 
     // 查找目标 vCPU
-    while (iter)
-    {
+    while (iter) {
         tcb_t *task = list_node_parent(iter, tcb_t, vm_node);
-        if ((task->cpu_info->sys_reg->mpidr_el1 & 0xff) == cpu_id)
-        {
+        if ((task->cpu_info->sys_reg->mpidr_el1 & 0xff) == cpu_id) {
             target_task = task;
-            found = 1;
+            found       = 1;
             logger_info("           found vcpu for cpu_id: %d, task_id: %d\n",
-                       cpu_id, task->task_id);
+                        cpu_id,
+                        task->task_id);
             break;
         }
         iter = list_node_next(iter);
     }
 
-    if (!found)
-    {
+    if (!found) {
         logger_warn("           vcpu not found for cpu_id: %d\n", cpu_id);
         return PSCI_RET_NOT_PRESENT;
     }
@@ -67,12 +66,14 @@ int32_t vpsci_cpu_on(trap_frame_t *ctx_el2)
     switch (target_task->state) {
         case TASK_STATE_RUNNING:
             logger_info("           cpu_id: %d is already running (task_id: %d)\n",
-                       cpu_id, target_task->task_id);
+                        cpu_id,
+                        target_task->task_id);
             return PSCI_RET_ALREADY_ON;
 
         case TASK_STATE_READY:
             logger_info("           cpu_id: %d is already ready (task_id: %d)\n",
-                       cpu_id, target_task->task_id);
+                        cpu_id,
+                        target_task->task_id);
             return PSCI_RET_ALREADY_ON;
 
         case TASK_STATE_WAIT_IRQ:
@@ -91,21 +92,20 @@ int32_t vpsci_cpu_on(trap_frame_t *ctx_el2)
             break;
 
         default:
-            logger_warn("           cpu_id: %d in unknown state: %d\n",
-                       cpu_id, target_task->state);
+            logger_warn("           cpu_id: %d in unknown state: %d\n", cpu_id, target_task->state);
             return PSCI_RET_INTERNAL_FAILURE;
     }
 
     // 设置 CPU 启动参数
-    trap_frame_t *frame = (trap_frame_t *)target_task->ctx.sp_elx;
+    trap_frame_t *frame = (trap_frame_t *) target_task->ctx.sp_elx;
     if (!frame) {
         logger_error("           invalid trap frame for task_id: %d\n", target_task->task_id);
         return PSCI_RET_INTERNAL_FAILURE;
     }
 
     // 设置入口地址和上下文参数
-    frame->elr = entry;      // 设置程序计数器
-    frame->r[0] = context;   // 将 context_id 传递给目标 CPU 的 X0 寄存器
+    frame->elr  = entry;    // 设置程序计数器
+    frame->r[0] = context;  // 将 context_id 传递给目标 CPU 的 X0 寄存器
 
     // 重置时间片
     target_task->counter = SYS_TASK_TICK;
@@ -114,14 +114,17 @@ int32_t vpsci_cpu_on(trap_frame_t *ctx_el2)
     uint32_t target_core = target_task->affinity - 1;
     if (target_core >= SMP_NUM) {
         logger_error("           invalid affinity for task_id: %d, affinity: %d\n",
-                    target_task->task_id, target_task->affinity);
+                     target_task->task_id,
+                     target_task->affinity);
         return PSCI_RET_INTERNAL_FAILURE;
     }
 
     task_add_to_readylist_tail_remote(target_task, target_core);
 
     logger_info("           cpu_id: %d successfully started, entry: 0x%lx, context: 0x%lx\n",
-               cpu_id, entry, context);
+                cpu_id,
+                entry,
+                context);
 
     return PSCI_RET_SUCCESS;
 }

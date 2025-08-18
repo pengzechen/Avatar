@@ -11,10 +11,12 @@
 
 static uint64_t test_num = 0;
 
-extern void v_timer_tick(uint64_t now);
+extern void
+v_timer_tick(uint64_t now);
 
 
-void handle_timer_interrupt(uint64_t *sp)
+void
+handle_timer_interrupt(uint64_t *sp)
 {
 #if HV == 1
     // Hypervisor Timer - 设置定时值
@@ -23,14 +25,15 @@ void handle_timer_interrupt(uint64_t *sp)
     // Physical Timer - 设置定时值
     write_cntp_tval_el0(TIMER_TVAL_VALUE);
 #endif
-    
+
     // if (get_current_cpu_id() == 0) {
-        timer_tick_schedule(sp);
-        v_timer_tick(read_cntpct_el0());
+    timer_tick_schedule(sp);
+    v_timer_tick(read_cntpct_el0());
     // }
 }
 
-void timer_init_second()
+void
+timer_init_second()
 {
     uint64_t frq = read_cntfrq_el0();
 
@@ -45,13 +48,12 @@ void timer_init_second()
     // Physical Timer 初始化
     logger("Initializing Physical Timer (Vector %d)\n", TIMER_VECTOR);
     write_cntp_tval_el0(TIMER_TVAL_VALUE);
-    write_cntp_ctl_el0(0b1);   // 启用 Physical Timer
+    write_cntp_ctl_el0(0b1);  // 启用 Physical Timer
 #endif
 
     gic_enable_int(TIMER_VECTOR, 1);
 
-    if (gic_get_enable(TIMER_VECTOR))
-    {
+    if (gic_get_enable(TIMER_VECTOR)) {
         logger("timer enabled successfully ...\n");
     }
     // gic_set_target(TIMER_VECTOR, 0b00000010);
@@ -59,7 +61,8 @@ void timer_init_second()
 }
 
 // 每个pe都要配置
-void timer_init()
+void
+timer_init()
 {
     uint64_t frq = read_cntfrq_el0();
 
@@ -74,7 +77,7 @@ void timer_init()
     // Physical Timer 初始化
     logger("Initializing Physical Timer (Vector %d)\n", TIMER_VECTOR);
     write_cntp_tval_el0(TIMER_TVAL_VALUE);
-    write_cntp_ctl_el0(0b1);   // 启用 Physical Timer
+    write_cntp_ctl_el0(0b1);  // 启用 Physical Timer
 #endif
 
     // 统一使用 handle_timer_interrupt，它内部会根据HV宏选择正确的寄存器
@@ -82,8 +85,7 @@ void timer_init()
 
     gic_enable_int(TIMER_VECTOR, 1);
 
-    if (gic_get_enable(TIMER_VECTOR))
-    {
+    if (gic_get_enable(TIMER_VECTOR)) {
         logger("timer enabled successfully ...\n");
     }
     // gic_set_target(TIMER_VECTOR, 0b00000001);

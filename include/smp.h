@@ -4,31 +4,33 @@
 
 #include "avatar_types.h"
 
-static inline uint32_t smc_call(uint32_t function_id, uint64_t arg0, uint64_t arg1, uint64_t arg2)
+static inline uint32_t
+smc_call(uint32_t function_id, uint64_t arg0, uint64_t arg1, uint64_t arg2)
 {
     register uint64_t reg0 __asm__("x0") = function_id;
     register uint64_t reg1 __asm__("x1") = arg0;
     register uint64_t reg2 __asm__("x2") = arg1;
     register uint64_t reg3 __asm__("x3") = arg2;
-    int32_t ret = 0;
+    int32_t           ret                = 0;
 
     asm volatile("smc    #0\n" : "+r"(reg0) : "r"(reg1), "r"(reg2), "r"(reg3));
 
-    ret = (int32_t)reg0;
+    ret = (int32_t) reg0;
     return ret;
 }
 
-static inline uint32_t hvc_call(uint32_t function_id, uint64_t arg0, uint64_t arg1, uint64_t arg2)
+static inline uint32_t
+hvc_call(uint32_t function_id, uint64_t arg0, uint64_t arg1, uint64_t arg2)
 {
     register uint64_t reg0 __asm__("x0") = function_id;
     register uint64_t reg1 __asm__("x1") = arg0;
     register uint64_t reg2 __asm__("x2") = arg1;
     register uint64_t reg3 __asm__("x3") = arg2;
-    int32_t ret = 0;
+    int32_t           ret                = 0;
 
     asm volatile("hvc    #0\n" : "+r"(reg0) : "r"(reg1), "r"(reg2), "r"(reg3));
 
-    ret = (int32_t)reg0;
+    ret = (int32_t) reg0;
     return ret;
 }
 
@@ -40,6 +42,7 @@ static inline uint32_t hvc_call(uint32_t function_id, uint64_t arg0, uint64_t ar
 
 */
 
-void start_secondary_cpus();
+void
+start_secondary_cpus();
 
 #endif

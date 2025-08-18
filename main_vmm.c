@@ -25,11 +25,12 @@
 
 
 // Shell函数声明
-void avatar_simple_shell(void);
+void
+avatar_simple_shell(void);
 
-void print_avatar_logo(void)
+void
+print_avatar_logo(void)
 {
-
     logger_info("\n");
     logger_info("                    _             \n");
     logger_info("     /\\            | |            \n");
@@ -45,11 +46,12 @@ void print_avatar_logo(void)
     logger_info("\n");
 }
 
-void vtcr_init(void)
+void
+vtcr_init(void)
 {
     logger_info("Initialize vtcr...\n");
-    uint64_t vtcr_val = VTCR_VS_8BIT | VTCR_PS_MASK_36_BITS |
-                        VTCR_TG0_4K | VTCR_SH0_IS | VTCR_ORGN0_WBWA | VTCR_IRGN0_WBWA;
+    uint64_t vtcr_val = VTCR_VS_8BIT | VTCR_PS_MASK_36_BITS | VTCR_TG0_4K | VTCR_SH0_IS |
+                        VTCR_ORGN0_WBWA | VTCR_IRGN0_WBWA;
 
     vtcr_val |= VTCR_T0SZ(64 - 32); /* 32 bit IPA */
     vtcr_val |= VTCR_SL0(0x1);      /* P2M starts at first level */
@@ -58,7 +60,8 @@ void vtcr_init(void)
     write_vtcr_el2(vtcr_val);
 }
 
-void vtimer_init_el2(void)
+void
+vtimer_init_el2(void)
 {
     logger_info("Initialize virtual timer offset...\n");
 
@@ -70,10 +73,11 @@ void vtimer_init_el2(void)
     logger_info("CNTVOFF_EL2 initialized to: 0x%llx\n", cntvoff);
 }
 
-int32_t inited_cpu_num_el2 = 0;
+int32_t    inited_cpu_num_el2 = 0;
 spinlock_t lock_el2;
 
-void main_entry_el2()
+void
+main_entry_el2()
 {
     spin_lock(&lock_el2);
     inited_cpu_num_el2++;
@@ -81,15 +85,14 @@ void main_entry_el2()
 
     while (inited_cpu_num_el2 != SMP_NUM)
         wfi();
-    
+
     logger("main entry: get_current_cpu_id: %d\n", get_current_cpu_id());
 
     vtcr_init();
     vtimer_init_el2();
     guest_ept_init();
 
-    if (get_current_cpu_id() == 0)
-    {
+    if (get_current_cpu_id() == 0) {
         schedule_init();
         task_manager_init();
 
@@ -104,19 +107,18 @@ void main_entry_el2()
         avatar_virtio_block_init();
 
         // 初始化 FAT32 磁盘模块
-        fat32_init() ;
+        fat32_init();
         fat32_mount();
 
         // 启动简单的bash shell
         avatar_simple_shell();
 
         struct _vm_t *vm = alloc_vm();
-        if (vm == NULL)
-        {
+        if (vm == NULL) {
             logger_error("Failed to allocate vm\n");
             return;
         }
-        vm_init(vm, 0); // 初始化一个虚拟机
+        vm_init(vm, 0);  // 初始化一个虚拟机
         run_vm(vm);
 
         // vm = alloc_vm();
@@ -137,11 +139,11 @@ void main_entry_el2()
         print_current_task_list();
     }
 
-    el2_idle_init(); // idle 任务每个核都有自己的el1栈， 代码公用
-    
+    el2_idle_init();  // idle 任务每个核都有自己的el1栈， 代码公用
+
     uint64_t __sp = get_idle_sp_top() - sizeof(trap_frame_t);
-    void *_sp = (void *)__sp;
-    schedule_init_local(get_idle(), NULL); // 任务管理器任务当前在跑idle任务
+    void    *_sp  = (void *) __sp;
+    schedule_init_local(get_idle(), NULL);  // 任务管理器任务当前在跑idle任务
 
     enable_interrupts();
 
@@ -161,12 +163,13 @@ void main_entry_el2()
     guest_entry();
 }
 
-void vmm_main()
+void
+vmm_main()
 {
     io_early_init();
     // run_printf_tests();
     logger_info("starting primary core 0 ...\n");
-    
+
     print_avatar_logo();
 
     gic_virtual_init();
@@ -174,7 +177,7 @@ void vmm_main()
     spinlock_init(&lock_el2);
 
     io_init();
-    
+
     logger_info("core 0 starting is done.\n\n");
 
     start_secondary_cpus();
@@ -182,7 +185,8 @@ void vmm_main()
     // can't reach here !
 }
 
-void second_kernel_main_el2()
+void
+second_kernel_main_el2()
 {
     // 在 EL2 中的第二个内核入口
     logger_info("starting core");
@@ -203,4 +207,3 @@ void second_kernel_main_el2()
     main_entry_el2();
     // can't reach here !
 }
-
