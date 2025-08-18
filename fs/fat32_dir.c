@@ -656,7 +656,7 @@ fat32_error_t fat32_dir_create_directory(fat32_disk_t *disk,
         return result;
     }
 
-    // 清空目录簇
+    // 清空目录簇并创建标准目录项
     uint8_t *cluster_buffer = (uint8_t *)kalloc_pages((fs_info->bytes_per_cluster + PAGE_SIZE - 1) / PAGE_SIZE);
     if (cluster_buffer == NULL) {
         fat32_fat_free_cluster(disk, fs_info, dir_cluster);
@@ -665,7 +665,33 @@ fat32_error_t fat32_dir_create_directory(fat32_disk_t *disk,
 
     memset(cluster_buffer, 0, fs_info->bytes_per_cluster);
 
-    // 写入空目录
+    // 创建 "." 目录项（指向当前目录）
+    fat32_dir_entry_t *dot_entry = (fat32_dir_entry_t *)cluster_buffer;
+    memset(dot_entry, 0, sizeof(fat32_dir_entry_t));
+    memcpy(dot_entry->name, ".          ", 11);  // "." + 10个空格
+    dot_entry->attr = FAT32_ATTR_DIRECTORY;
+    fat32_dir_set_first_cluster(dot_entry, dir_cluster);
+    dot_entry->file_size = 0;
+    dot_entry->create_time = 0x0000;
+    dot_entry->create_date = 0x0021;
+    dot_entry->write_time = 0x0000;
+    dot_entry->write_date = 0x0021;
+    dot_entry->last_access_date = 0x0021;
+
+    // 创建 ".." 目录项（指向父目录）
+    fat32_dir_entry_t *dotdot_entry = (fat32_dir_entry_t *)(cluster_buffer + FAT32_DIR_ENTRY_SIZE);
+    memset(dotdot_entry, 0, sizeof(fat32_dir_entry_t));
+    memcpy(dotdot_entry->name, "..         ", 11);  // ".." + 9个空格
+    dotdot_entry->attr = FAT32_ATTR_DIRECTORY;
+    fat32_dir_set_first_cluster(dotdot_entry, parent_cluster);
+    dotdot_entry->file_size = 0;
+    dotdot_entry->create_time = 0x0000;
+    dotdot_entry->create_date = 0x0021;
+    dotdot_entry->write_time = 0x0000;
+    dotdot_entry->write_date = 0x0021;
+    dotdot_entry->last_access_date = 0x0021;
+
+    // 写入目录数据
     result = fat32_dir_write_cluster_data(disk, fs_info, dir_cluster, cluster_buffer);
     if (result != FAT32_OK) {
         kfree_pages(cluster_buffer, (fs_info->bytes_per_cluster + PAGE_SIZE - 1) / PAGE_SIZE);

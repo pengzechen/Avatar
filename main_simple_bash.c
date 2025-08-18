@@ -154,9 +154,9 @@ static void shell_cmd_ls(int argc, char **args)
         fat32_dir_convert_from_short_name(entries[i].name, filename, sizeof(filename));
 
         if (entries[i].attr & FAT32_ATTR_DIRECTORY) {
-            logger("  [DIR]  %s\n", filename);
+            logger_info("%s\n", filename);
         } else {
-            logger("  [FILE] %s (%u bytes)\n", filename, entries[i].file_size);
+            logger("%s (%u bytes)\n", filename, entries[i].file_size);
         }
     }
 }
@@ -234,9 +234,12 @@ static void shell_cmd_rmdir(int argc, char **args)
         return;
     }
 
-    fat32_error_t result = fat32_rmdir(args[1]);
+    char target_path[MAX_PATH_LEN];
+    resolve_path(args[1], target_path);
+
+    fat32_error_t result = fat32_rmdir(target_path);
     if (result == FAT32_OK) {
-        logger("Directory '%s' removed successfully\n", args[1]);
+        logger("Directory '%s' removed successfully\n", target_path);
     } else {
         logger("Error removing directory: %s\n", fat32_get_error_string(result));
     }
@@ -270,11 +273,14 @@ static void shell_cmd_rm(int argc, char **args)
         return;
     }
 
-    int32_t result = fat32_unlink(args[1]);
+    char target_path[MAX_PATH_LEN];
+    resolve_path(args[1], target_path);
+
+    int32_t result = fat32_unlink(target_path);
     if (result == 0) {
-        logger("File '%s' removed successfully\n", args[1]);
+        logger("File '%s' removed successfully\n", target_path);
     } else {
-        logger("Error removing file '%s'\n", args[1]);
+        logger("Error removing file '%s'\n", target_path);
     }
 }
 
@@ -313,25 +319,47 @@ static void shell_cmd_cat(int argc, char **args)
 // echo命令实现（写入文件）
 static void shell_cmd_echo(int argc, char **args)
 {
-    if (argc < 3) {
-        logger("Usage: echo <text> > <filename>\n");
-        logger("       echo <text>\n");
+    if (argc < 2) {
+        logger("Usage: echo <text> [> <filename>]\n");
+        logger("       echo <text> <filename>  (write to file)\n");
         return;
     }
 
-    // 简单实现：echo text > filename
+    // 检查是否是重定向到文件：echo text > filename
     if (argc >= 4 && strcmp(args[2], ">") == 0) {
-        int32_t fd = fat32_open(args[3]);
+        char target_path[MAX_PATH_LEN];
+        resolve_path(args[3], target_path);
+
+        int32_t fd = fat32_open(target_path);
         if (fd <= 0) {
-            logger("Error: Cannot create file '%s'\n", args[3]);
+            logger("Error: Cannot create file '%s'\n", target_path);
             return;
         }
 
         ssize_t written = fat32_write(fd, args[1], strlen(args[1]));
         if (written > 0) {
-            logger("Written %ld bytes to '%s'\n", written, args[3]);
+            logger("Written %ld bytes to '%s'\n", written, target_path);
         } else {
-            logger("Error writing to file '%s'\n", args[3]);
+            logger("Error writing to file '%s'\n", target_path);
+        }
+
+        fat32_close(fd);
+    } else if (argc == 3) {
+        // 简化语法：echo text filename (直接写入文件)
+        char target_path[MAX_PATH_LEN];
+        resolve_path(args[2], target_path);
+
+        int32_t fd = fat32_open(target_path);
+        if (fd <= 0) {
+            logger("Error: Cannot create file '%s'\n", target_path);
+            return;
+        }
+
+        ssize_t written = fat32_write(fd, args[1], strlen(args[1]));
+        if (written > 0) {
+            logger("Written %ld bytes to '%s'\n", written, target_path);
+        } else {
+            logger("Error writing to file '%s'\n", target_path);
         }
 
         fat32_close(fd);
