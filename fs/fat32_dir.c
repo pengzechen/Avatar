@@ -178,8 +178,10 @@ fat32_error_t fat32_dir_find_entry(fat32_disk_t *disk,
             return result;
         }
         
-        // 跳过空闲和已删除的目录项
-        if (fat32_dir_is_free_entry(&current_entry) || fat32_dir_is_deleted_entry(&current_entry)) {
+        // 跳过空闲、已删除和长文件名目录项
+        if (fat32_dir_is_free_entry(&current_entry) ||
+            fat32_dir_is_deleted_entry(&current_entry) ||
+            fat32_dir_is_long_name_entry(&current_entry)) {
             current_index++;
             continue;
         }
@@ -384,9 +386,10 @@ fat32_error_t fat32_dir_is_empty(fat32_disk_t *disk,
             return result;
         }
 
-        // 跳过空闲、已删除和特殊目录项（"." 和 ".."）
+        // 跳过空闲、已删除、长文件名和特殊目录项（"." 和 ".."）
         if (fat32_dir_is_free_entry(&dir_entry) ||
             fat32_dir_is_deleted_entry(&dir_entry) ||
+            fat32_dir_is_long_name_entry(&dir_entry) ||
             (dir_entry.name[0] == '.' && (dir_entry.name[1] == ' ' || dir_entry.name[1] == '.'))) {
             continue;
         }
@@ -428,29 +431,71 @@ fat32_error_t fat32_dir_convert_to_short_name(const char *long_name, uint8_t *sh
         base_len = name_len;
     }
 
-    if (base_len > 8) base_len = 8;  // 基本名最多8个字符
-
-    // 复制基本名（保持原始大小写）
-    for (size_t i = 0; i < base_len; i++) {
-        char c = long_name[i];
-        // 简化实现：只允许字母、数字和一些特殊字符
-        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
-            c == '_' || c == '-' || c == '~') {
-            short_name[i] = c;
-        } else {
-            short_name[i] = '_';  // 无效字符替换为下划线
+    // 检查是否需要生成短文件名（长度超过8.3限制或包含无效字符）
+    uint8_t needs_short_name = 0;
+    if (base_len > 8 || ext_len > 3) {
+        needs_short_name = 1;
+    } else {
+        // 检查是否包含无效字符
+        for (size_t i = 0; i < base_len; i++) {
+            char c = long_name[i];
+            if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+                  c == '_' || c == '-' || c == '~')) {
+                needs_short_name = 1;
+                break;
+            }
+        }
+        if (!needs_short_name && ext_len > 0) {
+            for (size_t i = 0; i < ext_len; i++) {
+                char c = dot_pos[1 + i];
+                if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+                      c == '_' || c == '-' || c == '~')) {
+                    needs_short_name = 1;
+                    break;
+                }
+            }
         }
     }
 
-    // 复制扩展名（保持原始大小写）
-    if (ext_len > 0 && dot_pos != NULL) {
-        for (size_t i = 0; i < ext_len; i++) {
-            char c = dot_pos[1 + i];
+    if (!needs_short_name) {
+        // 直接使用原文件名（8.3格式）
+        for (size_t i = 0; i < base_len; i++) {
+            short_name[i] = long_name[i];
+        }
+        if (ext_len > 0 && dot_pos != NULL) {
+            for (size_t i = 0; i < ext_len; i++) {
+                short_name[8 + i] = dot_pos[1 + i];
+            }
+        }
+    } else {
+        // 生成短文件名：取前6个有效字符 + ~1
+        size_t short_base_len = (base_len > 6) ? 6 : base_len;
+
+        for (size_t i = 0; i < short_base_len; i++) {
+            char c = long_name[i];
             if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
-                c == '_' || c == '-' || c == '~') {
-                short_name[8 + i] = c;
+                c == '_' || c == '-') {
+                short_name[i] = c;
             } else {
-                short_name[8 + i] = '_';
+                short_name[i] = '_';  // 无效字符替换为下划线
+            }
+        }
+
+        // 添加 ~1 后缀（简化实现，不检查冲突）
+        short_name[short_base_len] = '~';
+        short_name[short_base_len + 1] = '1';
+
+        // 复制扩展名
+        if (ext_len > 0 && dot_pos != NULL) {
+            size_t copy_ext_len = (ext_len > 3) ? 3 : ext_len;
+            for (size_t i = 0; i < copy_ext_len; i++) {
+                char c = dot_pos[1 + i];
+                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+                    c == '_' || c == '-') {
+                    short_name[8 + i] = c;
+                } else {
+                    short_name[8 + i] = '_';
+                }
             }
         }
     }
@@ -495,6 +540,69 @@ fat32_error_t fat32_dir_convert_from_short_name(const uint8_t *short_name,
         for (int i = 8; i < 11 && pos < max_len - 1; i++) {
             if (short_name[i] != ' ') {
                 long_name[pos++] = short_name[i];
+            } else {
+                break;
+            }
+        }
+    }
+
+    long_name[pos] = '\0';
+    return FAT32_OK;
+}
+
+fat32_error_t fat32_dir_convert_from_dir_entry(const fat32_dir_entry_t *dir_entry,
+                                               char *long_name,
+                                               size_t max_len)
+{
+    avatar_assert(dir_entry != NULL);
+    avatar_assert(long_name != NULL);
+
+    if (max_len < 13) {  // 最大需要12个字符 + 终止符
+        return FAT32_ERROR_INVALID_PARAM;
+    }
+
+    size_t pos = 0;
+
+    // 检查大小写标志
+    uint8_t base_lowercase = (dir_entry->nt_reserved & 0x08) != 0;
+    uint8_t ext_lowercase = (dir_entry->nt_reserved & 0x10) != 0;
+
+    // 调试信息
+    // logger("DEBUG: nt_reserved=0x%02x, base_lowercase=%d, ext_lowercase=%d\n",
+    //        dir_entry->nt_reserved, base_lowercase, ext_lowercase);
+
+    // 复制基本名（去除尾部空格，处理大小写）
+    for (int i = 0; i < 8 && pos < max_len - 1; i++) {
+        if (dir_entry->name[i] != ' ') {
+            char c = dir_entry->name[i];
+            if (base_lowercase && c >= 'A' && c <= 'Z') {
+                c = c - 'A' + 'a';  // 转换为小写
+            }
+            long_name[pos++] = c;
+        } else {
+            break;
+        }
+    }
+
+    // 检查是否有扩展名
+    uint8_t has_ext = 0;
+    for (int i = 8; i < 11; i++) {
+        if (dir_entry->name[i] != ' ') {
+            has_ext = 1;
+            break;
+        }
+    }
+
+    // 添加扩展名（处理大小写）
+    if (has_ext && pos < max_len - 1) {
+        long_name[pos++] = '.';
+        for (int i = 8; i < 11 && pos < max_len - 1; i++) {
+            if (dir_entry->name[i] != ' ') {
+                char c = dir_entry->name[i];
+                if (ext_lowercase && c >= 'A' && c <= 'Z') {
+                    c = c - 'A' + 'a';  // 转换为小写
+                }
+                long_name[pos++] = c;
             } else {
                 break;
             }

@@ -333,7 +333,7 @@ void fat32_utils_print_dir_entry(const fat32_dir_entry_t *dir_entry)
     avatar_assert(dir_entry != NULL);
     
     char filename[13];
-    fat32_dir_convert_from_short_name(dir_entry->name, filename, sizeof(filename));
+    fat32_dir_convert_from_dir_entry(dir_entry, filename, sizeof(filename));
     
     fat32_datetime_t create_time, write_time;
     fat32_utils_fat_to_datetime(dir_entry->create_time, dir_entry->create_date, &create_time);

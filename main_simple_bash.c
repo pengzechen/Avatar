@@ -151,7 +151,7 @@ static void shell_cmd_ls(int argc, char **args)
     logger("Total %u entries:\n", count);
     for (uint32_t i = 0; i < count; i++) {
         char filename[13];
-        fat32_dir_convert_from_short_name(entries[i].name, filename, sizeof(filename));
+        fat32_dir_convert_from_dir_entry(&entries[i], filename, sizeof(filename));
 
         if (entries[i].attr & FAT32_ATTR_DIRECTORY) {
             logger_info("%s\n", filename);
@@ -295,9 +295,9 @@ static void shell_cmd_cat(int argc, char **args)
     char target_path[MAX_PATH_LEN];
     resolve_path(args[1], target_path);
 
-    int32_t fd = fat32_open_readonly(target_path);
+    int32_t fd = fat32_open(target_path);
     if (fd <= 0) {
-        logger("Error: File '%s' not found\n", target_path);
+        logger("Error: Cannot open file '%s'\n", target_path);
         return;
     }
 

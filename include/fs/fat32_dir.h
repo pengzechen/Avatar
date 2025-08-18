@@ -238,9 +238,21 @@ fat32_error_t fat32_dir_convert_to_short_name(const char *long_name, uint8_t *sh
  * @param max_len 缓冲区最大长度
  * @return fat32_error_t 错误码
  */
-fat32_error_t fat32_dir_convert_from_short_name(const uint8_t *short_name, 
-                                                char *long_name, 
+fat32_error_t fat32_dir_convert_from_short_name(const uint8_t *short_name,
+                                                char *long_name,
                                                 size_t max_len);
+
+/**
+ * @brief 从目录项转换文件名（支持大小写处理）
+ *
+ * @param dir_entry 目录项
+ * @param long_name 返回的文件名
+ * @param max_len 缓冲区最大长度
+ * @return fat32_error_t 错误码
+ */
+fat32_error_t fat32_dir_convert_from_dir_entry(const fat32_dir_entry_t *dir_entry,
+                                               char *long_name,
+                                               size_t max_len);
 
 /**
  * @brief 比较两个8.3格式文件名
@@ -281,6 +293,16 @@ static inline uint8_t fat32_dir_is_free_entry(const fat32_dir_entry_t *dir_entry
  */
 static inline uint8_t fat32_dir_is_deleted_entry(const fat32_dir_entry_t *dir_entry) {
     return (dir_entry->name[0] == FAT32_DIR_ENTRY_DELETED);
+}
+
+/**
+ * @brief 检查目录项是否为长文件名目录项
+ *
+ * @param dir_entry 目录项
+ * @return uint8_t 1表示是长文件名目录项，0表示不是
+ */
+static inline uint8_t fat32_dir_is_long_name_entry(const fat32_dir_entry_t *dir_entry) {
+    return (dir_entry->attr == FAT32_ATTR_LONG_NAME);
 }
 
 /**

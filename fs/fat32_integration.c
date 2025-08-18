@@ -68,9 +68,9 @@ void fat32_system_init(void)
             logger("FAT32: Root directory contains %u entries:\n", count);
             for (uint32_t i = 0; i < count; i++) {
                 char filename[13];
-                fat32_dir_convert_from_short_name(entries[i].name, filename, sizeof(filename));
-                logger("  - %s (%u bytes, %s)\n", 
-                       filename, 
+                fat32_dir_convert_from_dir_entry(&entries[i], filename, sizeof(filename));
+                logger("  - %s (%u bytes, %s)\n",
+                       filename,
                        entries[i].file_size,
                        (entries[i].attr & FAT32_ATTR_DIRECTORY) ? "DIR" : "FILE");
             }
@@ -448,7 +448,7 @@ void fat32_write_demo(void)
         logger("   Root directory contains %u files:\n", count);
         for (uint32_t i = 0; i < count; i++) {
             char filename[13];
-            fat32_dir_convert_from_short_name(entries[i].name, filename, sizeof(filename));
+            fat32_dir_convert_from_dir_entry(&entries[i], filename, sizeof(filename));
             char size_str[20];
             fat32_utils_format_file_size(entries[i].file_size, size_str, sizeof(size_str));
             logger("   - %s (%s)\n", filename, size_str);

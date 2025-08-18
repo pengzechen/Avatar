@@ -185,7 +185,7 @@ void fat32_test_directory_operations(void)
         logger("   PASSED: Root directory listed, %u entries found\n", entry_count);
         for (uint32_t i = 0; i < entry_count; i++) {
             char filename[13];
-            fat32_dir_convert_from_short_name(entries[i].name, filename, sizeof(filename));
+            fat32_dir_convert_from_dir_entry(&entries[i], filename, sizeof(filename));
             logger("   Entry %u: %s (%u bytes)\n", i, filename, entries[i].file_size);
         }
     } else {
@@ -209,8 +209,8 @@ void fat32_test_directory_operations(void)
         uint8_t found_testdir = 0;
         for (uint32_t i = 0; i < entry_count; i++) {
             char filename[13];
-            fat32_dir_convert_from_short_name(entries[i].name, filename, sizeof(filename));
-            logger("   Entry %u: %s (%s)\n", i, filename, 
+            fat32_dir_convert_from_dir_entry(&entries[i], filename, sizeof(filename));
+            logger("   Entry %u: %s (%s)\n", i, filename,
                    (entries[i].attr & FAT32_ATTR_DIRECTORY) ? "DIR" : "FILE");
             if (strcmp(filename, "TESTDIR") == 0) {
                 found_testdir = 1;

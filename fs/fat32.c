@@ -638,8 +638,10 @@ fat32_error_t fat32_listdir(const char *dirname,
             return result;
         }
 
-        // 跳过空闲和已删除的目录项
-        if (fat32_dir_is_free_entry(&dir_entry) || fat32_dir_is_deleted_entry(&dir_entry)) {
+        // 跳过空闲、已删除和长文件名目录项
+        if (fat32_dir_is_free_entry(&dir_entry) ||
+            fat32_dir_is_deleted_entry(&dir_entry) ||
+            fat32_dir_is_long_name_entry(&dir_entry)) {
             continue;
         }
 
