@@ -308,8 +308,8 @@ void kfree(void *ptr)
 
         g_kallocator.small_alloc_count--;
 
-        logger_info("Small free: addr=0x%lx, size=%u, total=%u\n",
-                   ptr_addr, found_header->size, block_total_size);
+        logger_debug("Small free: addr=0x%lx, size=%u, total=%u\n",
+                    ptr_addr, found_header->size, block_total_size);
     }
 
     mutex_unlock(&g_kallocator.mutex);
@@ -390,8 +390,8 @@ static void *kalloc_small_block(uint32_t size, uint32_t alignment)
             g_kallocator.small_alloc_count++;
             g_kallocator.used_size += total_size;
 
-            logger_info("Small alloc from free list: addr=0x%lx, size=%u, align=%u, total=%u\n",
-                       user_addr, size, alignment, total_size);
+            logger_debug("Small alloc from free list: addr=0x%lx, size=%u, align=%u, total=%u\n",
+                        user_addr, size, alignment, total_size);
 
             return (void *)user_addr;
         }

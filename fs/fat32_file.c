@@ -26,16 +26,7 @@ static uint8_t g_file_handle_initialized = 0;
  * 私有函数声明
  * ============================================================================ */
 
-static fat32_error_t
-fat32_file_parse_path(const char *filepath, 
-                     char *dirname, 
-                     char *filename);
 
-static fat32_error_t
-fat32_file_find_directory(fat32_disk_t *disk,
-                            const fat32_fs_info_t *fs_info,
-                            const char *dirpath,
-                            uint32_t *dir_cluster);
 
 static fat32_error_t
 fat32_file_read_cluster_data(fat32_disk_t *disk,
@@ -593,9 +584,9 @@ fat32_error_t fat32_file_seek(fat32_file_handle_t *file_handle,
  * 私有函数实现
  * ============================================================================ */
 
-static fat32_error_t fat32_file_parse_path(const char *filepath,
-                                           char *dirname,
-                                           char *filename)
+fat32_error_t fat32_file_parse_path(const char *filepath,
+                                    char *dirname,
+                                    char *filename)
 {
     avatar_assert(filepath != NULL);
     avatar_assert(dirname != NULL);
@@ -633,24 +624,83 @@ static fat32_error_t fat32_file_parse_path(const char *filepath,
     return FAT32_OK;
 }
 
-static fat32_error_t fat32_file_find_directory(fat32_disk_t *disk,
-                                               const fat32_fs_info_t *fs_info,
-                                               const char *dirpath,
-                                               uint32_t *dir_cluster)
+fat32_error_t fat32_file_find_directory(fat32_disk_t *disk,
+                                        const fat32_fs_info_t *fs_info,
+                                        const char *dirpath,
+                                        uint32_t *dir_cluster)
 {
     avatar_assert(disk != NULL);
     avatar_assert(fs_info != NULL);
     avatar_assert(dirpath != NULL);
     avatar_assert(dir_cluster != NULL);
 
-    // 简化实现：只支持根目录
+    // 根目录
     if (strcmp(dirpath, "/") == 0) {
         *dir_cluster = fs_info->boot_sector.root_cluster;
         return FAT32_OK;
     }
 
-    // 复杂路径解析暂不实现
-    return FAT32_ERROR_NOT_FOUND;
+    // 解析路径
+    char path_copy[FAT32_MAX_PATH];
+    strncpy(path_copy, dirpath, sizeof(path_copy) - 1);
+    path_copy[sizeof(path_copy) - 1] = '\0';
+
+    // 移除开头的斜杠
+    char *path = path_copy;
+    if (path[0] == '/') {
+        path++;
+    }
+
+    // 从根目录开始查找
+    uint32_t current_cluster = fs_info->boot_sector.root_cluster;
+
+    // 分割路径并逐级查找
+    char *start = path;
+    while (*start != '\0') {
+        // 找到下一个路径分隔符
+        char *end = start;
+        while (*end != '\0' && *end != '/') {
+            end++;
+        }
+
+        // 如果找到了路径组件
+        if (end > start) {
+            // 临时终止字符串
+            char saved_char = *end;
+            *end = '\0';
+
+            fat32_dir_entry_t dir_entry;
+            uint32_t entry_index;
+
+            // 在当前目录中查找子目录
+            fat32_error_t result = fat32_dir_find_entry(disk, fs_info, current_cluster,
+                                                       start, &dir_entry, &entry_index);
+
+            // 恢复字符
+            *end = saved_char;
+
+            if (result != FAT32_OK) {
+                return FAT32_ERROR_NOT_FOUND;
+            }
+
+            // 检查是否为目录
+            if (!(dir_entry.attr & FAT32_ATTR_DIRECTORY)) {
+                return FAT32_ERROR_NOT_FOUND;
+            }
+
+            // 获取子目录的簇号
+            current_cluster = fat32_dir_get_first_cluster(&dir_entry);
+        }
+
+        // 移动到下一个组件
+        start = end;
+        if (*start == '/') {
+            start++;
+        }
+    }
+
+    *dir_cluster = current_cluster;
+    return FAT32_OK;
 }
 
 static fat32_error_t fat32_file_read_cluster_data(fat32_disk_t *disk,

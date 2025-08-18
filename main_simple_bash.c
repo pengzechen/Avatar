@@ -111,6 +111,11 @@ static void resolve_path(const char *input_path, char *resolved_path)
 
 static int is_valid_directory(const char *path)
 {
+    // 根目录特殊处理
+    if (strcmp(path, "/") == 0) {
+        return 1;  // 根目录总是有效的
+    }
+
     fat32_dir_entry_t entry;
     fat32_error_t result = fat32_stat(path, &entry);
 

@@ -319,4 +319,38 @@ static inline uint8_t fat32_file_is_eof(const fat32_file_handle_t *file_handle) 
     return (file_handle->file_position >= file_handle->file_size);
 }
 
+/* ============================================================================
+ * 路径处理函数
+ * ============================================================================ */
+
+/**
+ * @brief 解析文件路径
+ *
+ * 将完整的文件路径分解为目录路径和文件名。
+ *
+ * @param filepath 完整文件路径
+ * @param dirname 输出的目录路径
+ * @param filename 输出的文件名
+ * @return fat32_error_t 错误码
+ */
+fat32_error_t fat32_file_parse_path(const char *filepath,
+                                    char *dirname,
+                                    char *filename);
+
+/**
+ * @brief 查找目录
+ *
+ * 根据目录路径查找对应的目录簇号。
+ *
+ * @param disk 磁盘句柄
+ * @param fs_info 文件系统信息
+ * @param dirpath 目录路径
+ * @param dir_cluster 输出的目录簇号
+ * @return fat32_error_t 错误码
+ */
+fat32_error_t fat32_file_find_directory(fat32_disk_t *disk,
+                                        const fat32_fs_info_t *fs_info,
+                                        const char *dirpath,
+                                        uint32_t *dir_cluster);
+
 #endif // FAT32_FILE_H

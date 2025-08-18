@@ -6,6 +6,7 @@
  */
 
 #include "fs/fat32.h"
+#include "fs/fat32_file.h"
 #include "lib/avatar_string.h"
 #include "lib/avatar_assert.h"
 #include "io.h"
@@ -520,12 +521,30 @@ fat32_error_t fat32_mkdir(const char *dirname)
         return FAT32_ERROR_NOT_MOUNTED;
     }
 
-    // 简化实现：只支持在根目录创建
+    // 解析路径
+    char dir_path[FAT32_MAX_PATH];
+    char dir_name[FAT32_MAX_FILENAME];
+    fat32_error_t result = fat32_file_parse_path(dirname, dir_path, dir_name);
+    if (result != FAT32_OK) {
+        return result;
+    }
+
+    // 查找父目录
+    uint32_t parent_cluster;
+    result = fat32_file_find_directory(g_fat32_context.disk,
+                                      &g_fat32_context.fs_info,
+                                      dir_path,
+                                      &parent_cluster);
+    if (result != FAT32_OK) {
+        return result;
+    }
+
+    // 在父目录中创建新目录
     uint32_t new_dir_cluster;
     return fat32_dir_create_directory(g_fat32_context.disk,
                                      &g_fat32_context.fs_info,
-                                     g_fat32_context.fs_info.boot_sector.root_cluster,
-                                     dirname,
+                                     parent_cluster,
+                                     dir_name,
                                      &new_dir_cluster);
 }
 
@@ -535,11 +554,29 @@ fat32_error_t fat32_rmdir(const char *dirname)
         return FAT32_ERROR_NOT_MOUNTED;
     }
 
-    // 简化实现：只支持在根目录删除
+    // 解析路径
+    char dir_path[FAT32_MAX_PATH];
+    char dir_name[FAT32_MAX_FILENAME];
+    fat32_error_t result = fat32_file_parse_path(dirname, dir_path, dir_name);
+    if (result != FAT32_OK) {
+        return result;
+    }
+
+    // 查找父目录
+    uint32_t parent_cluster;
+    result = fat32_file_find_directory(g_fat32_context.disk,
+                                      &g_fat32_context.fs_info,
+                                      dir_path,
+                                      &parent_cluster);
+    if (result != FAT32_OK) {
+        return result;
+    }
+
+    // 在父目录中删除目录
     return fat32_dir_remove_directory(g_fat32_context.disk,
                                      &g_fat32_context.fs_info,
-                                     g_fat32_context.fs_info.boot_sector.root_cluster,
-                                     dirname);
+                                     parent_cluster,
+                                     dir_name);
 }
 
 fat32_error_t fat32_listdir(const char *dirname,
@@ -553,13 +590,18 @@ fat32_error_t fat32_listdir(const char *dirname,
 
     *entry_count = 0;
 
-    // 简化实现：只支持列出根目录
-    if (strcmp(dirname, "/") != 0) {
-        return FAT32_ERROR_NOT_FOUND;
+    // 查找目录的簇号
+    uint32_t dir_cluster;
+    fat32_error_t result = fat32_file_find_directory(g_fat32_context.disk,
+                                                    &g_fat32_context.fs_info,
+                                                    dirname,
+                                                    &dir_cluster);
+    if (result != FAT32_OK) {
+        return result;
     }
 
     fat32_dir_iterator_t iterator;
-    fat32_dir_iterator_init(&iterator, g_fat32_context.fs_info.boot_sector.root_cluster);
+    fat32_dir_iterator_init(&iterator, dir_cluster);
 
     while (!iterator.end_of_dir && *entry_count < max_entries) {
         fat32_dir_entry_t dir_entry;
