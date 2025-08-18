@@ -92,7 +92,8 @@ void main_entry_el2()
         vtimer_global_init();
         vpl011_global_init();
 
-        // virtio_block_test();
+        virtio_block_test();
+        while(1);
 
         struct _vm_t *vm = alloc_vm();
         if (vm == NULL)

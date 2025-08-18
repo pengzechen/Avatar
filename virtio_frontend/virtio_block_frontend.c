@@ -4,7 +4,104 @@
 #include "timer.h"
 #include "mmio.h"
 #include "mem/barrier.h"
-#include "virtio_alloctor.h"
+#include "mem/kallocator.h"
+
+// Device memory management - allocate per device as needed
+#define MAX_VIRTIO_DEVICES 16
+#define VIRTIO_DEVICE_MEMORY_SIZE 0x80000 // 512KB per device
+#define VIRTIO_QUEUE_DESC_OFFSET 0x0      // Descriptor table at start (0x1000 aligned)
+#define VIRTIO_QUEUE_AVAIL_OFFSET 0x100   // Available ring at desc + 0x100
+#define VIRTIO_QUEUE_USED_OFFSET 0xf00    // Used ring at avail + 0x1000
+
+static void *g_device_memory[MAX_VIRTIO_DEVICES] = {0};
+
+// Device memory management functions
+static uint64_t virtio_get_device_base_addr(uint32_t device_index)
+{
+    // Check device index bounds
+    if (device_index >= MAX_VIRTIO_DEVICES) {
+        logger_error("Device index %u exceeds maximum devices (%u)\n",
+                   device_index, MAX_VIRTIO_DEVICES);
+        return 0;
+    }
+
+    // Allocate device memory if not already allocated
+    if (g_device_memory[device_index] == NULL) {
+        // Allocate memory for this specific device
+        g_device_memory[device_index] = kalloc(VIRTIO_DEVICE_MEMORY_SIZE, 0x1000); // 4KB aligned
+
+        if (g_device_memory[device_index] == NULL) {
+            logger_error("Failed to allocate memory for VirtIO device %u\n", device_index);
+            return 0;
+        }
+
+        logger_info("VirtIO device %u memory allocated: 0x%lx (%u KB)\n",
+                  device_index, (uint64_t)g_device_memory[device_index],
+                  VIRTIO_DEVICE_MEMORY_SIZE / 1024);
+    }
+
+    return (uint64_t)g_device_memory[device_index];
+}
+
+static void virtio_free_device_memory(uint32_t device_index)
+{
+    if (device_index >= MAX_VIRTIO_DEVICES) {
+        logger_error("Device index %u exceeds maximum devices (%u)\n",
+                   device_index, MAX_VIRTIO_DEVICES);
+        return;
+    }
+
+    if (g_device_memory[device_index] != NULL) {
+        kfree(g_device_memory[device_index]);
+        g_device_memory[device_index] = NULL;
+
+        logger_info("VirtIO device %u memory freed\n", device_index);
+    }
+}
+
+static uint64_t virtio_get_queue_desc_addr(uint32_t device_index, uint32_t queue_id)
+{
+    uint64_t device_base = virtio_get_device_base_addr(device_index);
+    if (device_base == 0) {
+        return 0;
+    }
+
+    // Each queue gets 0x4000 (16KB) within the device memory
+    // Descriptor table is at the start of queue memory (0x1000 aligned)
+    uint64_t queue_base = device_base + (queue_id * 0x4000);
+    uint64_t desc_addr = (queue_base + 0xFFF) & ~0xFFF; // Ensure 0x1000 alignment
+
+    logger_debug("Device %u Queue %u desc addr: 0x%lx\n", device_index, queue_id, desc_addr);
+    return desc_addr;
+}
+
+static uint64_t virtio_get_queue_avail_addr(uint32_t device_index, uint32_t queue_id)
+{
+    uint64_t desc_addr = virtio_get_queue_desc_addr(device_index, queue_id);
+    if (desc_addr == 0) {
+        return 0;
+    }
+
+    // Available ring is at desc + 0x100
+    uint64_t avail_addr = desc_addr + VIRTIO_QUEUE_AVAIL_OFFSET;
+
+    logger_debug("Device %u Queue %u avail addr: 0x%lx\n", device_index, queue_id, avail_addr);
+    return avail_addr;
+}
+
+static uint64_t virtio_get_queue_used_addr(uint32_t device_index, uint32_t queue_id)
+{
+    uint64_t avail_addr = virtio_get_queue_avail_addr(device_index, queue_id);
+    if (avail_addr == 0) {
+        return 0;
+    }
+
+    // Used ring is at avail + 0x1000
+    uint64_t used_addr = avail_addr + VIRTIO_QUEUE_USED_OFFSET;
+
+    logger_debug("Device %u Queue %u used addr: 0x%lx\n", device_index, queue_id, used_addr);
+    return used_addr;
+}
 
 // 初始化 VirtIO 前端子系统
 int virtio_blk_frontend_init(void)
@@ -294,7 +391,7 @@ void virtio_blk_get_config(virtio_blk_device_t *blk_dev)
 int virtio_blk_init(virtio_blk_device_t *blk_dev, uint64_t base_addr, uint32_t device_index)
 {
     // 分配设备结构
-    virtio_device_t * dev = virtio_alloc(sizeof(virtio_device_t), 8);
+    virtio_device_t * dev = kalloc(sizeof(virtio_device_t), 8);
     if (!blk_dev->dev)
     {
         logger_error("Failed to allocate device structure\n");
@@ -363,8 +460,8 @@ int virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     uint32_t total_size = count * sector_size;
 
     // 分配请求结构
-    virtio_blk_req_t *req = (virtio_blk_req_t *)virtio_alloc(sizeof(virtio_blk_req_t), 8);
-    uint8_t *status = (uint8_t *)virtio_alloc(1, 1);
+    virtio_blk_req_t *req = (virtio_blk_req_t *)kalloc(sizeof(virtio_blk_req_t), 8);
+    uint8_t *status = (uint8_t *)kalloc(1, 8);
 
     if (!req || !status) {
         logger_error("Failed to allocate request structures\n");
@@ -395,16 +492,16 @@ int virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     int desc_id = virtio_queue_add_buf(blk_dev->dev, 0, buffers, lengths, 1, 2);
     if (desc_id < 0) {
         logger_error("Failed to add buffer to queue\n");
-        virtio_free(req);
-        virtio_free(status);
+        kfree(req);
+        kfree(status);
         return -1;
     }
 
     // 通知队列
     if (virtio_queue_kick(blk_dev->dev, 0) < 0) {
         logger_error("Failed to kick queue\n");
-        virtio_free(req);
-        virtio_free(status);
+        kfree(req);
+        kfree(status);
         return -1;
     }
 
@@ -424,23 +521,23 @@ int virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
 
     if (result < 0) {
         logger_error("Timeout waiting for block read completion\n");
-        virtio_free(req);
-        virtio_free(status);
+        kfree(req);
+        kfree(status);
         return -1;
     }
 
     // 检查状态
     if (*status != VIRTIO_BLK_S_OK) {
         logger_error("Block read failed with status: %d\n", *status);
-        virtio_free(req);
-        virtio_free(status);
+        kfree(req);
+        kfree(status);
         return -1;
     }
 
     logger_debug("Block read completed successfully, len=%u\n", len);
 
-    virtio_free(req);
-    virtio_free(status);
+    kfree(req);
+    kfree(status);
     return 0;
 }
 
@@ -457,8 +554,8 @@ int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     uint32_t total_size = count * sector_size;
 
     // 分配请求结构
-    virtio_blk_req_t *req = (virtio_blk_req_t *)virtio_alloc(sizeof(virtio_blk_req_t), 8);
-    uint8_t *status = (uint8_t *)virtio_alloc(1, 1);
+    virtio_blk_req_t *req = (virtio_blk_req_t *)kalloc(sizeof(virtio_blk_req_t), 8);
+    uint8_t *status = (uint8_t *)kalloc(1, 8);
 
     if (!req || !status) {
         logger_error("Failed to allocate request structures\n");
@@ -489,16 +586,16 @@ int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
     int desc_id = virtio_queue_add_buf(blk_dev->dev, 0, buffers, lengths, 2, 1);
     if (desc_id < 0) {
         logger_error("Failed to add buffer to queue\n");
-        virtio_free(req);
-        virtio_free(status);
+        kfree(req);
+        kfree(status);
         return -1;
     }
 
     // 通知队列
     if (virtio_queue_kick(blk_dev->dev, 0) < 0) {
         logger_error("Failed to kick queue\n");
-        virtio_free(req);
-        virtio_free(status);
+        kfree(req);
+        kfree(status);
         return -1;
     }
 
@@ -518,23 +615,23 @@ int virtio_blk_write_sector(virtio_blk_device_t *blk_dev, uint64_t sector,
 
     if (result < 0) {
         logger_error("Timeout waiting for block write completion\n");
-        virtio_free(req);
-        virtio_free(status);
+        kfree(req);
+        kfree(status);
         return -1;
     }
 
     // 检查状态
     if (*status != VIRTIO_BLK_S_OK) {
         logger_error("Block write failed with status: %d\n", *status);
-        virtio_free(req);
-        virtio_free(status);
+        kfree(req);
+        kfree(status);
         return -1;
     }
 
     logger_debug("Block write completed successfully, len=%u\n", len);
 
-    virtio_free(req);
-    virtio_free(status);
+    kfree(req);
+    kfree(status);
     return 0;
 }
 

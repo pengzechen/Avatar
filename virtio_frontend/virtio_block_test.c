@@ -2,7 +2,7 @@
 #include "io.h"
 #include "lib/avatar_string.h"
 #include "timer.h"
-#include "virtio_alloctor.h"
+#include "mem/kallocator.h"
 
 // 测试数据
 static uint8_t test_write_buffer[512];
@@ -126,7 +126,7 @@ int virtio_blk_test_performance(virtio_blk_device_t *blk_dev)
     const uint32_t iterations = 5;
     uint64_t test_start_sector = blk_dev->capacity - 20;
     
-    uint8_t *test_buffer = virtio_alloc(test_sectors * 512, 16);
+    uint8_t *test_buffer = kalloc(test_sectors * 512, 16);
     if (!test_buffer) {
         logger_error("Failed to allocate test buffer\n");
         return -1;
@@ -148,7 +148,7 @@ int virtio_blk_test_performance(virtio_blk_device_t *blk_dev)
             if (virtio_blk_write_sector(blk_dev, test_start_sector + j, 
                                        test_buffer + j * 512, 1) < 0) {
                 logger_error("Write failed in iteration %u, sector %u\n", i, j);
-                virtio_free(test_buffer);
+                kfree(test_buffer);
                 return -1;
             }
         }
@@ -163,7 +163,7 @@ int virtio_blk_test_performance(virtio_blk_device_t *blk_dev)
             if (virtio_blk_read_sector(blk_dev, test_start_sector + j,
                                       test_buffer + j * 512, 1) < 0) {
                 logger_error("Read failed in iteration %u, sector %u\n", i, j);
-                virtio_free(test_buffer);
+                kfree(test_buffer);
                 return -1;
             }
         }
@@ -183,7 +183,7 @@ int virtio_blk_test_performance(virtio_blk_device_t *blk_dev)
     logger_info("  Average write time: %llu ticks (%u sectors)\n", avg_write_time, test_sectors);
     logger_info("  Average read time: %llu ticks (%u sectors)\n", avg_read_time, test_sectors);
     
-    virtio_free(test_buffer);
+    kfree(test_buffer);
     logger_info("Performance test completed\n");
     
     return 0;
@@ -194,9 +194,9 @@ int virtio_block_test(void)
 {
     logger_info("Starting VirtIO Block device test\n");
 
-    if (virtio_allocator_init() < 0)
-    {
-        logger_error("Failed to initialize VirtIO allocator\n");
+    // VirtIO now uses kallocator directly - no separate initialization needed
+    if (!kallocator_is_initialized()) {
+        logger_error("Kernel allocator not initialized\n");
         return -1;
     }
     
@@ -249,6 +249,8 @@ int virtio_block_test(void)
     } else {
         logger_error("=== Some VirtIO Block tests FAILED ===\n");
     }
+
+    kallocator_info();
     
     return test_results;
 }

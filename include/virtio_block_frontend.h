@@ -215,9 +215,7 @@ int virtio_queue_kick(virtio_device_t *dev, uint32_t queue_id);
 int virtio_queue_get_buf(virtio_device_t *dev, uint32_t queue_id, uint32_t *len);
 
 
-uint64_t virtio_get_queue_desc_addr(uint32_t device_index, uint32_t queue_id);
-uint64_t virtio_get_queue_avail_addr(uint32_t device_index, uint32_t queue_id);
-uint64_t virtio_get_queue_used_addr(uint32_t device_index, uint32_t queue_id);
+
 
 // 设备扫描
 uint64_t scan_for_virtio_block_device(uint32_t device_id);
