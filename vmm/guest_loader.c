@@ -17,6 +17,7 @@
 #include "lib/avatar_string.h"
 #include "fs/fat32.h"
 #include "fs/fat32_file.h"
+#include "timer.h"
 
 // 从文件系统加载文件到内存
 fat32_error_t
@@ -72,8 +73,16 @@ guest_load_file_to_memory(const char *filepath, uint64_t load_addr, size_t *load
         return FAT32_ERROR_NO_SPACE;
     }
 
+    // 记录开始时间用于性能测量（只测量实际文件读取）
+    uint64_t start_ticks = read_cntpct_el0();
+    uint64_t frequency   = read_cntfrq_el0();
+
     // 读取文件
     size_t bytes_read = fat32_read(fd, temp_buffer, file_size);
+
+    // 记录结束时间
+    uint64_t end_ticks = read_cntpct_el0();
+
     fat32_close(fd);
 
     if (bytes_read != file_size) {
@@ -90,7 +99,18 @@ guest_load_file_to_memory(const char *filepath, uint64_t load_addr, size_t *load
     kfree_pages(temp_buffer, pages_needed);
 
     *loaded_size = file_size;
+
+    // 计算并报告性能（只包含实际文件读取时间）
+    uint64_t duration_ticks = end_ticks - start_ticks;
+    uint64_t duration_us    = (duration_ticks * 1000000) / frequency;  // 转换为微秒
+    uint64_t throughput_kbps =
+        (file_size * 1000) / (duration_us + 1);  // +1 to avoid division by zero
+
     logger_info("Successfully loaded %s: %zu bytes to 0x%llx\n", filepath, file_size, load_addr);
+    logger_info("File read time: %llu us (%llu ticks), Throughput: %llu KB/s\n",
+                duration_us,
+                duration_ticks,
+                throughput_kbps);
     return FAT32_OK;
 }
 

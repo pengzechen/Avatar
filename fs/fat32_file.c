@@ -70,6 +70,15 @@ fat32_file_extend_if_needed(fat32_disk_t        *disk,
                             fat32_file_handle_t *file_handle,
                             uint32_t             required_size);
 
+static fat32_error_t
+fat32_file_read_multi_clusters(fat32_disk_t          *disk,
+                               const fat32_fs_info_t *fs_info,
+                               uint32_t               start_cluster,
+                               void                  *buffer,
+                               uint32_t               max_bytes,
+                               uint32_t              *bytes_read,
+                               uint32_t              *next_cluster);
+
 /* ============================================================================
  * 文件句柄管理函数实现
  * ============================================================================ */
@@ -377,6 +386,9 @@ fat32_file_read(fat32_disk_t          *disk,
     uint32_t current_cluster = file_handle->current_cluster;
     uint32_t cluster_offset  = file_handle->cluster_offset;
 
+    // 优化：尝试多簇批量读取
+    const uint32_t MULTI_CLUSTER_READ_SIZE = 32;  // 一次读取32个簇(16KB)
+
     while (total_read < bytes_to_read && current_cluster >= 2) {
         uint32_t bytes_in_cluster     = bytes_to_read - total_read;
         uint32_t remaining_in_cluster = fs_info->bytes_per_cluster - cluster_offset;
@@ -385,6 +397,25 @@ fat32_file_read(fat32_disk_t          *disk,
             bytes_in_cluster = remaining_in_cluster;
         }
 
+        // 如果是从簇开始读取且需要读取大量数据，尝试多簇读取
+        if (cluster_offset == 0 &&
+            bytes_to_read - total_read >= MULTI_CLUSTER_READ_SIZE * fs_info->bytes_per_cluster) {
+            uint32_t      multi_cluster_bytes_read;
+            fat32_error_t result = fat32_file_read_multi_clusters(disk,
+                                                                  fs_info,
+                                                                  current_cluster,
+                                                                  read_buffer + total_read,
+                                                                  bytes_to_read - total_read,
+                                                                  &multi_cluster_bytes_read,
+                                                                  &current_cluster);
+            if (result == FAT32_OK && multi_cluster_bytes_read > 0) {
+                total_read += multi_cluster_bytes_read;
+                cluster_offset = multi_cluster_bytes_read % fs_info->bytes_per_cluster;
+                continue;
+            }
+        }
+
+        // 回退到单簇读取
         uint32_t      cluster_bytes_read;
         fat32_error_t result = fat32_file_read_cluster_data(disk,
                                                             fs_info,
@@ -1271,4 +1302,91 @@ fat32_file_truncate(fat32_disk_t        *disk,
     }
 
     return FAT32_OK;
+}
+
+/**
+ * 多簇批量读取函数 - 性能优化
+ */
+static fat32_error_t
+fat32_file_read_multi_clusters(fat32_disk_t          *disk,
+                               const fat32_fs_info_t *fs_info,
+                               uint32_t               start_cluster,
+                               void                  *buffer,
+                               uint32_t               max_bytes,
+                               uint32_t              *bytes_read,
+                               uint32_t              *next_cluster)
+{
+    avatar_assert(disk != NULL);
+    avatar_assert(fs_info != NULL);
+    avatar_assert(buffer != NULL);
+    avatar_assert(bytes_read != NULL);
+    avatar_assert(next_cluster != NULL);
+
+    *bytes_read   = 0;
+    *next_cluster = start_cluster;
+
+    if (!fat32_fat_is_valid_cluster(fs_info, start_cluster)) {
+        return FAT32_ERROR_INVALID_PARAM;
+    }
+
+    // 计算最多可以读取多少个簇
+    uint32_t max_clusters = max_bytes / fs_info->bytes_per_cluster;
+    if (max_clusters == 0) {
+        return FAT32_OK;
+    }
+
+    // 限制最大批量读取数量
+    const uint32_t MAX_BATCH_CLUSTERS = 32;
+    if (max_clusters > MAX_BATCH_CLUSTERS) {
+        max_clusters = MAX_BATCH_CLUSTERS;
+    }
+
+    // 检查连续的簇
+    uint32_t current_cluster      = start_cluster;
+    uint32_t consecutive_clusters = 1;
+    uint32_t expected_next        = start_cluster + 1;
+
+    for (uint32_t i = 1; i < max_clusters; i++) {
+        uint32_t      next;
+        fat32_error_t result = fat32_fat_get_next_cluster(disk, fs_info, current_cluster, &next);
+        if (result != FAT32_OK || next < 2) {
+            break;  // 簇链结束或错误
+        }
+
+        // 检查是否连续
+        if (next == expected_next) {
+            consecutive_clusters++;
+            current_cluster = next;
+            expected_next   = next + 1;
+        } else {
+            // 不连续，停止批量读取
+            break;
+        }
+    }
+
+    if (consecutive_clusters > 1) {
+        // 可以进行批量读取
+        uint32_t first_sector  = fat32_boot_cluster_to_sector(fs_info, start_cluster);
+        uint32_t total_sectors = consecutive_clusters * fs_info->sectors_per_cluster;
+        uint32_t total_bytes   = consecutive_clusters * fs_info->bytes_per_cluster;
+
+        // 只在大批量读取时显示信息
+        // if (consecutive_clusters >= 32) {
+        //     logger_info("FAT32: Large multi-cluster read: %u clusters (%u KB) from cluster %u\n",
+        //                 consecutive_clusters,
+        //                 total_bytes / 1024,
+        //                 start_cluster);
+        // }
+
+        fat32_error_t result = fat32_disk_read_sectors(disk, first_sector, total_sectors, buffer);
+        if (result == FAT32_OK) {
+            *bytes_read = total_bytes;
+            // 设置下一个簇
+            fat32_fat_get_next_cluster(disk, fs_info, current_cluster, next_cluster);
+        }
+        return result;
+    }
+
+    // 回退到单簇读取
+    return FAT32_ERROR_NOT_FOUND;  // 表示无法批量读取
 }

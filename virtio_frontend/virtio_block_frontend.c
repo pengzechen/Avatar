@@ -525,6 +525,10 @@ virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector, void *buff
 
     logger_debug("Reading sector %llu, count %u, total_size %u\n", sector, count, total_size);
 
+    // 添加性能统计 - 测量纯磁盘读取性能
+    uint64_t start_ticks = read_cntpct_el0();
+    uint64_t frequency   = read_cntfrq_el0();
+
     // 添加缓冲区到队列（1 个输出，2 个输入）
     int desc_id = virtio_queue_add_buf(blk_dev->dev, 0, buffers, lengths, 1, 2);
     if (desc_id < 0) {
@@ -542,20 +546,32 @@ virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector, void *buff
         return -1;
     }
 
-    // 轮询完成（无中断模式）
-    uint32_t timeout = 1000000;  // 大超时值
+    // 激进优化轮询 - 针对大量小读取优化
+    uint32_t timeout = 50000;  // 减少超时
     uint32_t len;
     int      result = -1;
 
+    // 前面大部分时间快速轮询，减少延迟
+    for (uint32_t i = 0; i < 10000 && timeout > 0; i++, timeout--) {
+        result = virtio_queue_get_buf(blk_dev->dev, 0, &len);
+        if (result >= 0) {
+            goto read_complete;
+        }
+        // 无延迟快速轮询
+    }
+
+    // 如果还没完成，加入轻微延迟
     while (timeout-- > 0) {
         result = virtio_queue_get_buf(blk_dev->dev, 0, &len);
         if (result >= 0) {
             break;
         }
-        // 小延迟
-        for (volatile int i = 0; i < 100; i++)
+        // 极轻微延迟
+        for (volatile int i = 0; i < 5; i++)
             ;
     }
+
+read_complete:
 
     if (result < 0) {
         logger_error("Timeout waiting for block read completion\n");
@@ -573,6 +589,20 @@ virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector, void *buff
     }
 
     logger_debug("Block read completed successfully, len=%u\n", len);
+
+    // 计算并报告纯磁盘读取性能
+    uint64_t end_ticks       = read_cntpct_el0();
+    uint64_t duration_ticks  = end_ticks - start_ticks;
+    uint64_t duration_us     = (duration_ticks * 1000000) / frequency;
+    uint64_t throughput_kbps = (total_size * 1000) / (duration_us + 1);
+
+    // if (count >= 32) {  // 只报告大批量读取的性能
+    //     logger_info("VirtIO perf: %u sectors (%u KB) in %llu us, Throughput: %llu KB/s\n",
+    //                 count,
+    //                 total_size / 1024,
+    //                 duration_us,
+    //                 throughput_kbps);
+    // }
 
     kfree(req);
     kfree(status);
@@ -640,20 +670,33 @@ virtio_blk_write_sector(virtio_blk_device_t *blk_dev,
         return -1;
     }
 
-    // 轮询完成（无中断模式）
-    uint32_t timeout = 1000000;  // 大超时值
+    // 激进优化轮询 - 针对大量小写入优化
+    uint32_t timeout = 50000;  // 减少超时
     uint32_t len;
-    int      result = -1;
+    int      result     = -1;
+    uint32_t poll_count = 0;
 
+    // 前面大部分时间快速轮询，减少延迟
+    for (uint32_t i = 0; i < 10000 && timeout > 0; i++, timeout--) {
+        result = virtio_queue_get_buf(blk_dev->dev, 0, &len);
+        if (result >= 0) {
+            goto write_complete;
+        }
+        // 无延迟快速轮询
+    }
+
+    // 如果还没完成，加入轻微延迟
     while (timeout-- > 0) {
         result = virtio_queue_get_buf(blk_dev->dev, 0, &len);
         if (result >= 0) {
             break;
         }
-        // 小延迟
-        for (volatile int i = 0; i < 10; i++)
+        // 极轻微延迟
+        for (volatile int i = 0; i < 5; i++)
             ;
     }
+
+write_complete:
 
     if (result < 0) {
         logger_error("Timeout waiting for block write completion\n");

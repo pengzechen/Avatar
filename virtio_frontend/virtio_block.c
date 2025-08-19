@@ -96,14 +96,37 @@ avatar_virtio_block_read(uint64_t sector, void *buffer, uint32_t sector_count)
 
     logger_debug("Reading %u sectors from sector %llu\n", sector_count, sector);
 
-    // 逐个扇区读取（可以优化为批量读取）
-    for (uint32_t i = 0; i < sector_count; i++) {
-        uint8_t *sector_buffer = (uint8_t *) buffer + (i * 512);
+    // 移除复杂的连续读取检测，直接优化单扇区读取
+    // 对于单扇区读取，直接返回，不使用批量处理（减少开销）
+    if (sector_count == 1) {
+        return virtio_blk_read_sector(&g_virtio_block_device, sector, buffer, 1);
+    }
 
-        if (virtio_blk_read_sector(&g_virtio_block_device, sector + i, sector_buffer, 1) < 0) {
-            logger_error("Failed to read sector %llu\n", sector + i);
+    // 对于多扇区读取，使用原有的批量处理
+    const uint32_t MAX_BATCH_SECTORS = 128;
+
+    // 优化：使用批量读取
+    uint32_t remaining_sectors = sector_count;
+    uint64_t current_sector    = sector;
+    uint8_t *current_buffer    = (uint8_t *) buffer;
+
+    while (remaining_sectors > 0) {
+        uint32_t batch_size =
+            (remaining_sectors > MAX_BATCH_SECTORS) ? MAX_BATCH_SECTORS : remaining_sectors;
+
+        if (virtio_blk_read_sector(&g_virtio_block_device,
+                                   current_sector,
+                                   current_buffer,
+                                   batch_size) < 0) {
+            logger_error("Failed to read batch starting at sector %llu, count %u\n",
+                         current_sector,
+                         batch_size);
             return -1;
         }
+
+        remaining_sectors -= batch_size;
+        current_sector += batch_size;
+        current_buffer += batch_size * 512;
     }
 
     logger_debug("Successfully read %u sectors\n", sector_count);
@@ -129,14 +152,29 @@ avatar_virtio_block_write(uint64_t sector, const void *buffer, uint32_t sector_c
 
     logger_debug("Writing %u sectors to sector %llu\n", sector_count, sector);
 
-    // 逐个扇区写入（可以优化为批量写入）
-    for (uint32_t i = 0; i < sector_count; i++) {
-        const uint8_t *sector_buffer = (const uint8_t *) buffer + (i * 512);
+    // 优化：使用批量写入而不是逐个扇区写入
+    const uint32_t MAX_BATCH_SECTORS = 128;  // 64KB per batch - 合理的批量大小
+    uint32_t       remaining_sectors = sector_count;
+    uint64_t       current_sector    = sector;
+    const uint8_t *current_buffer    = (const uint8_t *) buffer;
 
-        if (virtio_blk_write_sector(&g_virtio_block_device, sector + i, sector_buffer, 1) < 0) {
-            logger_error("Failed to write sector %llu\n", sector + i);
+    while (remaining_sectors > 0) {
+        uint32_t batch_size =
+            (remaining_sectors > MAX_BATCH_SECTORS) ? MAX_BATCH_SECTORS : remaining_sectors;
+
+        if (virtio_blk_write_sector(&g_virtio_block_device,
+                                    current_sector,
+                                    current_buffer,
+                                    batch_size) < 0) {
+            logger_error("Failed to write batch starting at sector %llu, count %u\n",
+                         current_sector,
+                         batch_size);
             return -1;
         }
+
+        remaining_sectors -= batch_size;
+        current_sector += batch_size;
+        current_buffer += batch_size * 512;
     }
 
     logger_debug("Successfully wrote %u sectors\n", sector_count);
