@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file earlypage.h
+ * @brief Implementation of earlypage.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 /**
  * @file earlypage.h
  * @brief 启动时页表管理接口和配置

@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file fat32_cache.h
+ * @brief Implementation of fat32_cache.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 /**
  * @file fat32_cache.h
  * @brief FAT32缓存管理头文件

@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file bitmap.h
+ * @brief Implementation of bitmap.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 // bitmap.h
 #ifndef BITMAP_H
 #define BITMAP_H

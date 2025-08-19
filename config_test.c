@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file config_test.c
+ * @brief Implementation of config_test.c
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 #include "os_cfg.h"
 #include "vmm/vmm_cfg.h"
 #include "guest/guest_manifest.h"

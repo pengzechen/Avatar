@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file boot.S
+ * @brief Assembly implementation of boot.S
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 #include "mem/mmu.h"
 #include "sys/sys.h"
 #include "os_cfg.h"

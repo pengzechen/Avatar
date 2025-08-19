@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file vm.h
+ * @brief Implementation of vm.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 
 #ifndef __VM_H__
 #define __VM_H__

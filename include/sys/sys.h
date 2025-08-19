@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file sys.h
+ * @brief Implementation of sys.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 // https://developer.arm.com/documentation/ddi0595/2021-03/AArch64-Registers/
 
 #ifndef __SYS_H__

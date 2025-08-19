@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file context.S
+ * @brief Assembly implementation of context.S
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 
 
 .global switch_context

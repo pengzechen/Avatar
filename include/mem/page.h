@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file page.h
+ * @brief Implementation of page.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 
 
 #ifndef __PAGE_H__

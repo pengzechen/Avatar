@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file tcr.h
+ * @brief Implementation of tcr.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 
 
 #ifndef __TCR_H__

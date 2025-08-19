@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+#
+# Copyright (c) 2024 Avatar Project
+#
+# Licensed under the MIT License.
+# See LICENSE file in the project root for full license information.
+#
+# @file check_deps.py
+# @brief Python script: check_deps.py
+# @author Avatar Project Team
+# @date 2024
+#
+
 """
 Avatar VMM Dependency Checker
 检查源文件之间的依赖关系，生成依赖图

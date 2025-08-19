@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file bit_utils.h
+ * @brief Implementation of bit_utils.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 /**
  * @file bit_utils.h
  * @brief Avatar OS 位操作工具函数和宏

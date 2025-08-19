@@ -1,4 +1,16 @@
 #!/bin/bash
+#
+# Copyright (c) 2024 Avatar Project
+#
+# Licensed under the MIT License.
+# See LICENSE file in the project root for full license information.
+#
+# @file copy_guest_files.sh
+# @brief Shell script: copy_guest_files.sh
+# @author Avatar Project Team
+# @date 2024
+#
+
 
 # Avatar OS Guest Files Setup Script
 # 根据guest_manifests.c中的配置，将guest文件拷贝到host.img文件系统中

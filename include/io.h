@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file io.h
+ * @brief Implementation of io.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 
 #ifndef __IO_H__
 #define __IO_H__

@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file mmu.h
+ * @brief Implementation of mmu.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 
 #ifndef __MMU_H__
 #define __MMU_H__

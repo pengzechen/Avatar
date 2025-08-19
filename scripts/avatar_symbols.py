@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+#
+# Copyright (c) 2024 Avatar Project
+#
+# Licensed under the MIT License.
+# See LICENSE file in the project root for full license information.
+#
+# @file avatar_symbols.py
+# @brief Python script: avatar_symbols.py
+# @author Avatar Project Team
+# @date 2024
+#
+
 """
 Symbol Table Analyzer for Avatar OS
 自动从 build/dis.txt 中读取 SYMBOL TABLE 并进行分析

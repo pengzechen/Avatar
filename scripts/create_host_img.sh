@@ -1,4 +1,16 @@
 #!/bin/bash
+#
+# Copyright (c) 2024 Avatar Project
+#
+# Licensed under the MIT License.
+# See LICENSE file in the project root for full license information.
+#
+# @file create_host_img.sh
+# @brief Shell script: create_host_img.sh
+# @author Avatar Project Team
+# @date 2024
+#
+
 
 # 创建host.img文件以容纳所有guest文件
 

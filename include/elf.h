@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file elf.h
+ * @brief Implementation of elf.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 
 #ifndef _ELF
 #define _ELF

@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file vm.c
+ * @brief Implementation of vm.c
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 
 #include "vmm/vgic.h"
 #include "vmm/vtimer.h"

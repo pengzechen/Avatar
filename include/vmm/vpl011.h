@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file vpl011.h
+ * @brief Implementation of vpl011.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 #ifndef __VPL011_H__
 #define __VPL011_H__
 

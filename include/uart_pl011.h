@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file uart_pl011.h
+ * @brief Implementation of uart_pl011.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 
 
 #ifndef __PL011_H__

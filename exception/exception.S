@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file exception.S
+ * @brief Assembly implementation of exception.S
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 
 .macro SAVE_REGS
     sub     sp, sp, 34 * 8

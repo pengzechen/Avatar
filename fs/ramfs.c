@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file ramfs.c
+ * @brief Implementation of ramfs.c
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 
 
 #include "mem/mem.h"

@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file virtio_block.c
+ * @brief Implementation of virtio_block.c
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 #include "virtio_block_frontend.h"
 #include "io.h"
 #include "lib/avatar_string.h"

@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file psci.h
+ * @brief Implementation of psci.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 #ifndef _MINOS_PSCI_H_
 #define _MINOS_PSCI_H_
 

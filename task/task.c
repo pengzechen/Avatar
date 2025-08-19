@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file task.c
+ * @brief Implementation of task.c
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 #include "task/task.h"
 #include "io.h"
 #include "gic.h"

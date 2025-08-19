@@ -1,4 +1,16 @@
 /*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file logger.c
+ * @brief Implementation of logger.c
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
+/*
  * libc printf and friends
  *
  * This code is free software; you can redistribute it and/or modify it

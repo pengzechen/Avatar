@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file vcpu.h
+ * @brief Implementation of vcpu.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 
 #ifndef __VCPU_H__
 #define __VCPU_H__

@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file vgic.h
+ * @brief Implementation of vgic.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 
 
 #ifndef __VGIC_H__

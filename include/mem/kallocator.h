@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file kallocator.h
+ * @brief Implementation of kallocator.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 /**
  * @file kallocator.h
  * @brief Kernel Memory Allocator - 内核小块内存分配器

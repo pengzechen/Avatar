@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file mmu.S
+ * @brief Assembly implementation of mmu.S
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 #include "sys/tcr.h"
 #include "sys/sys.h"
 #include "mem/mmu.h"

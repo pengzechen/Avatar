@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file list.c
+ * @brief Implementation of list.c
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 #include "lib/list.h"
 
 void

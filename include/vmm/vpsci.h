@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file vpsci.h
+ * @brief Implementation of vpsci.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 #ifndef HYPER_VPSCI_H
 #define HYPER_VPSCI_H
 

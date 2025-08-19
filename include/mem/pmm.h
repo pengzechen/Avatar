@@ -1,3 +1,15 @@
+/*
+ * Copyright (c) 2024 Avatar Project
+ *
+ * Licensed under the MIT License.
+ * See LICENSE file in the project root for full license information.
+ *
+ * @file pmm.h
+ * @brief Implementation of pmm.h
+ * @author Avatar Project Team
+ * @date 2024
+ */
+
 /**
  * @file pmm.h
  * @brief Physical Memory Manager - 物理内存管理器
