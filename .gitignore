@@ -28,3 +28,4 @@ build/**/*.d
 
 test.img
 test2.img
+host.img
