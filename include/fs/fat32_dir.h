@@ -338,8 +338,20 @@ fat32_dir_is_long_name_entry(const fat32_dir_entry_t *dir_entry)
 }
 
 /**
+ * @brief 检查目录项是否为卷标
+ *
+ * @param dir_entry 目录项
+ * @return uint8_t 1表示是卷标，0表示不是
+ */
+static inline uint8_t
+fat32_dir_is_volume_label(const fat32_dir_entry_t *dir_entry)
+{
+    return (dir_entry->attr & FAT32_ATTR_VOLUME_ID) != 0;
+}
+
+/**
  * @brief 检查目录项是否为目录
- * 
+ *
  * @param dir_entry 目录项
  * @return uint8_t 1表示是目录，0表示是文件
  */

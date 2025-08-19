@@ -311,6 +311,22 @@ app_clean:
 	@$(MAKE) -C app clean APP_NAME=$(APP_NAME) CFLAGS="$(CFLAGS_APP)" INCLUDE="$(INCLUDE)"
 
 # ============================================================================
+# 文件系统镜像构建
+# ============================================================================
+
+img:
+	@echo "Creating host.img file system..."
+	@./scripts/create_host_img.sh -y
+	@echo "Setting up guest files..."
+	@sudo ./scripts/copy_guest_files.sh
+	@echo "File system image created successfully!"
+
+img_clean:
+	@echo "Cleaning file system images..."
+	@rm -f host.img host.img.backup*
+	@echo "File system images cleaned."
+
+# ============================================================================
 # 运行和调试目标
 # ============================================================================
 
@@ -358,8 +374,10 @@ help:
 	@echo "  run          - Build and run in QEMU"
 	@echo "  debug        - Build and run in QEMU debug mode"
 	@echo "  app          - Build applications"
+	@echo "  img          - Create host.img and setup guest files"
 	@echo "  clean        - Clean build files"
 	@echo "  distclean    - Deep clean including apps"
+	@echo "  img_clean    - Clean file system images"
 	@echo "  info         - Show build configuration"
 	@echo "  help         - Show this help"
 	@echo ""
@@ -377,7 +395,7 @@ help:
 # 特殊目标和依赖
 # ============================================================================
 
-.PHONY: all run debug clean distclean app app_clean info help
+.PHONY: all run debug clean distclean app app_clean img img_clean info help
 
 # 包含依赖文件
 -include $(DEPS)

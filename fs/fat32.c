@@ -675,9 +675,9 @@ fat32_listdir(const char        *dirname,
             return result;
         }
 
-        // 跳过空闲、已删除和长文件名目录项
+        // 跳过空闲、已删除、长文件名和卷标目录项
         if (fat32_dir_is_free_entry(&dir_entry) || fat32_dir_is_deleted_entry(&dir_entry) ||
-            fat32_dir_is_long_name_entry(&dir_entry)) {
+            fat32_dir_is_long_name_entry(&dir_entry) || fat32_dir_is_volume_label(&dir_entry)) {
             continue;
         }
 

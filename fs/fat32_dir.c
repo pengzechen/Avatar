@@ -202,9 +202,10 @@ fat32_dir_find_entry(fat32_disk_t          *disk,
             return result;
         }
 
-        // 跳过空闲、已删除和长文件名目录项
+        // 跳过空闲、已删除、长文件名和卷标目录项
         if (fat32_dir_is_free_entry(&current_entry) || fat32_dir_is_deleted_entry(&current_entry) ||
-            fat32_dir_is_long_name_entry(&current_entry)) {
+            fat32_dir_is_long_name_entry(&current_entry) ||
+            fat32_dir_is_volume_label(&current_entry)) {
             current_index++;
             continue;
         }
@@ -419,9 +420,9 @@ fat32_dir_is_empty(fat32_disk_t          *disk,
             return result;
         }
 
-        // 跳过空闲、已删除、长文件名和特殊目录项（"." 和 ".."）
+        // 跳过空闲、已删除、长文件名、卷标和特殊目录项（"." 和 ".."）
         if (fat32_dir_is_free_entry(&dir_entry) || fat32_dir_is_deleted_entry(&dir_entry) ||
-            fat32_dir_is_long_name_entry(&dir_entry) ||
+            fat32_dir_is_long_name_entry(&dir_entry) || fat32_dir_is_volume_label(&dir_entry) ||
             (dir_entry.name[0] == '.' && (dir_entry.name[1] == ' ' || dir_entry.name[1] == '.'))) {
             continue;
         }
