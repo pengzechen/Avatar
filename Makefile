@@ -45,7 +45,7 @@ TASKSET_CMD := $(if $(CPU_AFFINITY),taskset -c $(CPU_AFFINITY),)
 
 # 目录配置
 SRC_DIRS := . boot exception io mem timer task process spinlock \
-            vmm lib fs app syscall virtio_frontend
+            vmm lib fs app syscall virtio_frontend guest
 INCLUDE_DIRS := include guest
 INCLUDE := $(addprefix -I, $(INCLUDE_DIRS))
 
@@ -77,10 +77,10 @@ endif
 QEMU_ARGS := -m 4G -smp $(SMP) -cpu cortex-a72 -nographic -M virt -M gic_version=2 -accel tcg,thread=multi
 
 # VirtIO Block 设备配置
-QEMU_ARGS += -drive file=test.img,if=none,format=raw,id=hd0
+QEMU_ARGS += -drive file=host.img,if=none,format=raw,id=hd0
 QEMU_ARGS += -device virtio-blk-device,drive=hd0
-QEMU_ARGS += -drive file=test2.img,if=none,format=raw,id=hd1
-QEMU_ARGS += -device virtio-blk-device,drive=hd1
+# QEMU_ARGS += -drive file=guest.img,if=none,format=raw,id=hd1
+# QEMU_ARGS += -device virtio-blk-device,drive=hd1
 
 ifeq ($(HV),1)
 QEMU_ARGS += -M virtualization=on
@@ -109,7 +109,7 @@ OTHER_C_SOURCES := $(shell find boot exception io mem timer task process spinloc
 # 手动添加app目录中的非main.c文件（避免包含app子目录中的main.c）
 APP_C_SOURCES := $(shell find app -maxdepth 1 -name "*.c" 2>/dev/null)
 # 手动添加guest目录中需要的C文件
-GUEST_C_SOURCES := guest/guests.c
+GUEST_C_SOURCES := guest/guest_manifests.c
 C_SOURCES := $(ROOT_C_SOURCES) $(OTHER_C_SOURCES) $(APP_C_SOURCES) $(GUEST_C_SOURCES)
 
 ROOT_S_SOURCES := $(shell find . -maxdepth 1 -name "*.S" 2>/dev/null)
@@ -118,8 +118,8 @@ OTHER_S_SOURCES := $(shell find boot exception io mem timer task process spinloc
 APP_S_SOURCES := $(shell find app -maxdepth 1 -name "*.S" 2>/dev/null | grep -v syscall.S)
 S_SOURCES := $(ROOT_S_SOURCES) $(OTHER_S_SOURCES) $(APP_S_SOURCES)
 
-# 手动添加guest相关文件（只包含需要的两个汇编文件）
-GUEST_SOURCES := guest/guests.S guest/test_guest.S
+# guest相关汇编文件（保留test_guest.S用于次级vCPU）
+GUEST_SOURCES := guest/test_guest.S
 
 # 合并所有汇编源文件（注意app/app.S已经在S_SOURCES中了）
 ALL_S_SOURCES := $(S_SOURCES) $(GUEST_SOURCES)

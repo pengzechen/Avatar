@@ -113,13 +113,13 @@ main_entry_el2()
         // 启动简单的bash shell
         avatar_simple_shell();
 
-        struct _vm_t *vm = alloc_vm();
-        if (vm == NULL) {
-            logger_error("Failed to allocate vm\n");
-            return;
-        }
-        vm_init(vm, 0);  // 初始化一个虚拟机
-        run_vm(vm);
+        // struct _vm_t *vm = alloc_vm();
+        // if (vm == NULL) {
+        //     logger_error("Failed to allocate vm\n");
+        //     return;
+        // }
+        // vm_init(vm, 0);  // 初始化一个虚拟机
+        // run_vm(vm);
 
         // vm = alloc_vm();
         // if (vm == NULL)

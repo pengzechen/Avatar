@@ -7,6 +7,7 @@
 #include "vcpu.h"
 #include "vgic.h"
 #include "task/task.h"
+#include "../guest/guest_manifest.h"
 
 #define VM_NAME_MAX 64
 
@@ -30,6 +31,11 @@ struct _vm_t
     vgic_t   *vgic;
     vtimer_t *vtimer;  // 虚拟定时器
     vpl011_t *vpl011;  // 虚拟串口
+
+    // 新增：Guest类型和配置信息
+    guest_type_t            guest_type;   // Guest类型
+    const guest_manifest_t *manifest;     // Guest配置清单指针
+    guest_load_result_t     load_result;  // 加载结果
 };
 
 static inline uint64_t
@@ -59,7 +65,7 @@ read_vttbr_el2()
 struct _vm_t *
 alloc_vm();
 void
-vm_init(struct _vm_t *vm, int32_t configured_vm_id);
+vm_init_with_manifest(struct _vm_t *vm, const guest_manifest_t *manifest);
 void
 run_vm(struct _vm_t *vm);
 

@@ -1,7 +1,13 @@
 #include "os_cfg.h"
 #include "vmm/vmm_cfg.h"
-#include "guest/guests.h"
+#include "guest/guest_manifest.h"
 #include "io.h"
+
+// 外部声明
+extern const guest_manifest_t guest_manifests[];
+extern const uint32_t         guest_manifest_count;
+extern const char *
+guest_type_to_string(guest_type_t type);
 
 /**
  * 配置验证和测试函数
@@ -83,10 +89,17 @@ validate_vm_config(void)
     logger("Max VMs: %d\n", VM_NUM_MAX);
     logger("Max VCPUs: %d\n", VCPU_NUM_MAX);
     logger("VM Stack Size: %d KB\n", VM_STACK_SIZE / 1024);
-    logger("VM0 Binary Load Address: 0x%lx\n", VM0_BIN_LOADADDR);
-    logger("VM0 DTB Load Address: 0x%lx\n", VM0_DTB_LOADADDR);
-    logger("VM0 FS Load Address: 0x%lx\n", VM0_FS_LOADADDR);
-    logger("VM0 SMP Number: %d\n", VM0_SMP_NUM);
+
+    // 显示可用的guest配置
+    logger("Available Guest Manifests: %u\n", guest_manifest_count);
+    for (uint32_t i = 0; i < guest_manifest_count; i++) {
+        const guest_manifest_t *manifest = &guest_manifests[i];
+        logger("  Guest %u: %s (%s)\n", i, manifest->name, guest_type_to_string(manifest->type));
+        logger("    Binary Load Address: 0x%lx\n", manifest->bin_loadaddr);
+        logger("    DTB Load Address: 0x%lx\n", manifest->dtb_loadaddr);
+        logger("    FS Load Address: 0x%lx\n", manifest->fs_loadaddr);
+        logger("    SMP Number: %u\n", manifest->smp_num);
+    }
 
     // 验证VM配置的合理性
     if (VM_NUM_MAX > 8) {
@@ -97,9 +110,21 @@ validate_vm_config(void)
         logger("WARNING: Too many VCPUs may impact performance\n");
     }
 
-    // 验证地址不重叠
-    if (VM0_DTB_LOADADDR >= VM0_BIN_LOADADDR && VM0_DTB_LOADADDR < VM0_BIN_LOADADDR + 0x1000000) {
-        logger("WARNING: VM0 DTB and Binary addresses may overlap\n");
+    // 验证guest配置地址不重叠
+    for (uint32_t i = 0; i < guest_manifest_count; i++) {
+        const guest_manifest_t *manifest = &guest_manifests[i];
+
+        // 检查DTB和Binary地址是否重叠（假设Binary最大16MB）
+        if (manifest->dtb_loadaddr >= manifest->bin_loadaddr &&
+            manifest->dtb_loadaddr < manifest->bin_loadaddr + 0x1000000) {
+            logger("WARNING: Guest %s DTB and Binary addresses may overlap\n", manifest->name);
+        }
+
+        // 检查FS和Binary地址是否重叠
+        if (manifest->fs_loadaddr >= manifest->bin_loadaddr &&
+            manifest->fs_loadaddr < manifest->bin_loadaddr + 0x1000000) {
+            logger("WARNING: Guest %s FS and Binary addresses may overlap\n", manifest->name);
+        }
     }
 }
 

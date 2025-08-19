@@ -266,7 +266,8 @@ handle_gicd_icenabler_spi_write(vgic_t              *vgic,
     // 对每个要清零的中断调用硬件禁用
     for (int bit = 0; bit < 32; bit++) {
         if (params.value & (1U << bit)) {
-            gic_enable_int(base_id + bit, 0);
+            if (base_id + bit != 33)
+                gic_enable_int(base_id + bit, 0);
         }
     }
 

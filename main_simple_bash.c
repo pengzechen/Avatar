@@ -5,6 +5,9 @@
 #include "fs/fat32_dir.h"
 #include "fs/fat32_utils.h"
 #include "lib/avatar_string.h"
+#include "guest/guest_manifest.h"
+#include "vmm/guest_loader.h"
+#include "vmm/vm.h"
 
 /* ============================================================================
  * 简单的Shell实现
@@ -1419,6 +1422,7 @@ shell_cmd_help(int argc, char **args)
     logger("  tree [path]         - Display directory tree structure\n");
     logger("  du [-ahs] [path]    - Display disk usage\n");
     logger("  fsinfo              - Show filesystem information\n");
+    logger("  guest <subcmd>      - Guest management commands\n");
     logger("  clear               - Clear screen\n");
     logger("  help                - Show this help\n");
     logger("  exit                - Exit shell\n");
@@ -1441,6 +1445,210 @@ static void
 shell_cmd_clear(int argc, char **args)
 {
     logger("\033[2J\033[H");  // ANSI清屏命令
+}
+
+// guest list命令实现
+static void
+shell_cmd_guest_list(int argc, char **args)
+{
+    logger("Available guests:\n");
+    logger("ID | %-15s | %-10s | %-30s | DTB | Initrd\n", "Name", "Type", "Kernel Path");
+    logger("---|-----------------|------------|--------------------------------|-----|-------\n");
+
+    for (uint32_t i = 0; i < guest_manifest_count; i++) {
+        const guest_manifest_t *manifest = &guest_manifests[i];
+        logger("%2u | %-15s | %-10s | %-30s | %-3s | %-6s\n",
+               i,
+               manifest->name,
+               guest_type_to_string(manifest->type),
+               manifest->files.kernel_path,
+               manifest->files.needs_dtb ? "Yes" : "No",
+               manifest->files.needs_initrd ? "Yes" : "No");
+    }
+    logger("\n");
+}
+
+// guest info命令实现
+static void
+shell_cmd_guest_info(int argc, char **args)
+{
+    if (argc < 2) {
+        logger("Usage: guest info <guest_id>\n");
+        return;
+    }
+
+    uint32_t guest_id = atol(args[1]);
+    if (guest_id >= guest_manifest_count) {
+        logger("Invalid guest ID: %u (max: %u)\n", guest_id, guest_manifest_count - 1);
+        return;
+    }
+
+    const guest_manifest_t *manifest = &guest_manifests[guest_id];
+
+    logger("Guest Information:\n");
+    logger("  ID:           %u\n", guest_id);
+    logger("  Name:         %s\n", manifest->name);
+    logger("  Type:         %s\n", guest_type_to_string(manifest->type));
+    logger("  vCPUs:        %u\n", manifest->smp_num);
+    logger("  Kernel Path:  %s\n", manifest->files.kernel_path);
+    logger("  Kernel Addr:  0x%llx\n", manifest->bin_loadaddr);
+
+    if (manifest->files.needs_dtb) {
+        logger("  DTB Path:     %s\n", manifest->files.dtb_path);
+        logger("  DTB Addr:     0x%llx\n", manifest->dtb_loadaddr);
+    }
+
+    if (manifest->files.needs_initrd) {
+        logger("  Initrd Path:  %s\n", manifest->files.initrd_path);
+        logger("  Initrd Addr:  0x%llx\n", manifest->fs_loadaddr);
+    }
+
+    // 检查文件是否存在
+    if (fat32_is_mounted()) {
+        logger("\nFile Status:\n");
+        bool files_valid = guest_validate_files(manifest);
+        logger("  Files Valid:  %s\n", files_valid ? "Yes" : "No");
+
+        if (files_valid) {
+            size_t kernel_size, dtb_size, initrd_size;
+            if (guest_get_file_sizes(manifest, &kernel_size, &dtb_size, &initrd_size)) {
+                logger("  Kernel Size:  %zu bytes\n", kernel_size);
+                if (manifest->files.needs_dtb && dtb_size > 0) {
+                    logger("  DTB Size:     %zu bytes\n", dtb_size);
+                }
+                if (manifest->files.needs_initrd && initrd_size > 0) {
+                    logger("  Initrd Size:  %zu bytes\n", initrd_size);
+                }
+            }
+        }
+    } else {
+        logger("\nFile Status: Cannot check (filesystem not mounted)\n");
+    }
+    logger("\n");
+}
+
+// guest validate命令实现
+static void
+shell_cmd_guest_validate(int argc, char **args)
+{
+    if (argc < 2) {
+        logger("Usage: guest validate <guest_id>\n");
+        return;
+    }
+
+    uint32_t guest_id = atol(args[1]);
+    if (guest_id >= guest_manifest_count) {
+        logger("Invalid guest ID: %u (max: %u)\n", guest_id, guest_manifest_count - 1);
+        return;
+    }
+
+    const guest_manifest_t *manifest = &guest_manifests[guest_id];
+
+    if (!fat32_is_mounted()) {
+        logger("Error: Filesystem not mounted\n");
+        return;
+    }
+
+    logger("Validating guest: %s\n", manifest->name);
+
+    bool valid = guest_validate_files(manifest);
+    if (valid) {
+        logger("✓ All required files are present\n");
+
+        size_t kernel_size, dtb_size, initrd_size;
+        if (guest_get_file_sizes(manifest, &kernel_size, &dtb_size, &initrd_size)) {
+            logger("✓ File sizes obtained successfully\n");
+            logger("  Kernel: %zu bytes\n", kernel_size);
+            if (manifest->files.needs_dtb) {
+                logger("  DTB: %zu bytes\n", dtb_size);
+            }
+            if (manifest->files.needs_initrd) {
+                logger("  Initrd: %zu bytes\n", initrd_size);
+            }
+        }
+    } else {
+        logger("✗ Some required files are missing\n");
+    }
+    logger("\n");
+}
+
+// guest start命令实现
+static void
+shell_cmd_guest_start(int argc, char **args)
+{
+    if (argc < 2) {
+        logger("Usage: guest start <guest_id>\n");
+        return;
+    }
+
+    uint32_t guest_id = atol(args[1]);
+    if (guest_id >= guest_manifest_count) {
+        logger("Invalid guest ID: %u (max: %u)\n", guest_id, guest_manifest_count - 1);
+        return;
+    }
+
+    const guest_manifest_t *manifest = &guest_manifests[guest_id];
+
+    logger("Starting guest: %s (ID: %u)\n", manifest->name, guest_id);
+
+    // 验证文件存在
+    if (!fat32_is_mounted()) {
+        logger("Error: Filesystem not mounted\n");
+        return;
+    }
+
+    if (!guest_validate_files(manifest)) {
+        logger("Error: Guest files validation failed\n");
+        return;
+    }
+
+    // 分配VM
+    struct _vm_t *vm = alloc_vm();
+    if (!vm) {
+        logger("Error: Failed to allocate VM\n");
+        return;
+    }
+
+    logger("VM allocated with ID: %u\n", vm->vm_id);
+
+    // 使用新的manifest初始化VM
+    vm_init_with_manifest(vm, manifest);
+
+    // 启动VM
+    logger("Starting VM...\n");
+    run_vm(vm);
+
+    logger("Guest %s started successfully!\n", manifest->name);
+}
+
+// guest主命令实现
+static void
+shell_cmd_guest(int argc, char **args)
+{
+    if (argc < 2) {
+        logger("Usage: guest <subcommand> [args...]\n");
+        logger("Subcommands:\n");
+        logger("  list                - List all available guests\n");
+        logger("  info <guest_id>     - Show detailed guest information\n");
+        logger("  validate <guest_id> - Validate guest files\n");
+        logger("  start <guest_id>    - Start a guest VM\n");
+        return;
+    }
+
+    const char *subcmd = args[1];
+
+    if (strcmp(subcmd, "list") == 0) {
+        shell_cmd_guest_list(argc - 1, args + 1);
+    } else if (strcmp(subcmd, "info") == 0) {
+        shell_cmd_guest_info(argc - 1, args + 1);
+    } else if (strcmp(subcmd, "validate") == 0) {
+        shell_cmd_guest_validate(argc - 1, args + 1);
+    } else if (strcmp(subcmd, "start") == 0) {
+        shell_cmd_guest_start(argc - 1, args + 1);
+    } else {
+        logger("Unknown guest subcommand: %s\n", subcmd);
+        logger("Type 'guest' for usage information.\n");
+    }
 }
 
 // 命令表
@@ -1466,6 +1674,7 @@ static const shell_command_t shell_commands[] = {
     {"vi", shell_cmd_vi, "Edit file with simple vi editor"},
     {"tree", shell_cmd_tree, "Display directory tree structure"},
     {"du", shell_cmd_du, "Display disk usage"},
+    {"guest", shell_cmd_guest, "Guest management commands"},
     {"help", shell_cmd_help, "Show help"},
     {"fsinfo", shell_cmd_fsinfo, "Show filesystem info"},
     {"clear", shell_cmd_clear, "Clear screen"},

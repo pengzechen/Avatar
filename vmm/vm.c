@@ -13,8 +13,11 @@
 #include "vmm/vm.h"
 #include "mem/mem.h"
 #include "task/task.h"
-#include "../guest/guests.h"
+
+#include "../guest/guest_manifest.h"
+#include "vmm/guest_loader.h"
 #include "mmio.h"
+
 
 // qemu 准备启动4个核
 // 每个核跑两个 vcpu， 共8个vcpu
@@ -84,37 +87,7 @@ mmio_map_pl011()
     }
 }
 
-void
-load_guest_image(int32_t vm_id)
-{
-    guest_image_t *img                = &guest_configs[vm_id].image;
-    uint64_t       guest_kernel_start = guest_configs[vm_id].bin_loadaddr;
-    uint64_t       guest_dtb_start    = guest_configs[vm_id].dtb_loadaddr;
-    uint64_t       guest_fs_start     = guest_configs[vm_id].fs_loadaddr;
-
-    // 加载 guest kernel：必须存在
-    size_t size = img->bin_end - img->bin_start;
-    memcpy((void *) guest_kernel_start, img->bin_start, size);
-    logger_info("VM%d: Kernel loaded (%zu bytes)\n", vm_id, size);
-
-    // 加载 dtb：可选
-    size = img->dtb_end - img->dtb_start;
-    if (size > 0) {
-        memcpy((void *) guest_dtb_start, img->dtb_start, size);
-        logger_info("VM%d: DTB loaded (%zu bytes)\n", vm_id, size);
-    } else {
-        logger_warn("VM%d: No DTB, skipping\n", vm_id);
-    }
-
-    // 加载 fs：可选
-    size = img->fs_end - img->fs_start;
-    if (size > 0) {
-        memcpy((void *) guest_fs_start, img->fs_start, size);
-        logger_info("VM%d: FS loaded (%zu bytes)\n", vm_id, size);
-    } else {
-        logger_warn("VM%d: No FS, skipping\n", vm_id);
-    }
-}
+// 旧的load_guest_image函数已被guest_load_from_manifest替代
 
 void
 test_mem_hypervisor()
@@ -170,29 +143,60 @@ guest_trap_init(void)
     isb();
 }
 
-// 初始化虚拟机
+// 旧的vm_init函数已被vm_init_with_manifest替代
+
 void
-vm_init(struct _vm_t *vm, int32_t configured_vm_id)
+run_vm(struct _vm_t *vm)
 {
-    int32_t vcpu_num = guest_configs[configured_vm_id].smp_num;
-
-    uint64_t entry_addr = guest_configs[configured_vm_id].bin_loadaddr;
-
-    // 拷贝 guest name
-    const char *guest_name = guest_configs[configured_vm_id].name;
-    if (guest_name != NULL) {
-        // 使用安全的字符串拷贝方式
-        size_t name_len = strlen(guest_name);
-        if (name_len >= VM_NAME_MAX) {
-            name_len = VM_NAME_MAX - 1;
-        }
-        memcpy(vm->vm_name, guest_name, name_len);
-        vm->vm_name[name_len] = '\0';  // 确保字符串以 null 结尾
-        logger_info("VM%d: Name set to '%s'\n", vm->vm_id, vm->vm_name);
-    } else {
-        my_snprintf(vm->vm_name, VM_NAME_MAX, "VM%d", vm->vm_id);  // 默认名称
-        logger_warn("VM%d: No name configured, using default '%s'\n", vm->vm_id, vm->vm_name);
+    if (vm == NULL) {
+        logger_error("run_vm: vm is NULL\n");
+        return;
     }
+
+    // task_add_to_readylist_tail(vm->primary_vcpu);
+    task_add_to_readylist_tail_remote(vm->primary_vcpu, vm->primary_vcpu->affinity - 1);
+}
+
+// 新的VM初始化函数，使用Guest配置清单
+void
+vm_init_with_manifest(struct _vm_t *vm, const guest_manifest_t *manifest)
+{
+    if (!vm || !manifest) {
+        logger_error("Invalid parameters for VM initialization\n");
+        return;
+    }
+
+    logger_info("Initializing VM with manifest: %s (type: %s)\n",
+                manifest->name,
+                guest_type_to_string(manifest->type));
+
+    // 保存配置清单引用
+    vm->manifest   = manifest;
+    vm->guest_type = manifest->type;
+
+    // 从文件系统加载Guest镜像
+    vm->load_result = guest_load_from_manifest(manifest);
+    if (vm->load_result.error != GUEST_LOAD_SUCCESS) {
+        logger_error("Failed to load guest manifest: %s (error: %s)\n",
+                     manifest->name,
+                     guest_load_error_to_string(vm->load_result.error));
+        return;
+    }
+
+    // 设置VM配置
+    strncpy(vm->vm_name, manifest->name, VM_NAME_MAX - 1);
+    vm->vm_name[VM_NAME_MAX - 1] = '\0';
+
+    // 继续原有的初始化逻辑
+    int32_t  vcpu_num   = manifest->smp_num;
+    uint64_t entry_addr = manifest->bin_loadaddr;
+    uint64_t dtb_addr   = manifest->dtb_loadaddr;
+
+    logger_info("VM%d: Name set to '%s', entry=0x%llx, vcpus=%d\n",
+                vm->vm_id,
+                vm->vm_name,
+                entry_addr,
+                vcpu_num);
 
     //(1) 设置hcr
     guest_trap_init();
@@ -201,28 +205,29 @@ vm_init(struct _vm_t *vm, int32_t configured_vm_id)
     // 这里在main_vmm.c中已经设置了
 
     //(3) 分配vcpu
-    // 创建两个 guest 任务
     vm->vcpu_cnt = vcpu_num;
 
     //(3.1) 首核 - 所有VM的首核都绑定到pCPU 0
     void *stack = kalloc_pages(VM_STACK_PAGES);
     if (stack == NULL) {
-        logger_error("Failed to allocate stack for primary vcpu \n");
+        logger_error("Failed to allocate stack for primary vcpu\n");
         return;
     }
-    uint64_t dtb_addr = guest_configs[configured_vm_id].dtb_loadaddr;
-    tcb_t   *task     = create_vm_task((void *) entry_addr,
+
+    tcb_t *task = create_vm_task((void *) entry_addr,
                                  (uint64_t) stack + VM_STACK_SIZE,
                                  PRIMARY_VCPU_PCPU_MASK,
                                  dtb_addr);
     if (task == NULL) {
         logger_error("Failed to create vcpu task\n");
+        kfree_pages(stack, VM_STACK_PAGES);
         return;
     }
+
     list_insert_last(&vm->vcpus, &task->vm_node);
-    task->curr_vm                      = vm;  // 设置当前虚拟机
+    task->curr_vm                      = vm;
     task->cpu_info->sys_reg->mpidr_el1 = (1ULL << 31) | (uint64_t) (0 & 0xff);
-    vm->primary_vcpu                   = task;  // 设置主 vcpu
+    vm->primary_vcpu                   = task;
 
     //(3.2) 其它核 - 所有VM的其他核都绑定到pCPU 1
     for (int32_t i = 1; i < vcpu_num; i++) {
@@ -237,32 +242,13 @@ vm_init(struct _vm_t *vm, int32_t configured_vm_id)
                                      0);
         if (task == NULL) {
             logger_error("Failed to create vcpu task %d\n", i);
+            kfree_pages(stack, VM_STACK_PAGES);
             return;
         }
         list_insert_last(&vm->vcpus, &task->vm_node);
-        task->curr_vm = vm;  // 设置当前虚拟机
-
+        task->curr_vm                      = vm;
         task->cpu_info->sys_reg->mpidr_el1 = (1ULL << 31) | (uint64_t) (i & 0xff);
-
-        // dev use
-        // task_add_to_readylist_tail(task);
     }
-
-    // test
-    list_node_t *iter  = list_first(&vm->vcpus);
-    tcb_t       *taskt = NULL;
-    while (iter) {
-        taskt = list_node_parent(iter, tcb_t, vm_node);
-        logger_info("vcpu task id: %d, mpidr_el1: 0x%x\n",
-                    taskt->task_id,
-                    taskt->cpu_info->sys_reg->mpidr_el1);
-        logger_debug("vcpu task id: %d, sp_elx: 0x%x\n", taskt->task_id, taskt->ctx.sp_elx);
-
-        iter = list_node_next(iter);
-    }
-
-    // 拷贝guest镜像
-    load_guest_image(configured_vm_id);
 
     // 映射 MMIO 区域
     mmio_map_gicd();
@@ -274,13 +260,11 @@ vm_init(struct _vm_t *vm, int32_t configured_vm_id)
     for (int32_t i = 0; i < vm->vcpu_cnt; i++) {
         vgic_core_state_t *state = alloc_gicc();
 
-        state->id   = i;
-        state->vmcr = mmio_read32((void *) GICH_VMCR);
-        // state->vmcr = 0x1;
+        state->id          = i;
+        state->vmcr        = mmio_read32((void *) GICH_VMCR);
         state->saved_elsr0 = mmio_read32((void *) GICH_ELSR0);
         state->saved_apr   = mmio_read32((void *) GICH_APR);
-        // state->saved_hcr = mmio_read32((void *)GICH_HCR);
-        state->saved_hcr = 0x1;
+        state->saved_hcr   = 0x1;
 
         vm->vgic->core_state[i] = state;
     }
@@ -289,12 +273,12 @@ vm_init(struct _vm_t *vm, int32_t configured_vm_id)
         vgicc_dump(vm->vgic->core_state[i]);
 
     // 初始化虚拟定时器
-    vm->vtimer->vm       = vm;  // 建立双向关联
+    vm->vtimer->vm       = vm;
     vm->vtimer->vcpu_cnt = vm->vcpu_cnt;
     for (int32_t i = 0; i < vm->vcpu_cnt; i++) {
         vtimer_core_state_t *vtimer_state = alloc_vtimer_core_state(i);
         if (vtimer_state) {
-            vm->vtimer->core_state[i] = vtimer_state;  // 类似 vgic 的方式
+            vm->vtimer->core_state[i] = vtimer_state;
             logger_info("Allocated vtimer core state for vCPU %d\n", i);
         } else {
             logger_error("Failed to allocate vtimer core state for vCPU %d\n", i);
@@ -302,7 +286,7 @@ vm_init(struct _vm_t *vm, int32_t configured_vm_id)
     }
 
     // 初始化虚拟串口
-    vm->vpl011->vm               = vm;  // 建立双向关联
+    vm->vpl011->vm               = vm;
     vpl011_state_t *vpl011_state = alloc_vpl011_state();
     if (vpl011_state) {
         vm->vpl011->state = vpl011_state;
@@ -311,21 +295,9 @@ vm_init(struct _vm_t *vm, int32_t configured_vm_id)
         logger_error("Failed to allocate vpl011 state for VM %d\n", vm->vm_id);
     }
 
-    // 这两个 fake 都可以去掉了！
-    // irq_install(HV_TIMER_VECTOR, fake_timer);
-    // irq_install(PL011_INT, fake_console);
+    // 安装中断处理程序
     irq_install(79, paththrough_irq79);
     irq_install(78, paththrough_irq78);
-}
 
-void
-run_vm(struct _vm_t *vm)
-{
-    if (vm == NULL) {
-        logger_error("run_vm: vm is NULL\n");
-        return;
-    }
-
-    // task_add_to_readylist_tail(vm->primary_vcpu);
-    task_add_to_readylist_tail_remote(vm->primary_vcpu, vm->primary_vcpu->affinity - 1);
+    logger_info("VM %s initialization completed successfully\n", vm->vm_name);
 }
