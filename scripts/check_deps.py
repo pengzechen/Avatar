@@ -37,7 +37,7 @@ class DependencyAnalyzer:
 
                         # 对于guest目录，只包含指定的文件
                         if 'guest' in root:
-                            if file in ['guests.S', 'test_guest.S', 'guests.h']:
+                            if file in ['test_guest.S', 'guest_manifests.c', 'guest_manifest.h']:
                                 self.files[file] = rel_path
                         # 对于app目录，排除syscall.S
                         elif 'app' in root and file == 'syscall.S':
