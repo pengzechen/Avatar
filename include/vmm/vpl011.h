@@ -16,6 +16,8 @@
 #include "avatar_types.h"
 #include "task/task.h"
 
+/* Forward declaration */
+struct _vm_t;
 typedef struct _tcb_t tcb_t;
 
 /* Virtual PL011 UART registers - same layout as physical PL011 */
@@ -53,6 +55,10 @@ typedef struct _tcb_t tcb_t;
 #define VUART_PCELLID2_VAL  0x05 /* PrimeCell ID */
 #define VUART_PCELLID3_VAL  0xB1 /* PrimeCell ID */
 
+/* Console Output Strategy Constants */
+#define CONSOLE_OUTPUT_ALL_WITH_PREFIX 0 /* Show all VMs output, non-active with [VMx] prefix */
+#define CONSOLE_OUTPUT_ACTIVE_ONLY     1 /* Show only active VM output, suppress others */
+
 /* PL011 Flag Register bits */
 #define VUART_FR_TXFE (1 << 7) /* Transmit FIFO empty */
 #define VUART_FR_RXFF (1 << 6) /* Receive FIFO full */
@@ -89,8 +95,6 @@ typedef struct _vpl011_state_t
     uint32_t rx_count;
 } vpl011_state_t;
 
-/* Forward declaration */
-struct _vm_t;
 
 /* Virtual PL011 management structure (per VM) */
 typedef struct _vpl011_t
@@ -145,5 +149,15 @@ uint32_t
 vpl011_get_current_console_vm(void);
 void
 vpl011_set_console_switching(bool enabled);
+
+/* Configuration functions */
+void
+vpl011_set_active_vm(uint32_t vm_id);
+void
+vpl011_set_output_strategy(uint32_t strategy);
+uint32_t
+vpl011_get_output_strategy(void);
+bool
+vpl011_get_console_switching_enabled(void);
 
 #endif /* __VPL011_H__ */

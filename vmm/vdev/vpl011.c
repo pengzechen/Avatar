@@ -33,6 +33,15 @@ static uint32_t current_console_vm        = 0; /* Currently active VM for consol
 static bool     console_switching_enabled = true;
 static bool     in_escape_sequence        = false;
 
+/* Console Output Strategy */
+typedef enum
+{
+    VPL011_OUTPUT_ALL_WITH_PREFIX = 0, /* Show all VMs output, non-active with [VMx] prefix */
+    VPL011_OUTPUT_ACTIVE_ONLY     = 1  /* Show only active VM output, suppress others */
+} console_output_strategy_t;
+
+static console_output_strategy_t console_output_strategy = VPL011_OUTPUT_ACTIVE_ONLY;
+
 /* String matching buffer for timestamp detection */
 #define MATCH_BUFFER_SIZE 256
 #define TARGET_STRING     "Run /init as init process"
@@ -445,7 +454,23 @@ vpl011_mmio_handler(uint64_t gpa, uint32_t reg_num, uint32_t len, uint64_t *reg_
 /* --------------------------------------------------------
  * ==================    中断处理    ==================
  * -------------------------------------------------------- */
-
+/*
+1.1 字符注入到虚拟UART时
+    物理UART接收中断 
+    -> uart_interrupt_handler() 
+        -> vpl011_handle_physical_uart_rx() 
+            -> vpl011_inject_rx_char() 
+                -> vpl011_update_interrupts()
+1.2 Guest读取UART数据寄存器时
+    -> vpl011_read() 
+        -> vpl011_update_interrupts()
+1.3 Guest写入UART数据寄存器时
+    -> vpl011_write() 
+        -> vpl011_update_interrupts()
+1.4 Guest修改中断屏蔽寄存器时
+    case VUART_IMSC:
+    case VUART_ICR:
+*/
 void
 vpl011_update_interrupts(vpl011_state_t *vuart)
 {
@@ -687,18 +712,31 @@ vpl011_output_char_with_prefix(vpl011_state_t *vuart, char c)
         return;
     }
 
-    /* For non-current VMs, add prefix at line start */
-    if (at_line_start && c != '\n' && c != '\r') {
-        uart_putstr("[VM");
-        uart_putchar('0' + vm_id);
-        uart_putstr("] ");
-        at_line_start = false;
-    }
+    /* Handle output strategy for non-current VMs */
+    switch (console_output_strategy) {
+        case VPL011_OUTPUT_ACTIVE_ONLY:
+            /* Suppress output from non-active VMs */
+            return;
 
-    uart_putchar(c);
+        case VPL011_OUTPUT_ALL_WITH_PREFIX:
+            /* For non-current VMs, add prefix at line start */
+            if (at_line_start && c != '\n' && c != '\r') {
+                uart_putstr("[VM");
+                uart_putchar('0' + vm_id);
+                uart_putstr("] ");
+                at_line_start = false;
+            }
 
-    if (c == '\n') {
-        at_line_start = true;
+            uart_putchar(c);
+
+            if (c == '\n') {
+                at_line_start = true;
+            }
+            break;
+
+        default:
+            /* Default to active only */
+            return;
     }
 }
 
@@ -783,4 +821,37 @@ vpl011_execute_hypervisor_command(const char *cmd)
         uart_putstr(cmd);
         uart_putstr("\r\nType 'help' for available commands\r\n");
     }
+}
+
+
+/* --------------------------------------------------------
+ * ==================    公共配置API    ==================
+ * -------------------------------------------------------- */
+
+void
+vpl011_set_active_vm(uint32_t vm_id)
+{
+    if (vm_id < _vpl011_num && _vpl011s[vm_id].vm) {
+        current_console_vm = vm_id;
+    }
+}
+
+void
+vpl011_set_output_strategy(uint32_t strategy)
+{
+    if (strategy <= VPL011_OUTPUT_ACTIVE_ONLY) {
+        console_output_strategy = (console_output_strategy_t) strategy;
+    }
+}
+
+uint32_t
+vpl011_get_output_strategy(void)
+{
+    return (uint32_t) console_output_strategy;
+}
+
+bool
+vpl011_get_console_switching_enabled(void)
+{
+    return console_switching_enabled;
 }

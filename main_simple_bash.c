@@ -11,7 +11,6 @@
  */
 
 
-
 #include "io.h"
 #include "fs/fat32.h"
 #include "fs/fat32_dir.h"
@@ -20,6 +19,7 @@
 #include "guest/guest_manifest.h"
 #include "vmm/guest_loader.h"
 #include "vmm/vm.h"
+#include "vmm/vpl011.h"
 
 /* ============================================================================
  * 简单的Shell实现
@@ -1435,6 +1435,8 @@ shell_cmd_help(int argc, char **args)
     logger("  du [-ahs] [path]    - Display disk usage\n");
     logger("  fsinfo              - Show filesystem information\n");
     logger("  guest <subcmd>      - Guest management commands\n");
+    logger("    guest config show - Show console configuration\n");
+    logger("    guest config set  - Set console configuration\n");
     logger("  clear               - Clear screen\n");
     logger("  help                - Show this help\n");
     logger("  exit                - Exit shell\n");
@@ -1633,6 +1635,93 @@ shell_cmd_guest_start(int argc, char **args)
     logger("Guest %s started successfully!\n", manifest->name);
 }
 
+
+// guest config命令实现
+static void
+shell_cmd_guest_config_show(int argc, char **args)
+{
+    logger("=== Guest Console Configuration ===\n");
+
+    logger("Active VM: %u\n", vpl011_get_current_console_vm());
+
+    logger("Console Switching: %s\n",
+           vpl011_get_console_switching_enabled() ? "enabled" : "disabled");
+
+    uint32_t strategy = vpl011_get_output_strategy();
+    logger("Output Strategy: %s\n",
+           strategy == CONSOLE_OUTPUT_ALL_WITH_PREFIX ? "all_with_prefix" : "active_only");
+
+    logger("====================================\n");
+}
+
+static void
+shell_cmd_guest_config_set(int argc, char **args)
+{
+    if (argc < 3) {
+        logger("Usage: guest config set <option> <value>\n");
+        logger("Options:\n");
+        logger("  switching <true/false>     - Enable/disable console switching\n");
+        logger("  strategy <all_with_prefix/active_only> - Set output strategy\n");
+        logger("  active_vm <id>             - Set active VM\n");
+        return;
+    }
+
+    const char *option = args[1];
+    const char *value  = args[2];
+
+    if (strcmp(option, "switching") == 0) {
+        if (strcmp(value, "true") == 0 || strcmp(value, "1") == 0) {
+            vpl011_set_console_switching(true);
+            logger("Console switching enabled\n");
+        } else if (strcmp(value, "false") == 0 || strcmp(value, "0") == 0) {
+            vpl011_set_console_switching(false);
+            logger("Console switching disabled\n");
+        } else {
+            logger("Invalid value. Use: true/false or 1/0\n");
+        }
+    } else if (strcmp(option, "strategy") == 0) {
+        if (strcmp(value, "all_with_prefix") == 0 || strcmp(value, "0") == 0) {
+            vpl011_set_output_strategy(CONSOLE_OUTPUT_ALL_WITH_PREFIX);
+            logger("Output strategy set to: all_with_prefix\n");
+        } else if (strcmp(value, "active_only") == 0 || strcmp(value, "1") == 0) {
+            vpl011_set_output_strategy(CONSOLE_OUTPUT_ACTIVE_ONLY);
+            logger("Output strategy set to: active_only\n");
+        } else {
+            logger("Invalid strategy. Use: all_with_prefix/active_only or 0/1\n");
+        }
+    } else if (strcmp(option, "active_vm") == 0) {
+        uint32_t vm_id = atol(value);
+        vpl011_set_active_vm(vm_id);
+        logger("Active VM set to: %u\n", vm_id);
+    } else {
+        logger("Unknown option: %s\n", option);
+        logger("Available options: switching, strategy, active_vm\n");
+    }
+}
+
+static void
+shell_cmd_guest_config(int argc, char **args)
+{
+    if (argc < 2) {
+        logger("Usage: guest config <subcommand> [args...]\n");
+        logger("Subcommands:\n");
+        logger("  show                    - Show current console configuration\n");
+        logger("  set <option> <value>    - Set configuration option\n");
+        return;
+    }
+
+    const char *subcmd = args[1];
+
+    if (strcmp(subcmd, "show") == 0) {
+        shell_cmd_guest_config_show(argc - 1, args + 1);
+    } else if (strcmp(subcmd, "set") == 0) {
+        shell_cmd_guest_config_set(argc - 1, args + 1);
+    } else {
+        logger("Unknown config subcommand: %s\n", subcmd);
+        logger("Type 'guest config' for usage information.\n");
+    }
+}
+
 // guest主命令实现
 static void
 shell_cmd_guest(int argc, char **args)
@@ -1644,6 +1733,7 @@ shell_cmd_guest(int argc, char **args)
         logger("  info <guest_id>     - Show detailed guest information\n");
         logger("  validate <guest_id> - Validate guest files\n");
         logger("  start <guest_id>    - Start a guest VM\n");
+        logger("  config <subcmd>     - Console configuration management\n");
         return;
     }
 
@@ -1657,6 +1747,8 @@ shell_cmd_guest(int argc, char **args)
         shell_cmd_guest_validate(argc - 1, args + 1);
     } else if (strcmp(subcmd, "start") == 0) {
         shell_cmd_guest_start(argc - 1, args + 1);
+    } else if (strcmp(subcmd, "config") == 0) {
+        shell_cmd_guest_config(argc - 1, args + 1);
     } else {
         logger("Unknown guest subcommand: %s\n", subcmd);
         logger("Type 'guest' for usage information.\n");
@@ -1730,6 +1822,11 @@ shell_execute_command(char *line)
 void
 avatar_simple_shell(void)
 {
+    // 设置VPL011默认配置
+    vpl011_set_active_vm(0);                                 // 默认活跃VM为0
+    vpl011_set_console_switching(true);                      // 默认启用控制台切换
+    vpl011_set_output_strategy(CONSOLE_OUTPUT_ACTIVE_ONLY);  // 默认只输出当前VM的输出
+
     logger("\n");
     logger("========================================\n");
     logger("    Avatar OS Simple Shell v1.0\n");
