@@ -128,19 +128,21 @@ git clone --recurse-submodules https://github.com/pengzechen/Avatar.git
 # 构建应用程序
 make app
 
-# 构建 TestOS Guest
+# Linux Guest 镜像已经准备好了
+# linux.bin, linux.dtb, initrd.gz 放置在 guest/linux/ 目录下
+# root 用户密码是 123456
+
+# 构建 TestOS Guest（可选）
 cd guest/testos/
 mkdir -p build
 make SMP=1 GUEST_LABEL='[TestOS] ' LOAD_ADDR=0x60200000
 cd ../../
 
-# 构建 NimbOS Guest
+# 构建 NimbOS Guest（可选）
 cd guest/nimbos/kernel/
 make build ARCH=aarch64
 cd ../../../
 
-# Linux Guest 镜像需要单独准备（可选）
-# 将 linux.bin, linux.dtb, initrd.gz 放置在 guest/linux/ 目录下
 ```
 
 #### 3. 设置文件系统
@@ -153,6 +155,9 @@ sudo ./scripts/setup_guest_files.sh
 
 # 查看帮助信息
 ./scripts/setup_guest_files.sh -h
+
+# 也可以用以下命令（封装了上述脚本）
+make img
 ```
 
 #### 4. 编译和运行
@@ -160,19 +165,15 @@ sudo ./scripts/setup_guest_files.sh
 **运行 VMM (虚拟化模式)**
 ```bash
 # 编译 Avatar VMM
-make clean && make
-
 # 运行虚拟机监控器
-make SMP=2 HV=1 run
+make clean && make SMP=1 HV=1 run
 ```
 
 **运行 Kernel (原生模式)**
 ```bash
 # 编译 Avatar Kernel
-make clean && make
-
 # 运行内核
-make SMP=2 run
+make clean && make SMP=1 run
 ```
 
 ### VMM 管理命令
@@ -194,6 +195,11 @@ fs info                 # 显示文件系统信息
 # 系统信息
 help                    # 显示帮助信息
 version                 # 显示版本信息
+```
+
+#### 注意：执行完 'guest start <id>' 要退出 bash 才能进入 guest， 即
+```bash
+exit
 ```
 
 ---
