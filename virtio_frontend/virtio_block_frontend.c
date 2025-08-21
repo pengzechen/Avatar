@@ -89,7 +89,10 @@ virtio_get_queue_desc_addr(uint32_t device_index, uint32_t queue_id)
     uint64_t queue_base = device_base + (queue_id * 0x4000);
     uint64_t desc_addr  = (queue_base + 0xFFF) & ~0xFFF;  // Ensure 0x1000 alignment
 
-    logger_debug("Device %u Queue %u desc addr: 0x%lx\n", device_index, queue_id, desc_addr);
+    logger_virtio_front_debug("Device %u Queue %u desc addr: 0x%lx\n",
+                              device_index,
+                              queue_id,
+                              desc_addr);
     return desc_addr;
 }
 
@@ -104,7 +107,10 @@ virtio_get_queue_avail_addr(uint32_t device_index, uint32_t queue_id)
     // Available ring is at desc + 0x100
     uint64_t avail_addr = desc_addr + VIRTIO_QUEUE_AVAIL_OFFSET;
 
-    logger_debug("Device %u Queue %u avail addr: 0x%lx\n", device_index, queue_id, avail_addr);
+    logger_virtio_front_debug("Device %u Queue %u avail addr: 0x%lx\n",
+                              device_index,
+                              queue_id,
+                              avail_addr);
     return avail_addr;
 }
 
@@ -119,7 +125,10 @@ virtio_get_queue_used_addr(uint32_t device_index, uint32_t queue_id)
     // Used ring is at avail + 0x1000
     uint64_t used_addr = avail_addr + VIRTIO_QUEUE_USED_OFFSET;
 
-    logger_debug("Device %u Queue %u used addr: 0x%lx\n", device_index, queue_id, used_addr);
+    logger_virtio_front_debug("Device %u Queue %u used addr: 0x%lx\n",
+                              device_index,
+                              queue_id,
+                              used_addr);
     return used_addr;
 }
 
@@ -523,7 +532,10 @@ virtio_blk_read_sector(virtio_blk_device_t *blk_dev, uint64_t sector, void *buff
     buffers[2] = (uint64_t) status;
     lengths[2] = 1;
 
-    logger_debug("Reading sector %llu, count %u, total_size %u\n", sector, count, total_size);
+    logger_virtio_front_debug("Reading sector %llu, count %u, total_size %u\n",
+                              sector,
+                              count,
+                              total_size);
 
     // 添加性能统计 - 测量纯磁盘读取性能
     uint64_t start_ticks = read_cntpct_el0();
@@ -588,7 +600,7 @@ read_complete:
         return -1;
     }
 
-    logger_debug("Block read completed successfully, len=%u\n", len);
+    logger_virtio_front_debug("Block read completed successfully, len=%u\n", len);
 
     // 计算并报告纯磁盘读取性能
     uint64_t end_ticks       = read_cntpct_el0();
@@ -651,7 +663,10 @@ virtio_blk_write_sector(virtio_blk_device_t *blk_dev,
     buffers[2] = (uint64_t) status;
     lengths[2] = 1;
 
-    logger_debug("Writing sector %llu, count %u, total_size %u\n", sector, count, total_size);
+    logger_virtio_front_debug("Writing sector %llu, count %u, total_size %u\n",
+                              sector,
+                              count,
+                              total_size);
 
     // 添加缓冲区到队列（2 个输出，1 个输入）
     int desc_id = virtio_queue_add_buf(blk_dev->dev, 0, buffers, lengths, 2, 1);
@@ -713,7 +728,7 @@ write_complete:
         return -1;
     }
 
-    logger_debug("Block write completed successfully, len=%u\n", len);
+    logger_virtio_front_debug("Block write completed successfully, len=%u\n", len);
 
     kfree(req);
     kfree(status);
@@ -733,14 +748,14 @@ scan_for_virtio_block_device(uint32_t found_device_id)
         // Check magic value first
         uint32_t magic = mmio_read32((volatile void *) (addr + VIRTIO_MMIO_MAGIC_VALUE));
         if (magic != VIRTIO_MMIO_MAGIC) {
-            logger_debug("Address 0x%lx: Invalid magic 0x%x\n", addr, magic);
+            logger_virtio_front_debug("Address 0x%lx: Invalid magic 0x%x\n", addr, magic);
             continue;
         }
 
         // Check version
         uint32_t version = mmio_read32((volatile void *) (addr + VIRTIO_MMIO_VERSION));
         if (version < 1 || version > 2) {
-            logger_debug("Address 0x%lx: Invalid version %u\n", addr, version);
+            logger_virtio_front_debug("Address 0x%lx: Invalid version %u\n", addr, version);
             continue;
         }
 
@@ -748,11 +763,11 @@ scan_for_virtio_block_device(uint32_t found_device_id)
         uint32_t device_id = mmio_read32((volatile void *) (addr + VIRTIO_MMIO_DEVICE_ID));
         uint32_t vendor_id = mmio_read32((volatile void *) (addr + VIRTIO_MMIO_VENDOR_ID));
 
-        logger_debug("VirtIO device at 0x%lx: ID=%u, Vendor=0x%x, Version=%u\n",
-                     addr,
-                     device_id,
-                     vendor_id,
-                     version);
+        logger_virtio_front_debug("VirtIO device at 0x%lx: ID=%u, Vendor=0x%x, Version=%u\n",
+                                  addr,
+                                  device_id,
+                                  vendor_id,
+                                  version);
 
         if (device_id == found_device_id) {
             logger_info("Found VirtIO %d device at address 0x%lx!\n", found_device_id, addr);

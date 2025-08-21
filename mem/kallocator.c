@@ -150,10 +150,10 @@ kalloc(uint32_t size, uint32_t alignment)
 
         mutex_unlock(&g_kallocator.mutex);
 
-        logger_debug("Large alloc: addr=0x%lx, size=%u, pages=%u\n",
-                     (uint64_t) page_addr,
-                     size,
-                     pages_needed);
+        logger_alloc_debug("Large alloc: addr=0x%lx, size=%u, pages=%u\n",
+                           (uint64_t) page_addr,
+                           size,
+                           pages_needed);
 
         return page_addr;
     } else {
@@ -211,10 +211,10 @@ kfree(void *ptr)
         kfree_pages(page_addr, page_count);
         kallocator_remove_page(page_addr);
 
-        logger_debug("Large free: addr=0x%lx, pages=%u, used_bytes=%u\n",
-                     (uint64_t) ptr,
-                     page_count,
-                     used_bytes);
+        logger_alloc_debug("Large free: addr=0x%lx, pages=%u, used_bytes=%u\n",
+                           (uint64_t) ptr,
+                           page_count,
+                           used_bytes);
     } else {
         // 小块分配：通过搜索找到分配头部
         uint64_t page_start = (uint64_t) page->page_addr;
@@ -311,10 +311,10 @@ kfree(void *ptr)
         page->free_bytes = PAGE_SIZE - page->used_bytes;
         g_kallocator.used_size -= block_total_size;
 
-        logger_debug("Updated page stats: used_bytes=%u, free_bytes=%u, global_used=%lu\n",
-                     page->used_bytes,
-                     page->free_bytes,
-                     g_kallocator.used_size);
+        logger_alloc_debug("Updated page stats: used_bytes=%u, free_bytes=%u, global_used=%lu\n",
+                           page->used_bytes,
+                           page->free_bytes,
+                           g_kallocator.used_size);
 
         // 尝试合并空闲块 - 但要小心处理
         kallocator_coalesce_free_blocks();
@@ -344,10 +344,10 @@ kfree(void *ptr)
 
         g_kallocator.small_alloc_count--;
 
-        logger_debug("Small free: addr=0x%lx, size=%u, total=%u\n",
-                     ptr_addr,
-                     found_header->size,
-                     block_total_size);
+        logger_alloc_debug("Small free: addr=0x%lx, size=%u, total=%u\n",
+                           ptr_addr,
+                           found_header->size,
+                           block_total_size);
     }
 
     mutex_unlock(&g_kallocator.mutex);
@@ -423,19 +423,20 @@ kalloc_small_block(uint32_t size, uint32_t alignment)
             if (page) {
                 page->used_bytes += total_size;
                 page->free_bytes = PAGE_SIZE - page->used_bytes;
-                logger_debug("Alloc from free list: page used_bytes=%u, free_bytes=%u\n",
-                             page->used_bytes,
-                             page->free_bytes);
+                logger_alloc_debug("Alloc from free list: page used_bytes=%u, free_bytes=%u\n",
+                                   page->used_bytes,
+                                   page->free_bytes);
             }
 
             g_kallocator.small_alloc_count++;
             g_kallocator.used_size += total_size;
 
-            logger_debug("Small alloc from free list: addr=0x%lx, size=%u, align=%u, total=%u\n",
-                         user_addr,
-                         size,
-                         alignment,
-                         total_size);
+            logger_alloc_debug(
+                "Small alloc from free list: addr=0x%lx, size=%u, align=%u, total=%u\n",
+                user_addr,
+                size,
+                alignment,
+                total_size);
 
             return (void *) user_addr;
         }
@@ -742,10 +743,10 @@ kallocator_is_page_empty(page_info_t *page)
     bool     is_empty  = (total_free_size >= page_size - 16);  // 允许16字节的对齐误差
 
     if (is_empty) {
-        logger_debug("Page 0x%lx is empty: free_size=%u, page_size=%u\n",
-                     page_start,
-                     total_free_size,
-                     page_size);
+        logger_alloc_debug("Page 0x%lx is empty: free_size=%u, page_size=%u\n",
+                           page_start,
+                           total_free_size,
+                           page_size);
     }
 
     return is_empty;
@@ -794,10 +795,10 @@ kallocator_coalesce_free_blocks(void)
                 current->size += next->size;
                 current->next = next->next;
                 merged        = true;
-                logger_debug("Coalesced blocks: 0x%lx + 0x%lx (total size %u)\n",
-                             (uint64_t) current,
-                             next_start,
-                             current->size);
+                logger_alloc_debug("Coalesced blocks: 0x%lx + 0x%lx (total size %u)\n",
+                                   (uint64_t) current,
+                                   next_start,
+                                   current->size);
                 break;  // 重新开始扫描
             }
             current = current->next;

@@ -70,13 +70,15 @@ extern int32_t
 try_logger_debug(const char *fmt, ...);
 
 // 模块调试系统
-#define DEBUG_MODULE_NONE   0
-#define DEBUG_MODULE_GIC    1
-#define DEBUG_MODULE_TASK   2
-#define DEBUG_MODULE_VGIC   3
-#define DEBUG_MODULE_VTIMER 4
-#define DEBUG_MODULE_VPL011 5
-#define DEBUG_MODULE_ALL    0xFF
+#define DEBUG_MODULE_NONE         0
+#define DEBUG_MODULE_GIC          1
+#define DEBUG_MODULE_TASK         2
+#define DEBUG_MODULE_VGIC         3
+#define DEBUG_MODULE_VTIMER       4
+#define DEBUG_MODULE_VPL011       5
+#define DEBUG_MODULE_ALLOC        6
+#define DEBUG_MODULE_VIRTIO_FRONT 7
+#define DEBUG_MODULE_ALL          0xFF
 
 extern void
 set_debug_module(uint32_t module_mask);
@@ -93,6 +95,9 @@ try_logger_module_debug(uint32_t module_id, const char *fmt, ...);
 #define logger_vgic_debug(fmt, ...)   logger_module_debug(DEBUG_MODULE_VGIC, fmt, ##__VA_ARGS__)
 #define logger_vtimer_debug(fmt, ...) logger_module_debug(DEBUG_MODULE_VTIMER, fmt, ##__VA_ARGS__)
 #define logger_vpl011_debug(fmt, ...) logger_module_debug(DEBUG_MODULE_VPL011, fmt, ##__VA_ARGS__)
+#define logger_alloc_debug(fmt, ...)  logger_module_debug(DEBUG_MODULE_ALLOC, fmt, ##__VA_ARGS__)
+#define logger_virtio_front_debug(fmt, ...)                                                        \
+    logger_module_debug(DEBUG_MODULE_VIRTIO_FRONT, fmt, ##__VA_ARGS__)
 
 extern void
 run_printf_tests();

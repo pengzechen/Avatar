@@ -91,7 +91,7 @@
                 "__GNUC__",
                 "__STDC_VERSION__=201112L"
             ],
-            "compilerPath": "/usr/bin/aarch64-linux-musl-gcc",
+            "compilerPath": "/home/ajax/green-software/compiler/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc",
             "cStandard": "c11",
             "cppStandard": "c++11",
             "intelliSenseMode": "linux-gcc-arm64",

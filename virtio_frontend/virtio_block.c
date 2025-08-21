@@ -94,7 +94,7 @@ avatar_virtio_block_read(uint64_t sector, void *buffer, uint32_t sector_count)
         return -1;
     }
 
-    logger_debug("Reading %u sectors from sector %llu\n", sector_count, sector);
+    logger_virtio_front_debug("Reading %u sectors from sector %llu\n", sector_count, sector);
 
     // 移除复杂的连续读取检测，直接优化单扇区读取
     // 对于单扇区读取，直接返回，不使用批量处理（减少开销）
@@ -129,7 +129,7 @@ avatar_virtio_block_read(uint64_t sector, void *buffer, uint32_t sector_count)
         current_buffer += batch_size * 512;
     }
 
-    logger_debug("Successfully read %u sectors\n", sector_count);
+    logger_virtio_front_debug("Successfully read %u sectors\n", sector_count);
     return 0;
 }
 
@@ -150,7 +150,7 @@ avatar_virtio_block_write(uint64_t sector, const void *buffer, uint32_t sector_c
         return -1;
     }
 
-    logger_debug("Writing %u sectors to sector %llu\n", sector_count, sector);
+    logger_virtio_front_debug("Writing %u sectors to sector %llu\n", sector_count, sector);
 
     // 优化：使用批量写入而不是逐个扇区写入
     const uint32_t MAX_BATCH_SECTORS = 128;  // 64KB per batch - 合理的批量大小
@@ -177,7 +177,7 @@ avatar_virtio_block_write(uint64_t sector, const void *buffer, uint32_t sector_c
         current_buffer += batch_size * 512;
     }
 
-    logger_debug("Successfully wrote %u sectors\n", sector_count);
+    logger_virtio_front_debug("Successfully wrote %u sectors\n", sector_count);
     return 0;
 }
 
