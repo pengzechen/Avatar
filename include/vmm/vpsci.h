@@ -20,4 +20,7 @@
 int32_t
 vpsci_cpu_on(trap_frame_t *ctx_el2);
 
+int32_t
+vpsci_cpu_reset(trap_frame_t *ctx_el2);
+
 #endif  // HYPER_VPSCI_H

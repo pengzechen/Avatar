@@ -226,6 +226,7 @@ handle_smc_call(union esr_el2 *esr, trap_frame_t *ctx)
 {
     uint64_t function_id = ctx->r[0];
     logger_info("SMC call: function_id=0x%lx\n", function_id);
+    bool need_advance = true;
 
     // Handle PSCI calls - SMC uses 32-bit function IDs
     switch (function_id) {
@@ -238,6 +239,12 @@ handle_smc_call(union esr_el2 *esr, trap_frame_t *ctx)
         case PSCI_0_2_FN_CPU_ON:
             logger_info("PSCI CPU_ON call\n");
             ctx->r[0] = vpsci_cpu_on(ctx);
+            break;
+
+        case PSCI_0_2_FN_SYSTEM_RESET:
+            logger_info("PSCI CPU_RESET call\n");
+            ctx->r[0]    = vpsci_cpu_reset(ctx);
+            need_advance = false;
             break;
 
         case PSCI_0_2_FN64_CPU_ON:
@@ -261,7 +268,8 @@ handle_smc_call(union esr_el2 *esr, trap_frame_t *ctx)
             break;
     }
 
-    advance_pc(esr, ctx);
+    if (need_advance)
+        advance_pc(esr, ctx);
 }
 
 /**

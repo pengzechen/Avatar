@@ -140,3 +140,27 @@ vpsci_cpu_on(trap_frame_t *ctx_el2)
 
     return PSCI_RET_SUCCESS;
 }
+
+int32_t
+vpsci_cpu_reset(trap_frame_t *ctx_el2)
+{
+    tcb_t        *curr = curr_task_el2();
+    struct _vm_t *vm   = curr->curr_vm;
+
+    if (!vm) {
+        logger_error("           current task has no VM context\n");
+        return PSCI_RET_INTERNAL_FAILURE;
+    }
+
+    tcb_t *target_task = vm->primary_vcpu;
+
+    // 重置系统寄存器
+    target_task->cpu_info->sys_reg->spsr_el1  = 0x30C50830;
+    target_task->cpu_info->sys_reg->sctlr_el1 = 0;
+
+    // TODO: 重置设备
+
+    // 重置首核的返回地址
+    ctx_el2->elr  = vm->manifest->bin_loadaddr;
+    ctx_el2->r[0] = vm->manifest->dtb_loadaddr;
+}

@@ -45,7 +45,7 @@ gicc_init()
     logger_gic_debug("GIC: Set PMR to 0x%x\n", 0xff - 7);
 
     // EOImodeNS, bit [9] Controls the behavior of Non-secure accesses to GICC_EOIR GICC_AEOIR, and GICC_DIR
-    write32(GICC_CTRL_ENABLE_GROUP0, (void *) GICC_CTLR);
+    write32(GICC_CTRL_ENABLE_GROUP0 | (1 << 9), (void *) GICC_CTLR);
     logger_gic_debug("GIC: GICC enabled for Group0\n");
 }
 
@@ -268,7 +268,7 @@ gic_set_pending(int32_t int_id, int32_t pend, int32_t target_cpu)
     }
 
     if (gic_is_sgi(int_id)) {
-        int32_t reg = int_id / 4;  // 每个 GICD_SPENDSGIR 管 4 个 SGI
+        int32_t reg = int_id / 4;        // 每个 GICD_SPENDSGIR 管 4 个 SGI
         int32_t off = (int_id % 4) * 8;  // 每个 SGI 占 8 bit（一个字节，每个 bit 表示一个 CPU）
 
         if (target_cpu < 0 || target_cpu >= 8) {
@@ -322,10 +322,10 @@ gic_set_ipriority(uint32_t vector, uint32_t pri)
 int32_t
 gic_get_ipriority(int32_t vector)
 {
-    int32_t  n = vector >> 2;  // 每个 IPRIORITYR 寄存器存储 4 个中断（每个占 8 bit）
-    int32_t  m = vector & 0x3;  // 当前中断在该寄存器中的偏移（0~3）
+    int32_t  n        = vector >> 2;   // 每个 IPRIORITYR 寄存器存储 4 个中断（每个占 8 bit）
+    int32_t  m        = vector & 0x3;  // 当前中断在该寄存器中的偏移（0~3）
     uint32_t reg_val  = read32((void *) GICD_IPRIORITYR(n));  // 读取整个 32-bit 寄存器
-    int32_t  priority = (reg_val >> (m * 8)) & 0xFF;  // 提取目标中断的 8-bit 优先级
+    int32_t  priority = (reg_val >> (m * 8)) & 0xFF;          // 提取目标中断的 8-bit 优先级
     return priority;
 }
 
