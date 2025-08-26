@@ -18,7 +18,7 @@ SECTIONS
     }
 
     .data : {
-        INCLUDE "boot/users.lds"
+        INCLUDE "app/info.lds"
         *(.data)
     }
 

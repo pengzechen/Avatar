@@ -56,7 +56,7 @@ TASKSET_CMD := $(if $(CPU_AFFINITY),taskset -c $(CPU_AFFINITY),)
 
 
 # 目录配置
-SRC_DIRS := . boot exception io mem timer task process spinlock \
+SRC_DIRS := . boot exception io mem timer task process \
             vmm lib fs app syscall virtio_frontend guest
 INCLUDE_DIRS := include guest
 INCLUDE := $(addprefix -I, $(INCLUDE_DIRS))
@@ -117,7 +117,7 @@ READELF := $(TOOL_PREFIX)readelf
 # 自动发现源文件（排除guest和clib目录）
 # 分别处理根目录和其他目录，确保完全排除clib
 ROOT_C_SOURCES := $(shell find . -maxdepth 1 -name "*.c" 2>/dev/null)
-OTHER_C_SOURCES := $(shell find boot exception io mem timer task process spinlock vmm lib fs syscall virtio_frontend -name "*.c" 2>/dev/null)
+OTHER_C_SOURCES := $(shell find boot exception io mem timer task process vmm lib fs syscall virtio_frontend -name "*.c" 2>/dev/null)
 # 手动添加app目录中的非main.c文件（避免包含app子目录中的main.c）
 APP_C_SOURCES := $(shell find app -maxdepth 1 -name "*.c" 2>/dev/null)
 # 手动添加guest目录中需要的C文件
@@ -125,7 +125,7 @@ GUEST_C_SOURCES := guest/guest_manifests.c
 C_SOURCES := $(ROOT_C_SOURCES) $(OTHER_C_SOURCES) $(APP_C_SOURCES) $(GUEST_C_SOURCES)
 
 ROOT_S_SOURCES := $(shell find . -maxdepth 1 -name "*.S" 2>/dev/null)
-OTHER_S_SOURCES := $(shell find boot exception io mem timer task process spinlock vmm lib fs syscall virtio_frontend -name "*.S" 2>/dev/null)
+OTHER_S_SOURCES := $(shell find boot exception io mem timer task process vmm lib fs syscall virtio_frontend -name "*.S" 2>/dev/null)
 # 手动添加app目录中需要的汇编文件（排除syscall.S）
 APP_S_SOURCES := $(shell find app -maxdepth 1 -name "*.S" 2>/dev/null | grep -v syscall.S)
 S_SOURCES := $(ROOT_S_SOURCES) $(OTHER_S_SOURCES) $(APP_S_SOURCES)
@@ -248,7 +248,7 @@ $(BUILD_DIR)/%.s.o: task/%.S | $(BUILD_DIR)
 	$(Q)echo "  AS      $<"
 	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
-$(BUILD_DIR)/%.s.o: spinlock/%.S | $(BUILD_DIR)
+$(BUILD_DIR)/%.s.o: lib/%.S | $(BUILD_DIR)
 	$(Q)echo "  AS      $<"
 	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
