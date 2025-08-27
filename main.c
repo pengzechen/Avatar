@@ -71,8 +71,7 @@ main_entry()
         alloctor_init();
         mutex_test_init();  // 初始化 mutex 测试模块
         // kmem_test();
-        schedule_init();
-        task_manager_init();
+
         // ramfs_test();
 
         process_t *pro1 = alloc_process("add");
@@ -132,6 +131,9 @@ kernel_main(void)
     logger_info("core 0 starting is done.\n\n");
     spinlock_init(&lock);
     // io_init();
+
+    schedule_init();
+    task_manager_init();
 
     start_secondary_cpus();
 

@@ -293,9 +293,9 @@ pro_fork(void)
     uint64_t stack_top   = (uint64_t) child_pro->el1_stack + PAGE_SIZE * 2;
 
     // 分配任务结构
-    tcb_t *child_task    = alloc_tcb();
-    child_task->counter  = SYS_TASK_TICK;
-    child_task->affinity = curr->affinity;
+    tcb_t *child_task           = alloc_tcb();
+    child_task->remaining_ticks = SYS_TASK_TICK;
+    child_task->affinity        = curr->affinity;
     list_insert_last(&get_task_manager()->task_list, &child_task->all_node);
 
     memcpy((void *) (stack_top - sizeof(trap_frame_t)), &curr->cpu_info->ctx, sizeof(trap_frame_t));

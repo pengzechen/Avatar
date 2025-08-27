@@ -137,6 +137,7 @@ handle_irq_exception(uint64_t *stack_pointer)
 
     // Acknowledge the interrupt (End of Interrupt)
     gic_write_eoir(iar);
+    gic_write_dir(iar);
 
     // Validate IRQ vector
     if (irq_id >= MAX_IRQ_VECTORS) {
@@ -216,7 +217,7 @@ handle_svc_call(trap_frame_t *context, uint32_t esr)
 
     // Call the system call handler
     // The context pointer contains all arguments in r[0]-r[7]
-    uint64_t (*syscall_func)(void *) = (uint64_t(*)(void *)) syscall_table[svc_number];
+    uint64_t (*syscall_func)(void *) = (uint64_t (*)(void *)) syscall_table[svc_number];
     uint64_t result                  = syscall_func((void *) context);
 
     // Store return value in X0

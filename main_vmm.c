@@ -11,7 +11,6 @@
  */
 
 
-
 #include "io.h"
 #include "gic.h"
 #include "timer.h"
@@ -105,9 +104,6 @@ main_entry_el2()
     guest_ept_init();
 
     if (get_current_cpu_id() == 0) {
-        schedule_init();
-        task_manager_init();
-
         logger_info("cacheline_bytes: %d\n", get_cacheline_size());
         alloctor_init();
 
@@ -189,6 +185,9 @@ vmm_main()
     spinlock_init(&lock_el2);
 
     io_init();
+
+    schedule_init();
+    task_manager_init();
 
     logger_info("core 0 starting is done.\n\n");
 

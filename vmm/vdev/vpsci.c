@@ -120,7 +120,7 @@ vpsci_cpu_on(trap_frame_t *ctx_el2)
     frame->r[0] = context;  // 将 context_id 传递给目标 CPU 的 X0 寄存器
 
     // 重置时间片
-    target_task->counter = SYS_TASK_TICK;
+    target_task->remaining_ticks = SYS_TASK_TICK;
 
     // 将 vCPU 添加到目标物理 CPU 的就绪队列
     uint32_t target_core = target_task->affinity - 1;

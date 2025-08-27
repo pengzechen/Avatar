@@ -100,22 +100,8 @@ free_tcb(tcb_t *task)
     // 每个核删除自己的节点
     uint32_t core_id = get_current_cpu_id();
 
-    // 从就绪队列移除
-    spin_lock(&task_manager.ready_lock[core_id]);
-    list_delete(&task_manager.ready_list[core_id], &task->run_node);
-    spin_unlock(&task_manager.ready_lock[core_id]);
-
-    // 从睡眠队列移除（需要检查所有CPU的睡眠队列）
-    for (uint32_t i = 0; i < SMP_NUM; i++) {
-        spin_lock(&task_manager.sleep_lock[i]);
-        list_delete(&task_manager.sleep_list[i], &task->run_node);
-        spin_unlock(&task_manager.sleep_lock[i]);
-    }
-
     // 从任务管理的任务列表中移除任务
-    spin_lock(&task_manager.lock);
     list_delete(&task_manager.task_list, &task->all_node);
-    spin_unlock(&task_manager.lock);
 
     memset(task, 0, sizeof(tcb_t));
 }
@@ -128,8 +114,8 @@ create_task(entry_t task_func, uint64_t stack_top, uint32_t affinity)
         logger_warn("create task failed, no free tcb!\n");
         return NULL;  // 如果没有空闲的 TCB，返回 NULL
     }
-    task->counter  = SYS_TASK_TICK;
-    task->affinity = affinity;
+    task->remaining_ticks = SYS_TASK_TICK;
+    task->affinity        = affinity;
     list_insert_last(&task_manager.task_list, &task->all_node);
 
     task->cpu_info->ctx.elr  = (uint64_t) task_func;  // elr_el1
@@ -154,8 +140,8 @@ create_vm_task(entry_t task_func, uint64_t stack_top, uint32_t affinity, uint64_
         logger_warn("create task failed, no free tcb!\n");
         return NULL;  // 如果没有空闲的 TCB，返回 NULL
     }
-    task->counter  = SYS_TASK_TICK;
-    task->affinity = affinity;
+    task->remaining_ticks = SYS_TASK_TICK;
+    task->affinity        = affinity;
     list_insert_last(&task_manager.task_list, &task->all_node);
 
     task->cpu_info->ctx.elr           = (uint64_t) task_func;  // elr_el2
@@ -174,8 +160,8 @@ create_vm_task(entry_t task_func, uint64_t stack_top, uint32_t affinity, uint64_
 void
 reset_task(tcb_t *task, entry_t task_func, uint64_t stack_top, uint32_t affinity)
 {
-    task->counter  = SYS_TASK_TICK;
-    task->affinity = affinity;
+    task->remaining_ticks = SYS_TASK_TICK;
+    task->affinity        = affinity;
 
     task->cpu_info->ctx.elr  = (uint64_t) task_func;  // elr_el1
     task->cpu_info->ctx.spsr = SPSR_EL0_EL0t;         // spsr_el1
@@ -230,23 +216,46 @@ print_current_task_list()
     logger("\n");
 }
 
-// 获取下一将要运行的任务 (第一个 ready 节点)
+// =============== sched =====================
+
+void
+scheduler_init(cpu_scheduler_t *sched)
+{
+    memset(sched, 0, sizeof(cpu_scheduler_t));
+
+    uint64_t core_id = get_current_cpu_id();
+    sched->cpu_id    = core_id;
+
+    spinlock_init(&sched->sched_lock);
+    sched->current_task = NULL;
+
+    list_init(&sched->ready_list);
+    list_init(&sched->sleep_list);
+}
+
+cpu_scheduler_t *
+get_scheduler()
+{
+    uint64_t core_id = get_current_cpu_id();
+    return &task_manager.sched[core_id];
+}
+
+
+// 获取(该cpu)下一将要运行的任务 (第一个 ready 节点)
 // 从就绪队列中移除该任务
 static tcb_t *
 task_next_run(void)
 {
-    uint64_t core_id    = get_current_cpu_id();
-    tcb_t   *task_torun = NULL;
+    cpu_scheduler_t *schde      = get_scheduler();
+    tcb_t           *task_torun = NULL;
 
-    spin_lock(&task_manager.ready_lock[core_id]);
-    list_node_t *iter = list_first(&task_manager.ready_list[core_id]);
+    list_node_t *iter = list_first(&schde->ready_list);
     while (iter) {
         tcb_t *task = list_node_parent(iter, tcb_t, run_node);
         if (task->state == TASK_STATE_READY) {
             task_torun = task;
-            // 在锁内直接移除，避免竞态条件
-            if (task != &task_manager.idle_task[core_id]) {
-                list_node_t *node = list_delete(&task_manager.ready_list[core_id], &task->run_node);
+            if (task != &schde->idle_task) {
+                list_node_t *node = list_delete(&schde->ready_list, &task->run_node);
                 avatar_assert(node != NULL);
             }
             break;
@@ -255,12 +264,11 @@ task_next_run(void)
         }
         iter = list_node_next(iter);
     }
-    spin_unlock(&task_manager.ready_lock[core_id]);
 
     if (task_torun != NULL) {
         return task_torun;
     } else {
-        return &task_manager.idle_task[core_id];
+        return &schde->idle_task;
     }
 }
 
@@ -270,9 +278,9 @@ schedule()
 {
     tcb_t *curr = curr_task();
 
-    uint32_t core_id   = get_current_cpu_id();
-    tcb_t   *next_task = task_next_run();
-    tcb_t   *prev_task = curr;
+    cpu_scheduler_t *schde     = get_scheduler();
+    tcb_t           *next_task = task_next_run();
+    tcb_t           *prev_task = curr;
     if (next_task == curr) {
         char buffer[512];
         int  offset = 0;
@@ -284,7 +292,7 @@ schedule()
                               curr,
                               curr->task_id);
 
-        list_node_t *iter = list_first(&task_manager.ready_list[core_id]);
+        list_node_t *iter = list_first(&schde->ready_list);
         while (iter && offset < sizeof(buffer) - 50)  // 保留足够空间
         {
             tcb_t *task = list_node_parent(iter, tcb_t, run_node);
@@ -322,7 +330,7 @@ schedule()
     }
 }
 
-// 查看延时队列和counter
+// 查看(该cpu)延时队列和counter
 void
 timer_tick_schedule(uint64_t *sp)
 {
@@ -331,30 +339,31 @@ timer_tick_schedule(uint64_t *sp)
     // 睡眠处理 - 只处理当前CPU的睡眠队列
     // 注意：在中断上下文中，当前CPU的中断已被禁用，且每个CPU只访问自己的睡眠队列
     // 因此不需要加锁保护
-    uint32_t core_id    = get_current_cpu_id();
-    bool     has_wakeup = false;  // 标记是否有任务被唤醒
+    cpu_scheduler_t *schde      = get_scheduler();
+    bool             has_wakeup = false;  // 标记是否有任务被唤醒
+    logger_task_debug("tick arrived!\n");
 
-    list_node_t *curr = list_first(&task_manager.sleep_list[core_id]);
+    list_node_t *curr = list_first(&schde->sleep_list);
     while (curr) {
         list_node_t *next = list_node_next(curr);
 
         tcb_t *task = list_node_parent(curr, tcb_t, run_node);
         if (--task->sleep_ticks <= 0) {
-            // logger_task_debug("task %d sleep time arrive\n", task->task_id);
+            logger_task_debug("task %d sleep time arrive\n", task->task_id);
             task_set_wakeup(task);  // 从当前CPU的睡眠队列移除
             // 任务在当前CPU睡眠，唤醒后直接加入当前CPU的就绪队列头部（高优先级）
             task_add_to_readylist_head(task);
-            task->counter = SYS_TASK_TICK;
-            has_wakeup    = true;  // 有任务被唤醒
+            task->remaining_ticks = SYS_TASK_TICK;
+            has_wakeup            = true;  // 有任务被唤醒
         }
         curr = next;
     }
 
     // 时间片处理
     bool need_schedule = false;
-    if (--curr_task->counter <= 0) {
+    if (--curr_task->remaining_ticks <= 0) {
         if (curr_task != get_idle()) {
-            curr_task->counter = SYS_TASK_TICK;
+            curr_task->remaining_ticks = SYS_TASK_TICK;
             task_add_to_readylist_tail(curr_task);  // 时间片耗尽，放到队尾
         }
         need_schedule = true;  // 时间片耗尽需要调度
@@ -423,7 +432,7 @@ save_cpu_ctx(trap_frame_t *sp)
 // ================= 任务管理 =================
 
 void
-idle_task_el1()
+idle_task()
 {
     while (1) {
         wfi();
@@ -436,8 +445,8 @@ idle_task_el1()
 tcb_t *
 get_idle()
 {
-    uint64_t core_id = get_current_cpu_id();
-    return &task_manager.idle_task[core_id];
+    cpu_scheduler_t *schde = get_scheduler();
+    return &schde->idle_task;
 }
 
 uint64_t
@@ -450,44 +459,49 @@ get_idle_sp_top(void)
 void
 el1_idle_init()
 {
-    uint64_t core_id         = get_current_cpu_id();
-    tcb_t   *idel            = &task_manager.idle_task[core_id];
-    idel->task_id            = -(core_id + 1);
-    idel->counter            = -1;
-    idel->cpu_info           = &task_manager.idle_cpu[core_id];
-    idel->cpu_info->ctx.elr  = (uint64_t) idle_task_el1;  // elr_el1
-    idel->cpu_info->ctx.spsr = SPSR_EL1_EL1h;             // spsr_el1
-    idel->cpu_info->ctx.usp  = 0;
-    idel->pgdir              = get_kpgdir();  // pgdir
+    cpu_scheduler_t *schde   = get_scheduler();
+    uint64_t         core_id = get_current_cpu_id();
+
+    tcb_t *idle              = &schde->idle_task;
+    idle->task_id            = -(core_id + 1);
+    idle->remaining_ticks    = -1;
+    idle->cpu_info           = &schde->idle_cpu;
+    idle->cpu_info->ctx.elr  = (uint64_t) idle_task;  // elr_el1
+    idle->cpu_info->ctx.spsr = SPSR_EL1_EL1h;         // spsr_el1
+    idle->cpu_info->ctx.usp  = 0;
+    idle->pgdir              = get_kpgdir();  // pgdir
 
     uint64_t stack_top = get_idle_sp_top();
-    memcpy((void *) (stack_top - sizeof(trap_frame_t)), &idel->cpu_info->ctx, sizeof(trap_frame_t));
+    memcpy((void *) (stack_top - sizeof(trap_frame_t)), &idle->cpu_info->ctx, sizeof(trap_frame_t));
     extern void el1_task_entry();
-    idel->ctx.x30       = (uint64_t) el1_task_entry;
-    idel->ctx.sp_elx    = stack_top - sizeof(trap_frame_t);
-    idel->ctx.tpidr_elx = (uint64_t) idel;
+    idle->ctx.x30       = (uint64_t) el1_task_entry;
+    idle->ctx.sp_elx    = stack_top - sizeof(trap_frame_t);
+    idle->ctx.tpidr_elx = (uint64_t) idle;
 }
 
 void
 el2_idle_init()
 {
-    uint64_t core_id         = get_current_cpu_id();
-    tcb_t   *idel            = &task_manager.idle_task[core_id];
-    idel->task_id            = -(core_id + 1);
-    idel->counter            = -1;
-    idel->cpu_info           = &task_manager.idle_cpu[core_id];
-    idel->cpu_info->ctx.elr  = (uint64_t) idle_task_el1;  // elr_el2
-    idel->cpu_info->ctx.spsr = SPSR_EL2_EL2h;             // spsr_el2
-    idel->cpu_info->ctx.usp  = 0;
-    idel->pgdir              = get_kpgdir();  // pgdir
+    cpu_scheduler_t *schde   = get_scheduler();
+    uint64_t         core_id = get_current_cpu_id();
+
+
+    tcb_t *idle              = &schde->idle_task;
+    idle->task_id            = -(core_id + 1);
+    idle->remaining_ticks    = -1;
+    idle->cpu_info           = &schde->idle_cpu;
+    idle->cpu_info->ctx.elr  = (uint64_t) idle_task;  // elr_el2
+    idle->cpu_info->ctx.spsr = SPSR_EL2_EL2h;         // spsr_el2
+    idle->cpu_info->ctx.usp  = 0;
+    idle->pgdir              = get_kpgdir();  // pgdir
 
     uint64_t stack_top = get_idle_sp_top();
-    memcpy((void *) (stack_top - sizeof(trap_frame_t)), &idel->cpu_info->ctx, sizeof(trap_frame_t));
+    memcpy((void *) (stack_top - sizeof(trap_frame_t)), &idle->cpu_info->ctx, sizeof(trap_frame_t));
     logger_warn("core: %d, idle task stack top: 0x%llx\n", core_id, stack_top);
     extern void el2_tesk_entry();
-    idel->ctx.x30       = (uint64_t) el2_tesk_entry;
-    idel->ctx.sp_elx    = stack_top - sizeof(trap_frame_t);
-    idel->ctx.tpidr_elx = (uint64_t) idel;
+    idle->ctx.x30       = (uint64_t) el2_tesk_entry;
+    idle->ctx.sp_elx    = stack_top - sizeof(trap_frame_t);
+    idle->ctx.tpidr_elx = (uint64_t) idle;
 }
 
 // 初始化任务管理器，初始化空闲任务
@@ -496,14 +510,9 @@ task_manager_init(void)
 {
     // 各队列初始化
     for (int32_t i = 0; i < SMP_NUM; i++) {
-        list_init(&task_manager.ready_list[i]);
-        list_init(&task_manager.sleep_list[i]);  // 初始化per-CPU睡眠队列
-        spinlock_init(&task_manager.ready_lock[i]);
-        spinlock_init(&task_manager.sleep_lock[i]);  // 初始化per-CPU睡眠队列锁
+        scheduler_init(&task_manager.sched[i]);
     }
     list_init(&task_manager.task_list);
-
-    spinlock_init(&task_manager.lock);
 }
 
 task_manager_t *
@@ -512,6 +521,8 @@ get_task_manager()
     return &task_manager;
 }
 
+
+// =========================================
 // ============ 就绪队列相关操作 ============
 
 void
@@ -519,11 +530,10 @@ task_add_to_readylist_tail_remote(tcb_t *task, uint32_t core_id)
 {
     if (core_id >= SMP_NUM)
         logger_error("error: wrong core id\n");
-    if (task != &task_manager.idle_task[core_id]) {
-        spin_lock(&task_manager.ready_lock[core_id]);
-        list_insert_last(&task_manager.ready_list[core_id], &task->run_node);
+    cpu_scheduler_t *sched = &task_manager.sched[core_id];
+    if (task != &sched->idle_task) {
+        list_insert_last(&sched->ready_list, &task->run_node);
         task->state = TASK_STATE_READY;
-        spin_unlock(&task_manager.ready_lock[core_id]);
     }
 }
 
@@ -532,26 +542,34 @@ task_add_to_readylist_head_remote(tcb_t *task, uint32_t core_id)
 {
     if (core_id >= SMP_NUM)
         logger_error("error: wrong core id\n");
-    if (task != &task_manager.idle_task[core_id]) {
-        spin_lock(&task_manager.ready_lock[core_id]);
-        list_insert_first(&task_manager.ready_list[core_id], &task->run_node);
+    cpu_scheduler_t *sched = &task_manager.sched[core_id];
+    if (task != &sched->idle_task) {
+        list_insert_first(&sched->ready_list, &task->run_node);
         task->state = TASK_STATE_READY;
-        spin_unlock(&task_manager.ready_lock[core_id]);
     }
 }
+
+void
+task_remove_from_readylist_remote(tcb_t *task, uint32_t core_id)
+{
+    if (core_id >= SMP_NUM) {
+        logger_error("error: wrong core id %d\n", core_id);
+        return;
+    }
+    cpu_scheduler_t *sched = &task_manager.sched[core_id];
+    if (task != &sched->idle_task) {
+        list_node_t *node = list_delete(&sched->ready_list, &task->run_node);
+        avatar_assert(node != NULL);
+    }
+}
+
 
 // 将任务插入就绪队列 (后插),设置为就绪状态
 void
 task_add_to_readylist_tail(tcb_t *task)
 {
     uint64_t core_id = get_current_cpu_id();
-    if (task != &task_manager.idle_task[core_id]) {
-        spin_lock(&task_manager.ready_lock[core_id]);
-        logger_task_debug("task %d add to ready list\n", task->task_id);
-        list_insert_last(&task_manager.ready_list[core_id], &task->run_node);
-        task->state = TASK_STATE_READY;
-        spin_unlock(&task_manager.ready_lock[core_id]);
-    }
+    task_add_to_readylist_tail_remote(task, core_id);
 }
 
 // 将任务插入就绪队列 (前插),设置为就绪状态
@@ -559,15 +577,9 @@ void
 task_add_to_readylist_head(tcb_t *task)
 {
     uint64_t core_id = get_current_cpu_id();
-    if (task != &task_manager.idle_task[core_id]) {
-        spin_lock(&task_manager.ready_lock[core_id]);
-        list_insert_first(&task_manager.ready_list[core_id], &task->run_node);
-        task->state = TASK_STATE_READY;
-        spin_unlock(&task_manager.ready_lock[core_id]);
-    }
+    task_add_to_readylist_head_remote(task, core_id);
 }
 
-// 将任务从就绪队列移除
 // 当前任务不要调用这个函数，因为当前任务不在 readylist 里
 void
 task_remove_from_readylist(tcb_t *task)
@@ -576,24 +588,9 @@ task_remove_from_readylist(tcb_t *task)
     task_remove_from_readylist_remote(task, core_id);
 }
 
-// 从指定核心的就绪队列移除任务
-void
-task_remove_from_readylist_remote(tcb_t *task, uint32_t core_id)
-{
-    if (core_id >= SMP_NUM) {
-        logger_error("error: wrong core id %d\n", core_id);
-        return;
-    }
-
-    if (task != &task_manager.idle_task[core_id]) {
-        spin_lock(&task_manager.ready_lock[core_id]);
-        list_node_t *node = list_delete(&task_manager.ready_list[core_id], &task->run_node);
-        avatar_assert(node != NULL);
-        spin_unlock(&task_manager.ready_lock[core_id]);
-    }
-}
 
 // ============ 延时队列相关操作 ============
+// =========================================
 
 // 将任务加入延时队列 - 加入到当前CPU的睡眠队列
 void
@@ -606,17 +603,16 @@ task_set_sleep(tcb_t *task, uint64_t ticks)
     task->sleep_ticks = ticks;
     task->state       = TASK_STATE_WAITING;
 
-    uint32_t core_id = get_current_cpu_id();
-    spin_lock(&task_manager.sleep_lock[core_id]);
-    list_insert_last(&task_manager.sleep_list[core_id], &task->run_node);
-    spin_unlock(&task_manager.sleep_lock[core_id]);
+    cpu_scheduler_t *schde = get_scheduler();
+    list_insert_last(&schde->sleep_list, &task->run_node);
 }
 
 // 将任务从延时队列移除 - 从指定CPU的睡眠队列移除
 void
 task_set_wakeup_percpu(tcb_t *task, uint32_t core_id)
 {
-    list_node_t *node = list_delete(&task_manager.sleep_list[core_id], &task->run_node);
+    cpu_scheduler_t *schde = get_scheduler();
+    list_node_t     *node  = list_delete(&schde->sleep_list, &task->run_node);
     avatar_assert(node != NULL);
     task->state = TASK_STATE_READY;
 }
@@ -626,9 +622,7 @@ void
 task_set_wakeup(tcb_t *task)
 {
     uint32_t core_id = get_current_cpu_id();
-    spin_lock(&task_manager.sleep_lock[core_id]);
     task_set_wakeup_percpu(task, core_id);
-    spin_unlock(&task_manager.sleep_lock[core_id]);
 }
 
 void
@@ -642,7 +636,7 @@ sys_sleep_tick(uint64_t ms)
     // 从就绪队列移除，加入睡眠队列
     tcb_t *curr = curr_task_el1();
     task_set_sleep(curr, ms / 10);
-    // logger_task_debug("sleep %d ms, tick: %d\n", ms, curr->sleep_ticks);
+    logger_task_debug("sleep %d ms, tick: %d\n", ms, curr->sleep_ticks);
 
     // 进行一次调度
     schedule();
@@ -653,15 +647,11 @@ task_yield(void)
 {
     tcb_t *curr_task = curr_task();
 
-    // idle 任务不需要让出 CPU（它本来就是在等别人用 CPU）
-    if (curr_task == &task_manager.idle_task[get_current_cpu_id()])
-        return;
-
     // 放回 ready 队尾
     task_add_to_readylist_tail(curr_task);
 
     // 重置时间片（可选，取决于你是否要立即重新分配时间）
-    curr_task->counter = SYS_TASK_TICK;
+    curr_task->remaining_ticks = SYS_TASK_TICK;
 
     // 切换任务
     schedule();

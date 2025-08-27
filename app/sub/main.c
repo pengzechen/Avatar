@@ -32,8 +32,8 @@ _start()
             // putc('K');
             // putc('L');
             putc('s');
-            putc('\r');
-            putc('\n');
+            // putc('\r');
+            // putc('\n');
             sleep(100);
             // while(1);
             // ;

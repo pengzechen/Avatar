@@ -27,6 +27,9 @@
 // 任务入口函数类型定义
 typedef void (*entry_t)(void);
 
+#define wfi() __asm__ volatile("wfi" : : : "memory")
+
+
 // 获取当前任务的宏定义
 #define curr_task_el1() ((tcb_t *) (void *) read_tpidr_el0())
 #define curr_task_el2() ((tcb_t *) (void *) read_tpidr_el2())
@@ -59,7 +62,6 @@ typedef struct _cpu_t
     cpu_ctx_t      ctx;
     cpu_ctx_t     *pctx;  // 指向trap的栈，可以修改restore的数据
     cpu_sysregs_t *sys_reg;
-    spinlock_t     lock;
 } cpu_t;
 
 extern cpu_t vcpu[];
@@ -86,7 +88,7 @@ typedef struct _tcb_t
     uint32_t     affinity;
 
     int32_t task_id;  // 任务ID
-    int32_t counter;
+    int32_t remaining_ticks;
 
     int32_t  sleep_ticks;
     uint32_t reserved;
@@ -105,21 +107,40 @@ typedef struct _tcb_t
 } tcb_t;
 #pragma pack()
 
-#define wfi() __asm__ volatile("wfi" : : : "memory")
+typedef struct cpu_scheduler
+{
+    uint32_t cpu_id;  // CPU ID
+
+    spinlock_t sched_lock;
+
+    tcb_t *current_task;  // 当前运行的任务
+
+    tcb_t idle_task;  // idle任务
+    cpu_t idle_cpu;   // idle任务cpu
+
+    // 就绪队列（简单的循环链表）
+    list_t ready_list;
+
+    // 睡眠队列（按唤醒时间排序的链表）
+    list_t sleep_list;
+
+    // 统计信息
+    uint64_t total_switches;  // 总切换次数
+    uint64_t total_ticks;     // 总tick数
+    uint64_t idle_ticks;      // idle时间
+} cpu_scheduler_t;
+
 
 typedef struct _task_manager_t
 {
     list_t task_list;  // 所有已创建任务的队列
 
-    list_t     ready_list[SMP_NUM];  // 就绪队列
-    spinlock_t ready_lock[SMP_NUM];
+    // list_t ready_list[SMP_NUM];  // 就绪队列
+    // list_t sleep_list[SMP_NUM];  // 延时队列 - 改为per-CPU
+    // tcb_t  idle_task[SMP_NUM];   // 空闲任务
+    // cpu_t  idle_cpu[SMP_NUM];    // cpu 上下文
 
-    list_t     sleep_list[SMP_NUM];  // 延时队列 - 改为per-CPU
-    spinlock_t sleep_lock[SMP_NUM];  // 每个CPU的睡眠队列锁
-
-    tcb_t      idle_task[SMP_NUM];  // 空闲任务
-    cpu_t      idle_cpu[SMP_NUM];
-    spinlock_t lock;  // 全局锁，用于task_list等全局资源
+    cpu_scheduler_t sched[SMP_NUM];
 
 } task_manager_t;
 
@@ -157,11 +178,8 @@ can_run_on_core(uint32_t affinity, uint32_t coreid)
 tcb_t *
 alloc_tcb();
 
-// @param: task_func: el0 任务真正的入口, sp: el0 任务的内核栈
 tcb_t *
-create_task(entry_t task_func,  // el0 任务真正的入口
-            uint64_t,           // el0 任务的内核栈
-            uint32_t);
+create_task(entry_t task_func, uint64_t, uint32_t);
 
 tcb_t *
 create_vm_task(entry_t task_func, uint64_t stack_top, uint32_t affinity, uint64_t dtb_addr);
@@ -186,11 +204,20 @@ void
 task_add_to_readylist_tail_remote(tcb_t *task, uint32_t core_id);
 void
 task_add_to_readylist_head_remote(tcb_t *task, uint32_t core_id);
-
 void
 task_remove_from_readylist(tcb_t *task);
 void
 task_remove_from_readylist_remote(tcb_t *task, uint32_t core_id);
+
+tcb_t *
+get_idle();
+void
+el1_idle_init();  // 初始化空闲任务
+void
+el2_idle_init();  // 初始化空闲任务
+uint64_t
+get_idle_sp_top();
+
 void
 schedule();
 
@@ -201,15 +228,6 @@ void
 task_set_wakeup(tcb_t *task);
 void
 task_set_wakeup_percpu(tcb_t *task, uint32_t core_id);
-
-tcb_t *
-get_idle();
-void
-el1_idle_init();  // 初始化空闲任务
-void
-el2_idle_init();  // 初始化空闲任务
-uint64_t
-get_idle_sp_top();
 
 // 系统调用
 void
