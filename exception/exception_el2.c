@@ -409,7 +409,11 @@ handle_irq_exception_el2(uint64_t *stack_pointer)
      * guest from receiving it. Only write DIR for interrupts that should be handled
      * entirely in the hypervisor.
      */
-    gic_write_dir(iar);
+    if (irq_id != 78 && irq_id != 79) {
+        gic_write_dir(iar);
+    } else {
+        logger_warn("should not write dir\n");
+    }
 
     // Save CPU context for interrupt handling
     save_cpu_ctx(context);

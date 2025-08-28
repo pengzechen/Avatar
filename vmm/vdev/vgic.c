@@ -11,9 +11,6 @@
  */
 
 
-
-/*     目前只准备实现 vgic    */
-
 #include "vmm/vgic.h"
 #include "avatar_types.h"
 #include "vmm/vm.h"
@@ -378,9 +375,9 @@ vgic_inject_ppi(tcb_t *task, int32_t irq_id)
 
     // 如果当前正在运行此 vCPU，尝试立即注入到 GICH_LR
     if (task == curr_task_el2()) {
-        logger_vgic_debug("Try inject pending PPI for running vCPU %d (task %d)\n",
-                          get_vcpuid(task),
-                          task->task_id);
+        // logger_vgic_debug("Try inject pending PPI for running vCPU %d (task %d)\n",
+        //                   get_vcpuid(task),
+        //                   task->task_id);
         vgic_try_inject_pending(task);
     }
 }

@@ -103,7 +103,7 @@ vgicd_read(stage2_fault_info_t *info, trap_frame_t *el2_ctx, void *paddr)
 
     // VGICD寄存器通常是32位的，检查操作大小
     if (len != 4U) {
-        logger_warn("VGICD read size is not 4, but %u\n", len);
+        logger_warn("guest read VGICD size is not 4, but %u\n", len);
     }
 
     // 获取Guest寄存器的地址
@@ -114,7 +114,10 @@ vgicd_read(stage2_fault_info_t *info, trap_frame_t *el2_ctx, void *paddr)
     src = (uint32_t *) paddr;  // 源地址（虚拟GIC寄存器）
     dat = *src;                // 读取32位数据
 
-    logger_vgic_debug("VGICD read: 0x%llx -> R%u (data: 0x%x)\n", (uint64_t) paddr, reg_num, dat);
+    // logger_vgic_debug("guest read VGICD. addr: 0x%llx -> ret: R%u (data: 0x%x)\n",
+    //                   (uint64_t) paddr,
+    //                   reg_num,
+    //                   dat);
 
     // 将读取的数据写入Guest寄存器
     // 跳过X30寄存器（链接寄存器），避免破坏返回地址
@@ -144,7 +147,7 @@ handle_gicd_ctlr_write(vgic_t *vgic, stage2_fault_info_t *info, trap_frame_t *el
 {
     reg_access_params_t params = parse_reg_access(info, el2_ctx);
     vgic->gicd_ctlr            = params.value;
-    logger_vgic_debug("GICD_CTLR write: gpa=0x%llx, value=0x%llx, len=%d\n",
+    logger_vgic_debug("GICD_CTLR write: gpa=0x%llx, value=0x%llx (len=%d)\n",
                       gpa,
                       params.value,
                       params.len);
@@ -551,6 +554,11 @@ handle_unimplemented_register(const char *reg_name, bool is_write)
     logger_warn("%s %s not implemented\n", reg_name, is_write ? "write" : "read");
 }
 
+// ============================================================================================================================
+// ======================= GICD_TYPER GICD_IIDR ============================
+// ============================================================================================================================
+
+
 // 处理 GICD_TYPER 寄存器读操作
 static void
 handle_gicd_typer_read(vgic_t *vgic, stage2_fault_info_t *info, trap_frame_t *el2_ctx)
@@ -576,43 +584,9 @@ handle_gicd_iidr_read(stage2_fault_info_t *info, trap_frame_t *el2_ctx)
     logger_vgic_debug("GICD_IIDR read: iidr=0x%x\n", iidr);
 }
 
-// 处理 GICD_ICFGR SPI 配置寄存器写操作
-static void
-handle_gicd_icfgr_spi_write(vgic_t              *vgic,
-                            stage2_fault_info_t *info,
-                            trap_frame_t        *el2_ctx,
-                            paddr_t              gpa)
-{
-    reg_access_params_t params     = parse_reg_access(info, el2_ctx);
-    uint32_t            reg_offset = (gpa - GICD_ICFGR(0)) / 4;
-
-    vgic->gicd_icfgr[reg_offset] = params.value;
-    uint32_t masked_value        = params.value & 0xAAAAAAAA;
-    write32(masked_value, (void *) gpa);
-
-    logger_vgic_debug("GICD_ICFGR(spi) write: reg_offset=%d, len=%d, reg_value=0x%x, masked=0x%x\n",
-                      reg_offset,
-                      params.len,
-                      params.value,
-                      masked_value);
-}
-
-// 处理 GICD_ITARGETSR SPI 目标寄存器写操作
-static void
-handle_gicd_itargetsr_spi_write(vgic_t              *vgic,
-                                stage2_fault_info_t *info,
-                                trap_frame_t        *el2_ctx,
-                                paddr_t              gpa)
-{
-    reg_access_params_t params                       = parse_reg_access(info, el2_ctx);
-    uint32_t            word_offset                  = (gpa - GICD_ITARGETSR(0)) / 4;
-    ((uint32_t *) vgic->gicd_itargetsr)[word_offset] = params.value;
-
-    logger_vgic_debug("GICD_ITARGETSR(spi) write: word_offset=%d, len=%d, reg_value=0x%x\n",
-                      word_offset,
-                      params.len,
-                      params.value);
-}
+// ============================================================================================================================
+// ======================= GICD_ICFGR ============================
+// ============================================================================================================================
 
 // 处理 GICD_ICFGR SGI+PPI 配置寄存器读操作
 static void
@@ -647,10 +621,41 @@ handle_gicd_icfgr_spi_read(vgic_t              *vgic,
     logger_vgic_debug("GICD_ICFGR(spi) read: reg_offset=%d, cfg_word=0x%x\n", reg_offset, cfg_word);
 }
 
+// 处理 GICD_ICFGR SPI 配置寄存器写操作
+static void
+handle_gicd_icfgr_spi_write(vgic_t              *vgic,
+                            stage2_fault_info_t *info,
+                            trap_frame_t        *el2_ctx,
+                            paddr_t              gpa)
+{
+    reg_access_params_t params     = parse_reg_access(info, el2_ctx);
+    uint32_t            reg_offset = (gpa - GICD_ICFGR(0)) / 4;
+
+    vgic->gicd_icfgr[reg_offset] = params.value;
+    uint32_t masked_value        = params.value & 0xAAAAAAAA;
+    write32(masked_value, (void *) gpa);
+
+    logger_vgic_debug("GICD_ICFGR(spi) write: reg_offset=%d, len=%d, reg_value=0x%x, masked=0x%x\n",
+                      reg_offset,
+                      params.len,
+                      params.value,
+                      masked_value);
+}
+
+// ============================================================================================================================
+// ======================= ITARGETSR ============================
+// ============================================================================================================================
+
 // 处理 GICD_ITARGETSR SGI+PPI 目标寄存器读操作
+// Interrupt Processor Targets Registers
+// ITARGETSR0 ~ ITARGETSR7（一共 8 个）
 static void
 handle_gicd_itargetsr_sgi_ppi_read(tcb_t *curr, stage2_fault_info_t *info, trap_frame_t *el2_ctx)
 {
+    /*
+    0x800-0x81C GICD_ITARGETSRn ROf IMPLEMENTATION DEFINED    
+    0x820-0xBF8                 RWf 0x00000000
+    */
     uint32_t vcpu_id     = get_vcpuid(curr);
     uint8_t  value       = 1 << vcpu_id;
     uint32_t target_word = (value << 24) | (value << 16) | (value << 8) | value;
@@ -662,6 +667,7 @@ handle_gicd_itargetsr_sgi_ppi_read(tcb_t *curr, stage2_fault_info_t *info, trap_
 }
 
 // 处理 GICD_ITARGETSR SPI 目标寄存器读操作
+// TODO: 这里只能给geest写32位的数据过去
 static void
 handle_gicd_itargetsr_spi_read(vgic_t              *vgic,
                                stage2_fault_info_t *info,
@@ -676,6 +682,41 @@ handle_gicd_itargetsr_spi_read(vgic_t              *vgic,
                       word_offset,
                       target_word);
 }
+
+// 处理 GICD_ITARGETSR SPI 目标寄存器写操作
+static void
+handle_gicd_itargetsr_spi_write(vgic_t              *vgic,
+                                stage2_fault_info_t *info,
+                                trap_frame_t        *el2_ctx,
+                                paddr_t              gpa)
+{
+    reg_access_params_t params = parse_reg_access(info, el2_ctx);
+
+    // 计算偏移字节
+    uint32_t byte_offset = (uint32_t) (gpa - GICD_ITARGETSR(0));
+
+    // 遍历每个 byte 更新
+    for (uint32_t i = 0; i < params.len; i++) {
+        uint32_t idx = byte_offset + i;
+        if (idx >= SPI_ID_MAX) {
+            logger_warn("GICD_ITARGETSR write: index out of range %u\n", idx);
+            break;
+        }
+
+        // 取 params.value 的对应 byte
+        uint8_t val_byte          = (params.value >> (8 * i)) & 0xFF;
+        uint8_t old               = vgic->gicd_itargetsr[idx];
+        vgic->gicd_itargetsr[idx] = val_byte;
+
+        logger_vgic_debug("GICD_ITARGETSR(spi) write: byte_index=%u, val=0x%x, old=0x%x\n",
+                          idx,
+                          val_byte,
+                          old);
+    }
+}
+
+
+// ============================================================================================================================
 
 // 处理 GICD 写操作
 static void
