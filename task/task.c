@@ -39,19 +39,6 @@ static task_manager_t task_manager;
 
 static tcb_t *
 task_next_run(void);
-
-void
-task_remove_from_readylist(tcb_t *task);
-
-void
-task_add_to_readylist_tail_remote(tcb_t *task, uint32_t core_id);
-void
-task_add_to_readylist_head_remote(tcb_t *task, uint32_t core_id);
-void
-task_add_to_readylist_tail(tcb_t *task);
-void
-task_add_to_readylist_head(tcb_t *task);
-
 void
 task_set_wakeup(tcb_t *task);
 void
@@ -90,7 +77,6 @@ alloc_tcb()
     return NULL;  // 如果没有空闲的 TCB，返回 NULL
 }
 
-// TODO：还没考虑好什么什么状态的 task 可以被 free
 void
 free_tcb(tcb_t *task)
 {
@@ -219,12 +205,11 @@ print_current_task_list()
 // =============== sched =====================
 
 void
-scheduler_init(cpu_scheduler_t *sched)
+scheduler_init(cpu_scheduler_t *sched, int32_t i)
 {
     memset(sched, 0, sizeof(cpu_scheduler_t));
 
-    uint64_t core_id = get_current_cpu_id();
-    sched->cpu_id    = core_id;
+    sched->cpu_id = i;
 
     spinlock_init(&sched->sched_lock);
     sched->current_task = NULL;
@@ -341,7 +326,7 @@ timer_tick_schedule(uint64_t *sp)
     // 因此不需要加锁保护
     cpu_scheduler_t *schde      = get_scheduler();
     bool             has_wakeup = false;  // 标记是否有任务被唤醒
-    logger_task_debug("tick arrived!\n");
+    // logger_task_debug("tick arrived!\n");
 
     list_node_t *curr = list_first(&schde->sleep_list);
     while (curr) {
@@ -424,7 +409,6 @@ void
 save_cpu_ctx(trap_frame_t *sp)
 {
     tcb_t *curr = curr_task();
-
     memcpy(&curr->cpu_info->ctx, sp, sizeof(trap_frame_t));
     curr->cpu_info->pctx = sp;
 }
@@ -510,7 +494,7 @@ task_manager_init(void)
 {
     // 各队列初始化
     for (int32_t i = 0; i < SMP_NUM; i++) {
-        scheduler_init(&task_manager.sched[i]);
+        scheduler_init(&task_manager.sched[i], i);
     }
     list_init(&task_manager.task_list);
 }
@@ -549,20 +533,6 @@ task_add_to_readylist_head_remote(tcb_t *task, uint32_t core_id)
     }
 }
 
-void
-task_remove_from_readylist_remote(tcb_t *task, uint32_t core_id)
-{
-    if (core_id >= SMP_NUM) {
-        logger_error("error: wrong core id %d\n", core_id);
-        return;
-    }
-    cpu_scheduler_t *sched = &task_manager.sched[core_id];
-    if (task != &sched->idle_task) {
-        list_node_t *node = list_delete(&sched->ready_list, &task->run_node);
-        avatar_assert(node != NULL);
-    }
-}
-
 
 // 将任务插入就绪队列 (后插),设置为就绪状态
 void
@@ -578,14 +548,6 @@ task_add_to_readylist_head(tcb_t *task)
 {
     uint64_t core_id = get_current_cpu_id();
     task_add_to_readylist_head_remote(task, core_id);
-}
-
-// 当前任务不要调用这个函数，因为当前任务不在 readylist 里
-void
-task_remove_from_readylist(tcb_t *task)
-{
-    uint64_t core_id = get_current_cpu_id();
-    task_remove_from_readylist_remote(task, core_id);
 }
 
 
@@ -609,12 +571,11 @@ task_set_sleep(tcb_t *task, uint64_t ticks)
 
 // 将任务从延时队列移除 - 从指定CPU的睡眠队列移除
 void
-task_set_wakeup_percpu(tcb_t *task, uint32_t core_id)
+task_set_wakeup_remote(tcb_t *task, uint32_t core_id)
 {
-    cpu_scheduler_t *schde = get_scheduler();
+    cpu_scheduler_t *schde = &task_manager.sched[core_id];
     list_node_t     *node  = list_delete(&schde->sleep_list, &task->run_node);
     avatar_assert(node != NULL);
-    task->state = TASK_STATE_READY;
 }
 
 // 将任务从延时队列移除 - 兼容性函数，从当前CPU的睡眠队列移除
@@ -622,7 +583,7 @@ void
 task_set_wakeup(tcb_t *task)
 {
     uint32_t core_id = get_current_cpu_id();
-    task_set_wakeup_percpu(task, core_id);
+    task_set_wakeup_remote(task, core_id);
 }
 
 void

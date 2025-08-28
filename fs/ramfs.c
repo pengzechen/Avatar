@@ -11,7 +11,6 @@
  */
 
 
-
 #include "mem/mem.h"
 #include "lib/avatar_string.h"
 #include "avatar_types.h"
@@ -71,9 +70,9 @@ ramfs_open(const char *name)
             // 初始化新文件
             memset(fs_files[i], 0, sizeof(File));                        // 清空文件内容
             memcpy((char *) fs_files[i]->name, name, strlen(name) + 1);  // 复制文件名
-            fs_files[i]->size           = 0;  // 文件大小初始化为 0
-            fs_files[i]->current_offset = 0;  // 初始化文件偏移量
-            fs_files[i]->nlink          = 1;  // 链接计数初始化为 1
+            fs_files[i]->size           = 0;                             // 文件大小初始化为 0
+            fs_files[i]->current_offset = 0;                             // 初始化文件偏移量
+            fs_files[i]->nlink          = 1;                             // 链接计数初始化为 1
 
             // 创建第一个数据块
             fs_files[i]->content.content_offset = 0;     // 假设填充一个魔数，用于标识
@@ -176,11 +175,11 @@ ramfs_write(int32_t fd, const void *buf, size_t count)
 
     // 从 content 链表中逐块写入数据
     while (content != NULL && bytes_written < bytes_to_write) {
-        ssize_t content_offset = offset > 0 ? offset : 0;  // 跳过了一些块，这是当前块要写的位置
-        size_t block_remaining = BLOCK_DATA_SIZE - content_offset;
-        size_t to_copy         = (bytes_to_write - bytes_written) < block_remaining
-                                     ? (bytes_to_write - bytes_written)
-                                     : block_remaining;
+        ssize_t content_offset  = offset > 0 ? offset : 0;  // 跳过了一些块，这是当前块要写的位置
+        size_t  block_remaining = BLOCK_DATA_SIZE - content_offset;
+        size_t  to_copy         = (bytes_to_write - bytes_written) < block_remaining
+                                      ? (bytes_to_write - bytes_written)
+                                      : block_remaining;
 
         uint64_t addr = (uint64_t) fs_head + (uint64_t) content->addr_offset + sizeof(Content);
         // 复制数据到当前块（跳过 Content 结构）
@@ -329,7 +328,7 @@ ramfs_link(const char *oldname, const char *newname)
             memcpy(new_file->name, newname, sizeof(new_file->name) - 1);
             new_file->name[sizeof(new_file->name) - 1] = '\0';  // 确保字符串结尾
             new_file->size                             = fs_files[old_fd]->size;
-            new_file->content = fs_files[old_fd]->content;  // 新文件指向相同的数据区域
+            new_file->content        = fs_files[old_fd]->content;  // 新文件指向相同的数据区域
             new_file->current_offset = 0;
             new_file->nlink          = 1;  // 新硬链接的链接计数
             fs_files[old_fd]->nlink++;     // 增加原文件的链接计数
@@ -479,7 +478,7 @@ int32_t closedir(DIR *dir) {
 }
 */
 
-uint8_t test_buf[70 * 1024];
+uint8_t test_buf[1024];
 
 // dump binary memory dumpfile2.bin 0x50000000 0x54000000
 // restore dumpfile binary 0x50000000

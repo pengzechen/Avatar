@@ -133,15 +133,8 @@ typedef struct cpu_scheduler
 
 typedef struct _task_manager_t
 {
-    list_t task_list;  // 所有已创建任务的队列
-
-    // list_t ready_list[SMP_NUM];  // 就绪队列
-    // list_t sleep_list[SMP_NUM];  // 延时队列 - 改为per-CPU
-    // tcb_t  idle_task[SMP_NUM];   // 空闲任务
-    // cpu_t  idle_cpu[SMP_NUM];    // cpu 上下文
-
+    list_t          task_list;  // 所有已创建任务的队列
     cpu_scheduler_t sched[SMP_NUM];
-
 } task_manager_t;
 
 void
@@ -204,10 +197,6 @@ void
 task_add_to_readylist_tail_remote(tcb_t *task, uint32_t core_id);
 void
 task_add_to_readylist_head_remote(tcb_t *task, uint32_t core_id);
-void
-task_remove_from_readylist(tcb_t *task);
-void
-task_remove_from_readylist_remote(tcb_t *task, uint32_t core_id);
 
 tcb_t *
 get_idle();
@@ -227,7 +216,7 @@ task_set_sleep(tcb_t *task, uint64_t ticks);
 void
 task_set_wakeup(tcb_t *task);
 void
-task_set_wakeup_percpu(tcb_t *task, uint32_t core_id);
+task_set_wakeup_remote(tcb_t *task, uint32_t core_id);
 
 // 系统调用
 void
