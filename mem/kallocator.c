@@ -92,7 +92,7 @@ kallocator_init(void)
     logger_info("Kernel allocator initialized:\n");
     logger_info("  Page info capacity: %u pages\n", g_kallocator.page_capacity);
     logger_info("  Large alloc threshold: %u bytes\n", LARGE_ALLOC_THRESHOLD);
-    logger_info("  Based on kalloc_pages/kfree_pages\n\n");
+    logger_info("  Based on kalloc_pages/kfree_pages\n");
 
     g_kallocator_initialized = true;
     return 0;
@@ -495,11 +495,11 @@ kalloc_small_block(uint32_t size, uint32_t alignment)
     g_kallocator.total_size += PAGE_SIZE;
     g_kallocator.used_size += block_total_size;
 
-    logger_info("Small alloc from new page: addr=0x%lx, size=%u, align=%u, block_total=%u\n",
-                user_addr,
-                size,
-                alignment,
-                block_total_size);
+    logger_alloc_debug("Small alloc from new page: addr=0x%lx, size=%u, align=%u, block_total=%u\n",
+                       user_addr,
+                       size,
+                       alignment,
+                       block_total_size);
 
     return (void *) user_addr;
 }

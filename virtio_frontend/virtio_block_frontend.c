@@ -49,10 +49,10 @@ virtio_get_device_base_addr(uint32_t device_index)
             return 0;
         }
 
-        logger_info("VirtIO device %u memory allocated: 0x%lx (%u KB)\n",
-                    device_index,
-                    (uint64_t) g_device_memory[device_index],
-                    VIRTIO_DEVICE_MEMORY_SIZE / 1024);
+        logger_virtio_front_debug("VirtIO device %u memory allocated: 0x%lx (%u KB)\n",
+                                  device_index,
+                                  (uint64_t) g_device_memory[device_index],
+                                  VIRTIO_DEVICE_MEMORY_SIZE / 1024);
     }
 
     return (uint64_t) g_device_memory[device_index];
@@ -157,7 +157,7 @@ virtio_mmio_init(virtio_device_t *dev, uint64_t base_addr, uint32_t device_index
 
     // 获取版本
     dev->version = virtio_read32(dev, VIRTIO_MMIO_VERSION);
-    logger_info("VirtIO version: %d\n", dev->version);
+    logger_virtio_front_debug("VirtIO version: %d\n", dev->version);
 
     if (dev->version < 1 || dev->version > 2) {
         logger_error("Unsupported VirtIO version: %d\n", dev->version);
@@ -168,7 +168,9 @@ virtio_mmio_init(virtio_device_t *dev, uint64_t base_addr, uint32_t device_index
     dev->device_id = virtio_read32(dev, VIRTIO_MMIO_DEVICE_ID);
     dev->vendor_id = virtio_read32(dev, VIRTIO_MMIO_VENDOR_ID);
 
-    logger_info("VirtIO device ID: %d, vendor ID: 0x%x\n", dev->device_id, dev->vendor_id);
+    logger_virtio_front_debug("VirtIO device ID: %d, vendor ID: 0x%x\n",
+                              dev->device_id,
+                              dev->vendor_id);
 
     // 重置设备
     virtio_write32(dev, VIRTIO_MMIO_STATUS, 0);
@@ -231,10 +233,10 @@ virtio_queue_setup(virtio_device_t *dev, uint32_t queue_id, uint32_t queue_size)
     queue->avail = (virtq_avail_t *) queue->avail_addr;
     queue->used  = (virtq_used_t *) queue->used_addr;
 
-    logger_info("Queue %d memory layout:\n", queue_id);
-    logger_info("  Desc:  0x%lx\n", queue->desc_addr);
-    logger_info("  Avail: 0x%lx\n", queue->avail_addr);
-    logger_info("  Used:  0x%lx\n", queue->used_addr);
+    logger_virtio_front_debug("Queue %d memory layout:\n", queue_id);
+    logger_virtio_front_debug("  Desc:  0x%lx\n", queue->desc_addr);
+    logger_virtio_front_debug("  Avail: 0x%lx\n", queue->avail_addr);
+    logger_virtio_front_debug("  Used:  0x%lx\n", queue->used_addr);
 
     // 初始化描述符表
     for (uint32_t i = 0; i < queue_size; i++) {
@@ -271,12 +273,13 @@ virtio_queue_setup(virtio_device_t *dev, uint32_t queue_id, uint32_t queue_size)
 
     dev->num_queues = queue_id + 1;
 
-    logger_warn("Queue %d setup complete: size=%d, desc=0x%lx, avail=0x%lx, used=0x%lx\n",
-                queue_id,
-                queue_size,
-                queue->desc_addr,
-                queue->avail_addr,
-                queue->used_addr);
+    logger_virtio_front_debug(
+        "Queue %d setup complete: size=%d, desc=0x%lx, avail=0x%lx, used=0x%lx\n",
+        queue_id,
+        queue_size,
+        queue->desc_addr,
+        queue->avail_addr,
+        queue->used_addr);
     return 0;
 }
 
@@ -428,9 +431,9 @@ virtio_blk_get_config(virtio_blk_device_t *blk_dev)
     blk_dev->block_size = blk_dev->config.blk_size ? blk_dev->config.blk_size : 512;
     blk_dev->capacity   = blk_dev->config.capacity;
 
-    logger_info("Block device config: capacity=%llu, block_size=%u\n",
-                blk_dev->capacity,
-                blk_dev->block_size);
+    logger_virtio_front_debug("Block device config: capacity=%llu, block_size=%u\n",
+                              blk_dev->capacity,
+                              blk_dev->block_size);
 }
 
 // 初始化 VirtIO Block 设备
@@ -461,7 +464,7 @@ virtio_blk_init(virtio_blk_device_t *blk_dev, uint64_t base_addr, uint32_t devic
     virtio_write32(dev, VIRTIO_MMIO_DEVICE_FEATURES_SEL, 0);
     dev->device_features = virtio_read32(dev, VIRTIO_MMIO_DEVICE_FEATURES);
 
-    logger_info("Block device features: 0x%lx\n", dev->device_features);
+    logger_virtio_front_debug("Block device features: 0x%lx\n", dev->device_features);
 
     // 设置驱动特性（基本操作不需要特殊特性）
     dev->driver_features = 0;
@@ -740,7 +743,7 @@ write_complete:
 uint64_t
 scan_for_virtio_block_device(uint32_t found_device_id)
 {
-    logger_info("Scanning for VirtIO devices that match ID %d...\n", found_device_id);
+    logger_virtio_front_debug("Scanning for VirtIO devices that match ID %d...\n", found_device_id);
 
     for (uint32_t i = 0; i < VIRTIO_SCAN_COUNT; i++) {
         uint64_t addr = VIRTIO_SCAN_BASE_ADDR + (i * VIRTIO_SCAN_STEP);
@@ -770,7 +773,9 @@ scan_for_virtio_block_device(uint32_t found_device_id)
                                   version);
 
         if (device_id == found_device_id) {
-            logger_info("Found VirtIO %d device at address 0x%lx!\n", found_device_id, addr);
+            logger_virtio_front_debug("Found VirtIO %d device at address 0x%lx!\n",
+                                      found_device_id,
+                                      addr);
             return addr;
         }
     }
@@ -788,17 +793,17 @@ virtio_blk_print_info(virtio_blk_device_t *blk_dev)
         return;
     }
 
-    logger_info("=== VirtIO Block Device Info ===\n");
-    logger_info("Base address: 0x%lx\n", blk_dev->dev->base_addr);
-    logger_info("Device ID: %d\n", blk_dev->dev->device_id);
-    logger_info("Vendor ID: 0x%x\n", blk_dev->dev->vendor_id);
-    logger_info("Version: %d\n", blk_dev->dev->version);
-    logger_info("Device features: 0x%lx\n", blk_dev->dev->device_features);
-    logger_info("Driver features: 0x%lx\n", blk_dev->dev->driver_features);
-    logger_info("Capacity: %llu sectors\n", blk_dev->capacity);
-    logger_info("Block size: %u bytes\n", blk_dev->block_size);
-    logger_info("Total size: %llu bytes\n", blk_dev->capacity * blk_dev->block_size);
-    logger_info("==============================\n");
+    logger_virtio_front_debug("=== VirtIO Block Device Info ===\n");
+    logger_virtio_front_debug("Base address: 0x%lx\n", blk_dev->dev->base_addr);
+    logger_virtio_front_debug("Device ID: %d\n", blk_dev->dev->device_id);
+    logger_virtio_front_debug("Vendor ID: 0x%x\n", blk_dev->dev->vendor_id);
+    logger_virtio_front_debug("Version: %d\n", blk_dev->dev->version);
+    logger_virtio_front_debug("Device features: 0x%lx\n", blk_dev->dev->device_features);
+    logger_virtio_front_debug("Driver features: 0x%lx\n", blk_dev->dev->driver_features);
+    logger_virtio_front_debug("Capacity: %llu sectors\n", blk_dev->capacity);
+    logger_virtio_front_debug("Block size: %u bytes\n", blk_dev->block_size);
+    logger_virtio_front_debug("Total size: %llu bytes\n", blk_dev->capacity * blk_dev->block_size);
+    logger_virtio_front_debug("==============================\n");
 }
 
 // 简单的 VirtIO 设备检测函数

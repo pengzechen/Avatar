@@ -31,8 +31,6 @@ avatar_virtio_block_init(void)
         return 0;
     }
 
-    logger_info("Initializing Avatar VirtIO Block frontend...\n");
-
     // 初始化 VirtIO 前端子系统
     if (virtio_blk_frontend_init() < 0) {
         logger_error("Failed to initialize VirtIO frontend subsystem\n");
@@ -46,7 +44,7 @@ avatar_virtio_block_init(void)
         return -1;
     }
 
-    logger_info("Found VirtIO block device at 0x%lx\n", block_device_addr);
+    logger_virtio_front_debug("Found VirtIO block device at 0x%lx\n", block_device_addr);
 
     // 初始化块设备
     if (virtio_blk_init(&g_virtio_block_device, block_device_addr, 0) < 0) {

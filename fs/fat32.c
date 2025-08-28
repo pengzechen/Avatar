@@ -131,7 +131,7 @@ fat32_mount(void)
     g_fat32_context.mounted = 1;
 
     logger_info("FAT32: File system mounted successfully\n");
-    fat32_boot_print_layout(&g_fat32_context.fs_info);
+    // fat32_boot_print_layout(&g_fat32_context.fs_info);
 
     return FAT32_OK;
 }

@@ -11,7 +11,6 @@
  */
 
 
-
 /*   ============= gic.c ================*/
 
 #include "gic.h"
@@ -215,7 +214,7 @@ gic_enable_int(int32_t vector, int32_t enabled)
     else
         write32(mask, (void *) GICD_ICENABLER(reg));
     // logger("set enable: reg: %d, mask: 0x%llx\n", reg, mask);
-    logger_gic_debug("gic %s int: %d\n", enabled ? "enable" : "disable", vector);
+    logger_gic_debug("GIC: %s int: %d\n", enabled ? "enable" : "disable", vector);
 }
 
 // Check the given interrupt.
@@ -227,7 +226,7 @@ gic_get_enable(int32_t vector)
     uint32_t val  = read32((void *) GICD_ISENABLER(reg));
 
     // logger("get enable: reg: %llx, mask: %llx, value: %llx\n", reg, mask, val);
-    logger_gic_debug("gic %d is %s\n", vector, val & mask ? "enabled" : "disabled");
+    logger_gic_debug("GIC: int %d is %s\n", vector, val & mask ? "enabled" : "disabled");
     return val & mask != 0;
 }
 
@@ -315,7 +314,7 @@ gic_set_ipriority(uint32_t vector, uint32_t pri)
     val |= (priority << (8 * m));
 
     write32(val, (void *) (uint64_t) addr);
-    logger_gic_debug("set priority: n: %u, m: %u, pri: %u\n", n, m, pri);
+    logger_gic_debug("GIC: set int: %d(n: %u, m: %u) priority: 0x%x\n", vector, n, m, pri);
 }
 
 // Get the interrupt priority

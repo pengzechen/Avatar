@@ -281,8 +281,8 @@ vm_init_with_manifest(struct _vm_t *vm, const guest_manifest_t *manifest)
         vm->vgic->core_state[i] = state;
     }
 
-    for (int32_t i = 0; i < vm->vcpu_cnt; i++)
-        vgicc_dump(vm->vgic->core_state[i]);
+    // for (int32_t i = 0; i < vm->vcpu_cnt; i++)
+    //     vgicc_dump(vm->vgic->core_state[i]);
 
     // 初始化虚拟定时器
     vm->vtimer->vm       = vm;
