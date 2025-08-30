@@ -50,3 +50,49 @@ get_vcpus(tcb_t *task)
     vm = task->curr_vm;
     return &vm->vcpus;
 }
+
+// 这时候的 curr 已经是下一个任务了
+// 这里是先进行内存操作，再恢复到真实的寄存器和硬件
+void
+vcpu_in()
+{
+    tcb_t      *curr = curr_task_el2();
+    extern void restore_sysregs(cpu_sysregs_t *);
+    extern void gicc_restore_core_state();
+    extern void vgic_try_inject_pending(tcb_t * task);
+    extern void vtimer_core_restore(tcb_t * task);
+
+    // 先修改内存中的值
+    if (!curr->curr_vm)
+        return;
+
+    // 中断操作记录在内存
+    vgic_try_inject_pending(curr);
+
+    // 恢复虚拟定时器状态到内存
+    vtimer_core_restore(curr);
+
+    // 内存恢复到寄存器
+    restore_sysregs(curr->cpu_info->sys_reg);
+
+    // 内存恢复到硬件
+    gicc_restore_core_state();
+}
+
+// 这里要先进行硬件和寄存器保存，再进行内存恢复
+void
+vcpu_out()
+{
+    tcb_t      *curr = curr_task_el2();
+    extern void save_sysregs(cpu_sysregs_t *);
+    extern void gicc_save_core_state();
+    extern void vtimer_core_save(tcb_t * task);
+    if (!curr->curr_vm)
+        return;
+
+    save_sysregs(curr->cpu_info->sys_reg);
+
+    gicc_save_core_state();
+
+    vtimer_core_save(curr);
+}

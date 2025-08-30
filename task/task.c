@@ -162,12 +162,6 @@ reset_task(tcb_t *task, entry_t task_func, uint64_t stack_top, uint32_t affinity
 }
 
 void
-schedule_init()
-{
-    logger_info("schedule init done\n");
-}
-
-void
 schedule_init_local(tcb_t *task, void *new_sp)
 {
     irq_install(IPI_SCHED, schedule);
@@ -358,50 +352,6 @@ timer_tick_schedule(uint64_t *sp)
     if (has_wakeup || need_schedule) {
         schedule();
     }
-}
-
-//  vm 相关
-// 这时候的 curr 已经是下一个任务了
-void
-vm_in()
-{
-    tcb_t      *curr = curr_task_el2();
-    extern void restore_sysregs(cpu_sysregs_t *);
-    extern void gicc_restore_core_state();
-    extern void vgic_try_inject_pending(tcb_t * task);
-    extern void vtimer_core_restore(tcb_t * task);
-
-    // 先修改内存中的值
-    if (!curr->curr_vm)
-        return;
-
-    restore_sysregs(curr->cpu_info->sys_reg);
-
-    vgic_try_inject_pending(curr);
-
-    // 恢复虚拟定时器状态
-    vtimer_core_restore(curr);
-
-    // 内存恢复到硬件
-    gicc_restore_core_state();
-}
-
-void
-vm_out()
-{
-    tcb_t      *curr = curr_task_el2();
-    extern void save_sysregs(cpu_sysregs_t *);
-    extern void gicc_save_core_state();
-    extern void vtimer_core_save(tcb_t * task);
-    if (!curr->curr_vm)
-        return;
-
-    save_sysregs(curr->cpu_info->sys_reg);
-
-    // 保存虚拟定时器状态
-    vtimer_core_save(curr);
-
-    gicc_save_core_state();
 }
 
 // 保存栈上的内容到task cpu中

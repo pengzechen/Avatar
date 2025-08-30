@@ -130,9 +130,7 @@ kernel_main(void)
     timer_init();
     logger_info("core 0 starting is done.\n\n");
     spinlock_init(&lock);
-    // io_init();
 
-    schedule_init();
     task_manager_init();
 
     start_secondary_cpus();

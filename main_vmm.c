@@ -186,7 +186,6 @@ vmm_main()
 
     io_init();
 
-    schedule_init();
     task_manager_init();
 
     logger_info("core 0 starting is done.\n\n");
