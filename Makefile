@@ -56,8 +56,7 @@ TASKSET_CMD := $(if $(CPU_AFFINITY),taskset -c $(CPU_AFFINITY),)
 
 
 # 目录配置
-SRC_DIRS := . boot exception io mem timer task process \
-            vmm lib fs app syscall virtio_frontend guest
+SRC_DIRS := . kernel vmm lib fs app guest
 INCLUDE_DIRS := include guest
 INCLUDE := $(addprefix -I, $(INCLUDE_DIRS))
 
@@ -96,9 +95,9 @@ QEMU_ARGS += -device virtio-blk-device,drive=hd0
 
 ifeq ($(HV),1)
 QEMU_ARGS += -M virtualization=on
-LD := boot/link_vmm.lds
+LD := kernel/boot/link_vmm.lds
 else
-LD := boot/link.lds
+LD := kernel/boot/link.lds
 endif
 
 # 工具链
@@ -117,7 +116,7 @@ READELF := $(TOOL_PREFIX)readelf
 # 自动发现源文件（排除guest和clib目录）
 # 分别处理根目录和其他目录，确保完全排除clib
 ROOT_C_SOURCES := $(shell find . -maxdepth 1 -name "*.c" 2>/dev/null)
-OTHER_C_SOURCES := $(shell find boot exception io mem timer task process vmm lib fs syscall virtio_frontend -name "*.c" 2>/dev/null)
+OTHER_C_SOURCES := $(shell find kernel dev vmm fs -name "*.c" 2>/dev/null)
 # 手动添加app目录中的非main.c文件（避免包含app子目录中的main.c）
 APP_C_SOURCES := $(shell find app -maxdepth 1 -name "*.c" 2>/dev/null)
 # 手动添加guest目录中需要的C文件
@@ -125,7 +124,7 @@ GUEST_C_SOURCES := guest/guest_manifests.c
 C_SOURCES := $(ROOT_C_SOURCES) $(OTHER_C_SOURCES) $(APP_C_SOURCES) $(GUEST_C_SOURCES)
 
 ROOT_S_SOURCES := $(shell find . -maxdepth 1 -name "*.S" 2>/dev/null)
-OTHER_S_SOURCES := $(shell find boot exception io mem timer task process vmm lib fs syscall virtio_frontend -name "*.S" 2>/dev/null)
+OTHER_S_SOURCES := $(shell find kernel dev vmm fs -name "*.S" 2>/dev/null)
 # 手动添加app目录中需要的汇编文件（排除syscall.S）
 APP_S_SOURCES := $(shell find app -maxdepth 1 -name "*.S" 2>/dev/null | grep -v syscall.S)
 S_SOURCES := $(ROOT_S_SOURCES) $(OTHER_S_SOURCES) $(APP_S_SOURCES)
@@ -162,37 +161,51 @@ $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
 # 特定目录的C文件编译规则（避免匹配clib目录）
-$(BUILD_DIR)/%.o: boot/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: kernel/boot/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/%.o: exception/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: kernel/exception/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/%.o: exception/gic/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: kernel/exception/gic/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/%.o: io/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: kernel/io/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/%.o: mem/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: kernel/mem/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/%.o: timer/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: kernel/task/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/%.o: task/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: kernel/process/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/%.o: process/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: kernel/lib/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
+
+$(BUILD_DIR)/%.o: kernel/syscall/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
+
+
+$(BUILD_DIR)/%.o: dev/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
+
+$(BUILD_DIR)/%.o: dev/virtio_frontend/%.c | $(BUILD_DIR)
+	$(Q)echo "  CC      $<"
+	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
+
 
 $(BUILD_DIR)/%.o: vmm/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
@@ -206,15 +219,7 @@ $(BUILD_DIR)/%.o: vmm/vdev/virtio/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/%.o: lib/%.c | $(BUILD_DIR)
-	$(Q)echo "  CC      $<"
-	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
-
 $(BUILD_DIR)/%.o: fs/%.c | $(BUILD_DIR)
-	$(Q)echo "  CC      $<"
-	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
-
-$(BUILD_DIR)/%.o: syscall/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
@@ -222,33 +227,26 @@ $(BUILD_DIR)/%.o: guest/%.c | $(BUILD_DIR)
 	$(Q)echo "  CC      $<"
 	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-$(BUILD_DIR)/%.o: virtio_frontend/%.c | $(BUILD_DIR)
-	$(Q)echo "  CC      $<"
-	$(Q)$(CC) $(CFLAGS) $(INCLUDE) -MMD -MP -MF $(BUILD_DIR)/$*.d $< -o $@
 
-# 根目录汇编文件编译规则
-$(BUILD_DIR)/%.s.o: %.S | $(BUILD_DIR)
-	$(Q)echo "  AS      $<"
-	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
 # 特定目录的汇编文件编译规则
-$(BUILD_DIR)/%.s.o: boot/%.S | $(BUILD_DIR)
+$(BUILD_DIR)/%.s.o: kernel/boot/%.S | $(BUILD_DIR)
 	$(Q)echo "  AS      $<"
 	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
-$(BUILD_DIR)/%.s.o: exception/%.S | $(BUILD_DIR)
+$(BUILD_DIR)/%.s.o: kernel/exception/%.S | $(BUILD_DIR)
 	$(Q)echo "  AS      $<"
 	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
-$(BUILD_DIR)/%.s.o: mem/%.S | $(BUILD_DIR)
+$(BUILD_DIR)/%.s.o: kernel/mem/%.S | $(BUILD_DIR)
 	$(Q)echo "  AS      $<"
 	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
-$(BUILD_DIR)/%.s.o: task/%.S | $(BUILD_DIR)
+$(BUILD_DIR)/%.s.o: kernel/task/%.S | $(BUILD_DIR)
 	$(Q)echo "  AS      $<"
 	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
-$(BUILD_DIR)/%.s.o: lib/%.S | $(BUILD_DIR)
+$(BUILD_DIR)/%.s.o: kernel/lib/%.S | $(BUILD_DIR)
 	$(Q)echo "  AS      $<"
 	$(Q)$(AS) $(ASFLAGS) $(INCLUDE) $< -o $@
 
