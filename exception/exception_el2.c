@@ -392,7 +392,7 @@ handle_unknown_exception(uint32_t ec, union esr_el2 *esr, trap_frame_t *ctx)
 void
 handle_irq_exception_el2(uint64_t *stack_pointer)
 {
-    trap_frame_t *context = (trap_frame_t *) stack_pointer;
+    trap_frame_t *ctx_el2 = (trap_frame_t *) stack_pointer;
 
     // Read interrupt acknowledge register to get the interrupt ID
     uint32_t iar    = gic_read_iar();
@@ -416,12 +416,12 @@ handle_irq_exception_el2(uint64_t *stack_pointer)
     }
 
     // Save CPU context for interrupt handling
-    save_cpu_ctx(context);
+    save_cpu_ctx(ctx_el2);
 
     // Dispatch to the registered interrupt handler
     irq_handler_t *handler_vec = get_g_handler_vec();
     if (handler_vec && handler_vec[irq_id]) {
-        handler_vec[irq_id]((uint64_t *) context);
+        handler_vec[irq_id]((uint64_t *) ctx_el2);
     } else {
         logger_warn("No handler registered for IRQ %d\n", irq_id);
     }

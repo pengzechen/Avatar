@@ -96,29 +96,66 @@
 .extern handle_irq_exception
 
 exception_vector_base:
-    // current EL, with SP_EL0
-    INVALID_EXCP 0 0
-    INVALID_EXCP 1 0
-    INVALID_EXCP 2 0
-    INVALID_EXCP 3 0
 
-    // current EL, with SP_ELx
-    HANDLE_SYNC
-    HANDLE_IRQ
-    INVALID_EXCP 2 1
-    INVALID_EXCP 3 1
+/*=============================================================================
+ * Current EL with SP_EL0 (通常不会使用)
+ *============================================================================*/
+curr_el_sp0_sync:
+    INVALID_EXCP 0 0                // 同步异常
 
-    // lower EL, aarch64
-    HANDLE_SYNC
-    HANDLE_IRQ
-    INVALID_EXCP 2 2
-    INVALID_EXCP 3 2
+curr_el_sp0_irq:
+    INVALID_EXCP 1 0                // IRQ
 
-    // lower EL, aarch32
-    INVALID_EXCP 0 3
-    INVALID_EXCP 1 3
-    INVALID_EXCP 2 3
-    INVALID_EXCP 3 3
+curr_el_sp0_fiq:
+    INVALID_EXCP 2 0                // FIQ
+
+curr_el_sp0_serror:
+    INVALID_EXCP 3 0                // SError
+
+/*=============================================================================
+ * Current EL with SP_ELx (内核异常)
+ *============================================================================*/
+curr_el_spx_sync:
+    HANDLE_SYNC                     // 同步异常
+
+curr_el_spx_irq:
+    HANDLE_IRQ                      // IRQ
+
+curr_el_spx_fiq:
+    INVALID_EXCP 2 1                // FIQ
+
+curr_el_spx_serror:
+    INVALID_EXCP 3 1                // SError
+
+/*=============================================================================
+ * Lower EL (AArch64) - 用户空间异常
+ *============================================================================*/
+lower_el_aarch64_sync:
+    HANDLE_SYNC                     // 同步异常
+
+lower_el_aarch64_irq:
+    HANDLE_IRQ                      // IRQ
+
+lower_el_aarch64_fiq:
+    INVALID_EXCP 2 2                // FIQ
+
+lower_el_aarch64_serror:
+    INVALID_EXCP 3 2                // SError
+
+/*=============================================================================
+ * Lower EL (AArch32) - 32位用户空间异常
+ *============================================================================*/
+lower_el_aarch32_sync:
+    INVALID_EXCP 0 3                // 同步异常
+
+lower_el_aarch32_irq:
+    INVALID_EXCP 1 3                // IRQ
+
+lower_el_aarch32_fiq:
+    INVALID_EXCP 2 3                // FIQ
+
+lower_el_aarch32_serror:
+    INVALID_EXCP 3 3                // SError
 
 .Lexception_return:
     RESTORE_REGS

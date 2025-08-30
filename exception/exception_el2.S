@@ -12,8 +12,8 @@
 
 
 
-.extern vm_in
-.extern vm_out
+.extern vcpu_in
+.extern vcpu_out
 
 .macro SAVE_REGS_EL2
     sub     sp, sp,   34 * 8
@@ -40,11 +40,11 @@
     mrs     x11, spsr_el2
     stp     x10, x11, [sp, 32 * 8]
 
-    bl      vm_out
+    bl      vcpu_out
 .endm
 
 .macro RESTORE_REGS_EL2
-    bl      vm_in
+    bl      vcpu_in
 
     ldp     x10, x11, [sp, 32 * 8]
     msr     elr_el2, x10
@@ -110,28 +110,40 @@
 .p2align 11
 .global exception_vector_base_el2
 exception_vector_base_el2:
-    // current EL, with SP_EL0
+curr_el_sp0_sync:
     INVALID_EXCP_EL2 0 0
+curr_el_sp0_irq:
     INVALID_EXCP_EL2 1 0
+curr_el_sp0_fiq:
     INVALID_EXCP_EL2 2 0
+curr_el_sp0_serror:
     INVALID_EXCP_EL2 3 0
 
-    // current EL, with SP_ELx
+curr_el_spx_sync:
     INVALID_EXCP_EL2 0 1
+curr_el_spx_irq:
     HANDLE_CURRENT_IRQ
+curr_el_spx_fiq:
     INVALID_EXCP_EL2 2 1
+curr_el_spx_serror:
     INVALID_EXCP_EL2 3 1
 
-    // lower EL, aarch64  比当前等级更低一级
+lower_el_aarch64_sync:
     HANDLE_LOWER_SYNC
+lower_el_aarch64_irq:
     HANDLE_LOWER_IRQ
+lower_el_aarch64_fiq:
     INVALID_EXCP_EL2 2 2
+lower_el_aarch64_serror:
     INVALID_EXCP_EL2 3 2
 
-    // lower EL, aarch32
+lower_el_aarch32_sync:
     INVALID_EXCP_EL2 0 3
+lower_el_aarch32_irq:
     INVALID_EXCP_EL2 1 3
+lower_el_aarch32_fiq:
     INVALID_EXCP_EL2 2 3
+lower_el_aarch32_serror:
     INVALID_EXCP_EL2 3 3
 
 .Lexception_return_el2:
@@ -144,7 +156,7 @@ exception_vector_base_el2:
 .global guest_entry
 guest_entry:
 
-    bl      vm_in        //  恢复当前 vm 的系统寄存器
+    bl      vcpu_in        //  恢复当前 vm 的系统寄存器
     ldp     x10, x11, [sp, 32 * 8]
     msr     elr_el2, x10
     msr     spsr_el2, x11

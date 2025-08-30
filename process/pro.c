@@ -298,7 +298,8 @@ pro_fork(void)
     child_task->affinity        = curr->affinity;
     list_insert_last(&get_task_manager()->task_list, &child_task->all_node);
 
-    memcpy((void *) (stack_top - sizeof(trap_frame_t)), &curr->cpu_info->ctx, sizeof(trap_frame_t));
+    memcpy((void *) (stack_top - sizeof(trap_frame_t)), curr->cpu_info->pctx, sizeof(trap_frame_t));
+
     extern void el0_task_entry();
     child_task->ctx.x30    = (uint64_t) el0_task_entry;
     child_task->ctx.x29    = stack_top - sizeof(trap_frame_t);

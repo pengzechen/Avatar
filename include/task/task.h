@@ -181,8 +181,6 @@ void
 reset_task(tcb_t *task, entry_t task_func, uint64_t stack_top, uint32_t affinity);
 
 void
-schedule_init();
-void
 task_manager_init(void);
 task_manager_t *
 get_task_manager();
