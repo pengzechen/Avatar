@@ -15,6 +15,8 @@
 #define __TASK_H__
 
 #include "avatar_types.h"
+#include "avatar_sysregs.h"
+#include "mem/barrier.h"
 #include "vmm/vcpu.h"
 #include "lib/list.h"
 #include "os_cfg.h"
@@ -26,8 +28,6 @@
 
 // 任务入口函数类型定义
 typedef void (*entry_t)(void);
-
-#define wfi() __asm__ volatile("wfi" : : : "memory")
 
 
 // 获取当前任务的宏定义
@@ -146,16 +146,16 @@ static inline void
 flush(void)
 {
     // 确保页表写入已完成（比如 TTBR0_EL1 已写好）
-    __asm__ volatile("dsb ish");  // Data Synchronization Barrier，Inner Shareable
+    dsb_ish();  // Data Synchronization Barrier，Inner Shareable
 
     // 清除所有EL1 TLB项，适用于多核 inner shareable 域
     __asm__ volatile("tlbi vmalle1is");  // Invalidate all TLB entries for EL1 (Inner Shareable)
 
     // 等待 TLB 刷新完成
-    __asm__ volatile("dsb ish");
+    dsb_ish();
 
     // 确保后续指令看到最新的 TLB 状态
-    __asm__ volatile("isb");
+    isb();
 }
 
 static inline uint32_t

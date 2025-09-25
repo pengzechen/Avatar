@@ -11,7 +11,6 @@
  */
 
 
-
 #ifndef __BARRIER_H__
 #define __BARRIER_H__
 
@@ -22,7 +21,8 @@
 #define tlbi_vmalle1() __asm__ __volatile__("tlbi vmalle1" ::: "memory")
 
 // 常用封装
-#define dsb_sy() dsb(sy)
+#define dsb_sy()  dsb(sy)
+#define dsb_ish() dsb(ish)
 
 #define mb()  dsb()
 #define rmb() dsb()

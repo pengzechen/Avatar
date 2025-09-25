@@ -21,6 +21,7 @@
 #define __AVATAR_ASSERT_H__
 
 #include "avatar_types.h"
+#include "avatar_sysregs.h"
 #include "io.h"
 
 /* ==================== 断言配置 ==================== */
@@ -55,7 +56,7 @@ avatar_assert_fail_default(const char *condition, const char *function, const ch
 
     // 在内核中，断言失败应该停止系统
     while (1) {
-        __asm__ volatile("wfi");  // 等待中断，节省电力
+        WFI();
     }
 }
 
@@ -71,7 +72,7 @@ avatar_assert_fail_lite(const char *condition, const char *function, const char 
 {
     logger("ASSERT: %s at %s:%d\n", condition, file, line);
     while (1) {
-        __asm__ volatile("wfi");
+        WFI();
     }
 }
 
@@ -109,7 +110,7 @@ avatar_assert_fail_lite(const char *condition, const char *function, const char 
                 logger("  Function: %s\n", __func__);                                              \
                 logger("  File: %s:%d\n", __FILE__, __LINE__);                                     \
                 while (1) {                                                                        \
-                    __asm__ volatile("wfi");                                                       \
+                    WFI();                                                                         \
                 }                                                                                  \
             }                                                                                      \
         } while (0)

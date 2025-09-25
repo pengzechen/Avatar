@@ -15,6 +15,7 @@
 #include "gic.h"
 #include "vmm/vcpu.h"
 #include "lib/avatar_string.h"
+#include "avatar_sysregs.h"
 #include "sys/sys.h"
 #include "spinlock.h"
 #include "thread.h"
@@ -369,7 +370,7 @@ void
 idle_task()
 {
     while (1) {
-        wfi();
+        WFI();
         // __asm__ __volatile__("msr daifclr, #2" : : : "memory");
         // for (int32_t i = 0; i < 100000000; i++);
         // logger("current el: %d, idle task\n", get_el());

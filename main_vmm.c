@@ -14,10 +14,16 @@
 #include "io.h"
 #include "gic.h"
 #include "timer.h"
-#include "mem/mmu.h"
+#include "uart_pl011.h"
+#include "virtio_block_frontend.h"
+
 #include "sys/vtcr.h"
+#include "mem/mmu.h"
 #include "mem/stage2page.h"
 #include "mem/page.h"
+#include "mem/mem.h"
+#include "mem/earlypage.h"
+
 #include "task/task.h"
 #include "lib/avatar_string.h"
 #include "vmm/vm.h"
@@ -25,14 +31,10 @@
 #include "vmm/vpl011.h"
 #include "os_cfg.h"
 #include "thread.h"
-#include "mem/mem.h"
 #include "smp.h"
-#include "uart_pl011.h"
-#include "mem/earlypage.h"
-#include "virtio_block_frontend.h"
+
 #include "fs/fat32.h"
 #include "fs/fat32_dir.h"
-#include "uart_pl011.h"
 
 
 // Shell函数声明
@@ -95,7 +97,7 @@ main_entry_el2()
     spin_unlock(&lock_el2);
 
     while (inited_cpu_num_el2 != SMP_NUM)
-        wfi();
+        WFI();
 
     logger("main entry: get_current_cpu_id: %d\n", get_current_cpu_id());
 
@@ -163,7 +165,7 @@ main_entry_el2()
     //         }
     //     }
     //     // 让出CPU给其他任务
-    //     wfi();
+    //     WFI();
     // }
 
     asm volatile("mov sp, %0" ::"r"(_sp));

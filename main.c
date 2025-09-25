@@ -90,7 +90,7 @@ main_entry()
     spin_unlock(&lock);
 
     while (inited_cpu_num != SMP_NUM)
-        wfi();
+        WFI();
 
     // uint64_t __sp = (uint64_t)app_el1_stack + 4096 - sizeof(trap_frame_t);
     // void * _sp = (void *)__sp;
