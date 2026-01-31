@@ -13,6 +13,7 @@
 
 #ifndef __VTCR_H__
 #define __VTCR_H__
+#include "avatar_types.h"
 
 #define __AC(X, Y) (X##Y)
 #define _AC(X, Y)  __AC(X, Y)

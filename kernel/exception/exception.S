@@ -10,6 +10,14 @@
  * @date 2024
  */
 
+.global exception_vector_base
+.global el0_task_entry
+.global el1_task_entry
+.global el2_tesk_entry
+
+.extern invalid_exception
+.extern handle_sync_exception
+.extern handle_irq_exception
 
 .macro SAVE_REGS
     sub     sp, sp, 34 * 8
@@ -61,40 +69,37 @@
     add     sp, sp, 34 * 8
 .endm
 
+// 无效异常
 .macro INVALID_EXCP, kind, source
-.p2align 7
-    SAVE_REGS
-    mov     x0, sp
-    mov     x1, \kind
-    mov     x2, \source
-    bl      invalid_exception
-    b       .Lexception_return
+    .p2align 7
+        SAVE_REGS
+        mov     x0, sp
+        mov     x1, \kind
+        mov     x2, \source
+        bl      invalid_exception
+        b       .Lexception_return
 .endm
 
+// 同步异常
 .macro HANDLE_SYNC
-.p2align 7
-    SAVE_REGS
-    mov     x0, sp
-    bl      handle_sync_exception
-    b       .Lexception_return
+    .p2align 7
+        SAVE_REGS
+        mov     x0, sp
+        bl      handle_sync_exception
+        b       .Lexception_return
 .endm
 
+// irq异常
 .macro HANDLE_IRQ
-.p2align 7
-    SAVE_REGS
-    mov     x0, sp
-    bl      handle_irq_exception
-    b       .Lexception_return
+    .p2align 7
+        SAVE_REGS
+        mov     x0, sp
+        bl      handle_irq_exception
+        b       .Lexception_return
 .endm
 
 .section .text
 .p2align 11
-.global exception_vector_base
-
-.extern invalid_exception
-.extern handle_sync_exception
-.extern handle_irq_exception
-
 exception_vector_base:
 
 /*=============================================================================
@@ -157,11 +162,12 @@ lower_el_aarch32_fiq:
 lower_el_aarch32_serror:
     INVALID_EXCP 3 3                // SError
 
+// 恢复栈上的寄存器返回
 .Lexception_return:
     RESTORE_REGS
     eret
 
-.global el0_task_entry
+
 el0_task_entry:
     
     // sp 为el1的栈
@@ -190,7 +196,6 @@ el0_task_entry:
     eret
 
 
-.global el1_task_entry
 el1_task_entry:
     
     // sp 为el1的栈
@@ -218,7 +223,7 @@ el1_task_entry:
     
     eret
 
-.global el2_tesk_entry
+
 el2_tesk_entry:
     
     // sp 为el1的栈

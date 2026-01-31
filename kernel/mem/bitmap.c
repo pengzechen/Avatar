@@ -11,13 +11,13 @@
  */
 
 
-
 #include "mem/bitmap.h"
 #include "os_cfg.h"
 #include "lib/avatar_assert.h"
+#include "asm.h"
 
 //  0x20000  128Kb
-uint8_t bitmap_buffer[OS_CFG_BITMAP_SIZE / 8] __attribute__((section(".bss.bitmap_buffer")));
+uint8_t ATTR(section(".bss.bitmap_buffer")) bitmap_buffer[OS_CFG_BITMAP_SIZE / 8];
 
 void
 bitmap_init(bitmap_t *bitmap, uint8_t *buffer, size_t size)

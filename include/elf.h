@@ -14,7 +14,8 @@
 #ifndef _ELF
 #define _ELF
 
-#pragma pack(1)
+#include "avatar_types.h"
+#include "asm.h"
 
 // ELF Header
 #define EI_NIDENT 16
@@ -25,7 +26,7 @@
 #define PT_LOAD    1   // 可加载类型
 
 // ELF 头部和程序头部定义（AArch64版）
-typedef struct
+typedef struct ATTR(packed)
 {
     uint8_t  e_ident[16];  // ELF标识
     uint16_t e_type;       // 文件类型
@@ -43,7 +44,7 @@ typedef struct
     uint16_t e_shstrndx;   // 节头表字符串表的索引
 } Elf64_Ehdr;
 
-typedef struct
+typedef struct ATTR(packed)
 {
     uint32_t p_type;    // 段类型
     uint32_t p_flags;   // 段标志
@@ -55,6 +56,5 @@ typedef struct
     uint64_t p_align;   // 段对齐
 } Elf64_Phdr;
 
-#pragma pack()
 
 #endif  // _ELF

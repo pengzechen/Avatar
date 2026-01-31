@@ -13,6 +13,9 @@
 
 
 .global switch_context
+.global switch_context_el2
+.global exec_ret
+.global get_el
 
 // 参数 x0: 当前任务的 TCB 指针
 // 参数 x1: 下一个任务的 TCB 指针
@@ -54,14 +57,13 @@ ldr: Load Register. 从内存中加载一个寄存器的值。
 mov: Move Register. 将一个寄存器的值移动到另一个寄存器。
  */
 
- .global get_el
+
 get_el:
 	mrs x0, CurrentEL
 	lsr x0, x0, #2
 	ret
 
 
-.global switch_context_el2
 
 // 参数 x0: 当前任务的 TCB 指针
 // 参数 x1: 下一个任务的 TCB 指针
@@ -95,7 +97,6 @@ switch_context_el2:
 
     ret                    // 返回，执行下一个任务
 
-.global exec_ret
 exec_ret:
     
     ldp     x23, x24, [x0, #16*6]
